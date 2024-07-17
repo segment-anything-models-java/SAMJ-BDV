@@ -1,5 +1,6 @@
 package ai.nets.samj.bdv;
 
+import ai.nets.samj.bdv.util.SpatioTemporalView;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
@@ -38,6 +39,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	private final Bdv bdv;
 	final ViewerPanel viewerPanel;
 
+	// ======================== overlay content ========================
 	final PromptsAndResultsDrawingOverlay samjOverlay;
 	final BdvOverlaySource<BdvOverlay> samjSource;
 
@@ -76,16 +78,17 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}
 	}
 
+	// ======================== actions - behaviours ========================
 	void installBehaviours() {
 		//stops drawing the line as soon as viewport has changed
 		//or, TODO, adjust the coordinates based on the new transform (but that's not what we want for SAMJ)
 		bdv.getBdvHandle().getViewerPanel().renderTransformListeners().add(transform -> samjOverlay.stopDrawingLine());
 
-		// Install behaviour for moving a line into img with shortcut "L"
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 		behaviours.install( bdv.getBdvHandle().getTriggerbindings(), "samj" );
-		behaviours.behaviour( new DragBehaviour()
-		{
+
+		//install behaviour for moving a line in the BDV view, with shortcut "L"
+		behaviours.behaviour( new DragBehaviour() {
 			@Override
 			public void init( final int x, final int y )
 			{
@@ -128,19 +131,21 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}, "samj_new_view", "A");
 	}
 
+	// ======================== actions - annotation sites ========================
+	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to
+	//an object that represents that exact view, and another map for polygons associated with that view
+	private final Map<Integer, SpatioTemporalView> annotationSites = new HashMap<>(100);
+
+	public Collection<Integer> getAnnotationSitesIDs() {
+		return Collections.unmodifiableCollection( annotationSites.keySet() );
+	}
+
+	// ======================== AXIS_VIEW stuff ========================
 	public enum AXIS_VIEW {
 		ALONG_X,
 		ALONG_Y,
 		ALONG_Z,
 		NONE_OF_XYZ
-	}
-
-	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation)
-	//to an object that represents that views (TODO: knows the position, TP, and polygons)
-	private final Map<Integer,Object> listOfAnnotationSites = new HashMap<>(100);
-	//
-	public Collection<Integer> getAnnotationSitesIDs() {
-		return Collections.unmodifiableCollection( listOfAnnotationSites.keySet() );
 	}
 
 	/**

@@ -41,9 +41,6 @@ public class SAMJ_BDV_Annotator {
 	//TODO: maybe RAI would be enough
 	public <T extends RealType<T>> void startBdvAnnotation(final Img<T> imageToBeAnnotated) {
 		try {
-			//get list of recognized installations of SAM(s)
-			final SAMModels availableModels = new SAMModels();
-
 			// TODO I (Carlos) don't know how to develop in IJ2 Logger guiSublogger = log.subLogger("PromptsResults window");
 			SAMJLogger guilogger = new SAMJLogger() {
 				@Override
@@ -71,22 +68,29 @@ public class SAMJ_BDV_Annotator {
 				public void error(String text) {System.out.println("BDV -- " + text);}
 			};
 
-			SAMJDialog samjDialog = new SAMJDialog( availableModels, new IJSamMethods(), guilogger, networkLogger);
-			//create the GUI (BDV on the given image) adapter between the user inputs/prompts and SAMJ outputs
-			samjDialog.setPromptsProvider( (imgAsObject) -> new BDVPromptsProvider(imageToBeAnnotated, bdvLogger) );
+			//get list of recognized installations of SAM(s)
+			final SAMModels availableModels = new SAMModels();
 
-			JDialog dialog = new JDialog(new JFrame(), "SAMJ BDV Annotator");
-			dialog.addWindowListener(new WindowAdapter() {
-				@Override
-				public void windowClosing(WindowEvent e) {
-					samjDialog.close();
-				}
-			});
-			dialog.add(samjDialog);
-			dialog.pack();
-			dialog.setResizable(false);
-			dialog.setModal(false);
-			dialog.setVisible(true);
+			SwingUtilities.invokeLater(() -> {
+						  //TODO: IJSamMethods() will be listing just the file I was given.. in fact it would show a placeholder text
+						  //TODO: then remove the src code from this repo
+						  SAMJDialog samjDialog = new SAMJDialog(availableModels, new IJSamMethods(), guilogger, networkLogger);
+						  //create the GUI (BDV on the given image) adapter between the user inputs/prompts and SAMJ outputs
+						  samjDialog.setPromptsProvider((imgAsObject) -> new BDVPromptsProvider(imageToBeAnnotated, bdvLogger));
+
+						  JDialog dialog = new JDialog(new JFrame(), "SAMJ BDV Annotator");
+						  dialog.addWindowListener(new WindowAdapter() {
+							  @Override
+							  public void windowClosing(WindowEvent e) {
+								  samjDialog.close();
+							  }
+						  });
+						  dialog.add(samjDialog);
+						  dialog.pack();
+						  dialog.setResizable(false);
+						  dialog.setModal(false);
+						  dialog.setVisible(true);
+					  });
 
 			//TODO, on BDV close call: samjDialog.close();
 		} catch (RuntimeException e) {

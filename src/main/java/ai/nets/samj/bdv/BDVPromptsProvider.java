@@ -40,91 +40,96 @@ public class BDVPromptsProvider <T extends RealType<T>> implements PromptsResult
 
 	@Override
 	public void setRectIconConsumer(BooleanConsumer consumer) {
-		logger.warn("foo");
+		logger.warn("setRectIconConsumer");
 	}
 
 	@Override
 	public void setPointsIconConsumer(BooleanConsumer consumer) {
-
+		logger.warn("setPointsIconConsumer");
 	}
 
 	@Override
 	public void setFreelineIconConsumer(BooleanConsumer consumer) {
-
+		logger.warn("setFreelineIconConsumer");
 	}
 
 	@Override
 	public RandomAccessibleInterval<?> giveProcessedSubImage(SAMModel selectedModel) {
+		logger.warn("giveProcessedSubImage");
 		return null;
 	}
 
 	@Override
 	public void switchToThisNet(SAMModel promptsToNetAdapter) {
-
+		logger.warn("switchToThisNet");
 	}
 
 	@Override
 	public void notifyNetToClose() {
-
+		logger.warn("notifyNetToClose");
 	}
 
 	@Override
 	public List<Polygon> getPolygonsFromRoiManager() {
+		logger.warn("getPolygonsFromRoiManager");
 		return null;
 	}
 
 	@Override
 	public void exportImageLabeling() {
-
+		logger.warn("exportImageLabeling");
 	}
 
 	@Override
 	public void improveExistingMask(File mask) {
-
+		logger.warn("improveExistingMask");
 	}
 
 	@Override
 	public void enableAddingToRoiManager(boolean shouldBeAdding) {
-
+		logger.warn("enableAddingToRoiManager");
 	}
 
 	@Override
 	public boolean isAddingToRoiManager() {
-		return false;
+		logger.warn("isAddingToRoiManager");
+		return true;
 	}
 
 	@Override
 	public void switchToUsingRectangles() {
-
+		logger.warn("switchToUsingRectangles");
 	}
 
 	@Override
 	public void switchToUsingBrush() {
-
+		logger.warn("switchToUsingBrush");
 	}
 
 	@Override
 	public void switchToUsingPoints() {
-
+		logger.warn("switchToUsingPoints");
 	}
 
 	@Override
 	public void switchToNone() {
-
+		logger.warn("switchToNone");
 	}
 
 	@Override
 	public Object getFocusedImage() {
+		logger.warn("getFocusedImage");
 		return null;
 	}
 
 	@Override
 	public void notifyException(SAMJException type, Exception ex) {
-
+		logger.warn("notifyException");
 	}
 
 	@Override
 	public SAMModel getNetBeingUsed() {
+		logger.warn("getNetBeingUsed");
 		return null;
 	}
 }

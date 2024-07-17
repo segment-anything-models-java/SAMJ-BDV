@@ -111,14 +111,18 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
 			System.out.println("View: "+viewDir);
 
-			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
+			//if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
+			if (viewDir == AXIS_VIEW.ALONG_Z) {
 				System.out.println("Going to start a SAMJ here");
-				final RealPositionable topLeftROI = new RealPoint(3);
+				final RealPoint topLeftROI = new RealPoint(3);
 				final RealPositionable bottomRightROI = new RealPoint(3);
 				final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
 				viewerPanel.displayToGlobalCoordinates(0,0, topLeftROI);
 				viewerPanel.displayToGlobalCoordinates(displaySize.width,displaySize.height, bottomRightROI);
 				System.out.println("image ROI: "+topLeftROI+" -> "+bottomRightROI);
+
+				//TODO: fixed here z-img-coord
+				samjOverlay.pxCoord[2] = topLeftROI.getFloatPosition(2);
 			}
 		}, "samj_new_view", "A");
 	}

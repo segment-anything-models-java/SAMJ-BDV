@@ -29,6 +29,10 @@ import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
 import sc.fiji.simplifiedio.SimplifiedIO;
 
+import javax.swing.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+
 /**
  * @author Vladimir Ulman
  */
@@ -70,6 +74,19 @@ public class SAMJ_BDV_Annotator {
 			SAMJDialog samjDialog = new SAMJDialog( availableModels, new IJSamMethods(), guilogger, networkLogger);
 			//create the GUI (BDV on the given image) adapter between the user inputs/prompts and SAMJ outputs
 			samjDialog.setPromptsProvider( (imgAsObject) -> new BDVPromptsProvider(imageToBeAnnotated, bdvLogger) );
+
+			JDialog dialog = new JDialog(new JFrame(), "SAMJ BDV Annotator");
+			dialog.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent e) {
+					samjDialog.close();
+				}
+			});
+			dialog.add(samjDialog);
+			dialog.pack();
+			dialog.setResizable(false);
+			dialog.setModal(false);
+			dialog.setVisible(true);
 
 			//TODO, on BDV close call: samjDialog.close();
 		} catch (RuntimeException e) {

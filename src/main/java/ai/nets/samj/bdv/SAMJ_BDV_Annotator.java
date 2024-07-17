@@ -19,7 +19,6 @@
  */
 package ai.nets.samj.bdv;
 
-import ai.nets.samj.bdv.ui.BDVPromptsProvider;
 import ai.nets.samj.communication.model.SAMModels;
 import ai.nets.samj.gui.SAMJDialog;
 import ai.nets.samj.gui.components.ComboBoxItem;

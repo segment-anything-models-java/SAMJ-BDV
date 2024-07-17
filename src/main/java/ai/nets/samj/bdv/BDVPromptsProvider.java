@@ -17,7 +17,7 @@
  * limitations under the License.
  * #L%
  */
-package ai.nets.samj.bdv.ui;
+package ai.nets.samj.bdv;
 
 import ai.nets.samj.communication.model.SAMModel;
 import ai.nets.samj.ui.PromptsResultsDisplay;

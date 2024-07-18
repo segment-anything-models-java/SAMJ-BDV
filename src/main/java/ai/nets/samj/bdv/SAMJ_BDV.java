@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.awt.*;
+import java.util.List;
+import java.util.ArrayList;
 
 public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	public SAMJ_BDV(final Img<T> operateOnThisImage) {
@@ -44,38 +46,88 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	final BdvOverlaySource<BdvOverlay> samjSource;
 
 	class PromptsAndResultsDrawingOverlay extends BdvOverlay {
+		private int sx,sy; //starting coordinate of the line, the "first end"
+		private int ex,ey; //ending coordinate of the line, the "second end"
+		private boolean shouldDrawLine = false;
+		private boolean isLineReadyForDrawing = false;
+
 		public void setStartOfLine(int x, int y) {
 			sx = x;
 			sy = y;
-			canBeDisplayed = false;
+			isLineReadyForDrawing = false;
 		}
-
 		public void setEndOfLine(int x, int y) {
 			ex = x;
 			ey = y;
-			canBeDisplayed = true;
+			isLineReadyForDrawing = true;
 		}
 
-		public void stopDrawingLine() {
-			canBeDisplayed = false;
+		public void stopDrawing() {
+			shouldDrawLine = false;
+			shouldDrawPolygons = false;
+		}
+		public void startDrawing() {
+			isLineReadyForDrawing = false;
+			shouldDrawLine = true;
+			shouldDrawPolygons = true;
 		}
 
-		private int sx,sy; //starting coordinate of the line, the "first end"
-		private int ex,ey; //ending coordinate of the line, the "second end"
-		private boolean canBeDisplayed = false;
+		private List<Polygon> polygonList = new ArrayList<>(100);
+		private boolean shouldDrawPolygons = false;
+
+		public void addPolygon(final Polygon p) {
+			polygonList.add( new Polygon(p.xpoints,p.ypoints,p.npoints) );
+		}
+		public void clearPolygons() {
+			polygonList.clear();
+		}
+
+		public void setPolygons(List<Polygon> polygons) {
+			polygonList = polygons;
+		}
+		public List<Polygon> getPolygons() {
+			return polygonList;
+		}
 
 		private final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
 
 		@Override
 		protected void draw(Graphics2D g) {
-			if (canBeDisplayed) {
+			if (shouldDrawLine && isLineReadyForDrawing) {
+				//draws the line
 				//final double uiScale = UIUtils.getUIScaleFactor( this );
 				//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
-				g.setStroke( stroke );
-				g.setPaint( Color.GREEN );
-				g.drawLine(sx,sy, ex,ey);
+				g.setStroke(stroke);
+				g.setPaint(Color.GREEN);
+				g.drawLine(sx, sy, ex, ey);
+			}
+
+			if (shouldDrawPolygons) {
+				//draws the currently recognized polygons
+				viewerPanel.state().getViewerTransform(pxToScreenTransform);
+				g.setPaint( Color.RED );
+				for (Polygon p : polygonList) {
+					for (int i = 0; i < p.xpoints.length; i++) {
+						//pixel coordinate
+						pxCoord[0] = p.xpoints[i];
+						pxCoord[1] = p.ypoints[i];
+						if (i % 2 == 0) {
+							pxToScreenTransform.apply(pxCoord, screenCoord);
+						} else {
+							pxToScreenTransform.apply(pxCoord, screenCoordB);
+						}
+						//TODO: will be missing the line between the first and the last point
+						if (i > 0)
+							g.drawLine((int)screenCoord[0],(int)screenCoord[1], (int)screenCoordB[0],(int)screenCoordB[1]);
+					}
+				}
 			}
 		}
+
+		final AffineTransform3D pxToScreenTransform = new AffineTransform3D();
+		final float[] pxCoord = new float[3];
+		final float[] screenCoord = new float[3];
+		final float[] screenCoordB = new float[3];
 	}
 
 	// ======================== actions - behaviours ========================

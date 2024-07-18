@@ -184,9 +184,54 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== actions - annotation sites ========================
+	public void installNewAnnotationSite() {
+		//register the new site's data
+		final int newIdx = annotationSites.size()+1;
+		List<Polygon> polygons = new ArrayList<>(100);
+		annotationSites.put( newIdx, new SpatioTemporalView(bdv.getBdvHandle()) );
+		annotationSitesPolygons.put( newIdx, polygons );
+		currentlyUsedAnnotationSiteId = newIdx;
+		lastVisitedAnnotationSiteId = newIdx;
+
+		//make it visible
+		samjOverlay.setPolygons(polygons);
+		samjOverlay.startDrawing();
+
+		//prepare pixel data, get SAMJ ready, update the combobox
+	}
+
+	/**
+	 * @param id ID of the requested annotation site.
+	 * @return False if the requested site is not available, and thus no action was taken.
+	 */
+	public boolean displayAnnotationSite(int id) {
+		if (!annotationSites.containsKey(id)) return false;
+
+		annotationSites.get(id).applyOnThis(bdv.getBdvHandle());
+		//rename source -- BDV ain't supporting this easily
+		currentlyUsedAnnotationSiteId = id;
+		lastVisitedAnnotationSiteId = id;
+
+		samjOverlay.setPolygons(annotationSitesPolygons.get(id));
+		samjOverlay.startDrawing();
+		return true;
+	}
+
+	private void lostViewOfAnnotationSite() {
+		//rename source -- BDV ain't supporting this easily
+		//store polygons from the last annotation -- they're shared, so no explicit action is needed
+		currentlyUsedAnnotationSiteId = -1;
+		//
+		//disable drawing of lines and polygons
+		samjOverlay.stopDrawing();
+	}
+
 	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to
 	//an object that represents that exact view, and another map for polygons associated with that view
 	private final Map<Integer, SpatioTemporalView> annotationSites = new HashMap<>(100);
+	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
+	private int currentlyUsedAnnotationSiteId = -1;
+	private int lastVisitedAnnotationSiteId = -1;
 
 	public Collection<Integer> getAnnotationSitesIDs() {
 		return Collections.unmodifiableCollection( annotationSites.keySet() );

@@ -123,6 +123,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 				//TODO: fixed here z-img-coord
 				samjOverlay.pxCoord[2] = topLeftROI.getFloatPosition(2);
+				listOfAnnotationSites.put(listOfAnnotationSites.size()+1, null);
 			}
 		}, "samj_new_view", "A");
 	}
@@ -132,6 +133,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		ALONG_Y,
 		ALONG_Z,
 		NONE_OF_XYZ
+	}
+
+	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation)
+	//to an object that represents that views (TODO: knows the position, TP, and polygons)
+	private final Map<Integer,Object> listOfAnnotationSites = new HashMap<>(100);
+	//
+	public Collection<Integer> getAnnotationSitesIDs() {
+		return Collections.unmodifiableCollection( listOfAnnotationSites.keySet() );
 	}
 
 	/**

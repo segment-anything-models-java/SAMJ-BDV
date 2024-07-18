@@ -10,6 +10,7 @@ import bdv.viewer.ViewerPanel;
 import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.realtransform.AffineTransform3D;
 import org.scijava.ui.behaviour.ClickBehaviour;
@@ -32,6 +33,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		this.samjOverlay = new PromptsAndResultsDrawingOverlay();
 		this.samjSource = BdvFunctions.showOverlay(samjOverlay, "SAMJ overlay", BdvOptions.options().addTo(bdv));
+		samjSource.setColor(new ARGBType( this.samjOverlay.colorResults.getRGB() ));
 
 		installBehaviours();
 	}
@@ -89,6 +91,8 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}
 
 		private final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
+		private Color colorPrompt = Color.GREEN;
+		private Color colorResults = Color.RED;
 
 		@Override
 		protected void draw(Graphics2D g) {
@@ -97,14 +101,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				//final double uiScale = UIUtils.getUIScaleFactor( this );
 				//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
 				g.setStroke(stroke);
-				g.setPaint(Color.GREEN);
-				g.drawLine(sx, sy, ex, ey);
+				g.setPaint(colorPrompt);
+				g.drawLine(sx,sy, ex,ey);
 			}
 
 			if (shouldDrawPolygons) {
 				//draws the currently recognized polygons
 				viewerPanel.state().getViewerTransform(pxToScreenTransform);
-				g.setPaint( Color.RED );
+				g.setPaint(colorResults);
 				for (Polygon p : polygonList) {
 					for (int i = 0; i < p.xpoints.length; i++) {
 						//pixel coordinate

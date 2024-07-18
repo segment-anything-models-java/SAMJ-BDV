@@ -1,0 +1,185 @@
+/*-
+ * #%L
+ * Plugin to help image annotation with SAM-based Deep Learning models
+ * %%
+ * Copyright (C) 2024 SAMJ developers.
+ * %%
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * #L%
+ */
+package ai.nets.samj.bdv;
+
+import ai.nets.samj.communication.model.SAMModel;
+import ai.nets.samj.gui.components.ComboBoxItem;
+import ai.nets.samj.ui.PromptsResultsDisplay;
+import ai.nets.samj.ui.SAMJLogger;
+import ai.nets.samj.ui.UtilityMethods;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.RealType;
+import net.imglib2.img.Img;
+import net.imglib2.type.numeric.real.FloatType;
+
+import java.io.File;
+import java.awt.Polygon;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
+public class BDVPromptsProvider <T extends RealType<T> & NativeType<T>>
+implements PromptsResultsDisplay, UtilityMethods {
+
+	public BDVPromptsProvider(final Img<T> image, final SAMJLogger logger) {
+		this.image = image;
+		this.logger = logger;
+		this.bdv = new SAMJ_BDV<>(image);
+	}
+
+	final private SAMJ_BDV<T> bdv;
+	private final Img<T> image;
+	private final SAMJLogger logger;
+
+	@Override
+	public List<ComboBoxItem> getListOfOpenImages() {
+		logger.info("getListOfOpenImages");
+
+		//a list of sites IDs that BDV is registering currently
+		final Collection<Integer> listOfAnnotationSites = bdv.getAnnotationSitesIDs();
+
+		//turn it into a combobox content for SAMJ GUI (main dialog)
+		if (listOfAnnotationSites.isEmpty()) {
+			return NO_AVAILABLE_ANNOTATIONS_SITE_COMBOBOX_LIST;
+		} else {
+			final List<ComboBoxItem> comboList = new ArrayList<>(listOfAnnotationSites.size());
+			for (int ID : listOfAnnotationSites) {
+				comboList.add( new ComboBoxItem(ID,image) {
+						@Override
+						public String getImageName() { return "The site #"+ID; }
+						@Override
+						public RandomAccessibleInterval getImageAsImgLib2() { return image; } //TODO: return the cropouts from the BDV
+					} );
+			}
+			return comboList;
+		}
+	}
+
+	static final Img<FloatType> fakeSmallImage = ArrayImgs.floats(256,256);
+	static final List<ComboBoxItem> NO_AVAILABLE_ANNOTATIONS_SITE_COMBOBOX_LIST =
+		Collections.singletonList( new ComboBoxItem(0, fakeSmallImage) {
+			@Override
+			public String getImageName() { return "Currently there's no active site inside BDV"; }
+			@Override
+			public RandomAccessibleInterval getImageAsImgLib2() { return fakeSmallImage; }
+		} );
+
+	@Override
+	public Object getFocusedImage() {
+		logger.warn("getFocusedImage");
+		//here BDV reports which is the currently active "annotation site";
+		//this is used in the SAMJ GUI (main dialog) to decide if the "go!" button
+		//should trigger re-encoding, or not (when the "focused image"/"active site"
+		//is the same as the currently selected ones)
+		return getListOfOpenImages().get(0);
+	}
+
+	@Override
+	public void setRectIconConsumer(BooleanConsumer consumer) {
+		logger.warn("setRectIconConsumer");
+	}
+
+	@Override
+	public void setPointsIconConsumer(BooleanConsumer consumer) {
+		logger.warn("setPointsIconConsumer");
+	}
+
+	@Override
+	public void setFreelineIconConsumer(BooleanConsumer consumer) {
+		logger.warn("setFreelineIconConsumer");
+	}
+
+	@Override
+	public RandomAccessibleInterval<?> giveProcessedSubImage(SAMModel selectedModel) {
+		logger.warn("giveProcessedSubImage");
+		return null;
+	}
+
+	@Override
+	public void switchToThisNet(SAMModel promptsToNetAdapter) {
+		logger.warn("switchToThisNet");
+	}
+
+	@Override
+	public void notifyNetToClose() {
+		logger.warn("notifyNetToClose");
+	}
+
+	@Override
+	public List<Polygon> getPolygonsFromRoiManager() {
+		logger.warn("getPolygonsFromRoiManager");
+		return null;
+	}
+
+	@Override
+	public void exportImageLabeling() {
+		logger.warn("exportImageLabeling");
+	}
+
+	@Override
+	public void improveExistingMask(File mask) {
+		logger.warn("improveExistingMask");
+	}
+
+	@Override
+	public void enableAddingToRoiManager(boolean shouldBeAdding) {
+		logger.warn("enableAddingToRoiManager");
+	}
+
+	@Override
+	public boolean isAddingToRoiManager() {
+		logger.warn("isAddingToRoiManager");
+		return true;
+	}
+
+	@Override
+	public void switchToUsingRectangles() {
+		logger.warn("switchToUsingRectangles");
+	}
+
+	@Override
+	public void switchToUsingBrush() {
+		logger.warn("switchToUsingBrush");
+	}
+
+	@Override
+	public void switchToUsingPoints() {
+		logger.warn("switchToUsingPoints");
+	}
+
+	@Override
+	public void switchToNone() {
+		logger.warn("switchToNone");
+	}
+
+	@Override
+	public void notifyException(SAMJException type, Exception ex) {
+		logger.warn("notifyException");
+	}
+
+	@Override
+	public SAMModel getNetBeingUsed() {
+		logger.warn("getNetBeingUsed");
+		return null;
+	}
+}

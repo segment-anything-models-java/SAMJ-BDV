@@ -7,7 +7,6 @@ import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.util.BdvOverlaySource;
 import bdv.viewer.ViewerPanel;
-import net.imglib2.RealPositionable;
 import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
 import net.imglib2.type.NativeType;
@@ -132,9 +131,9 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 	// ======================== actions - behaviours ========================
 	void installBehaviours() {
-		//stops drawing the line as soon as viewport has changed
-		//or, TODO, adjust the coordinates based on the new transform (but that's not what we want for SAMJ)
-		bdv.getBdvHandle().getViewerPanel().renderTransformListeners().add(transform -> samjOverlay.stopDrawingLine());
+		//"loose" the annotation site as soon as the BDV's viewport is changed
+		bdv.getBdvHandle().getViewerPanel()
+				  .renderTransformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 		behaviours.install( bdv.getBdvHandle().getTriggerbindings(), "samj" );
@@ -168,17 +167,8 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 			//if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
 			if (viewDir == AXIS_VIEW.ALONG_Z) {
-				System.out.println("Going to start a SAMJ here");
-				final RealPoint topLeftROI = new RealPoint(3);
-				final RealPositionable bottomRightROI = new RealPoint(3);
-				final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
-				viewerPanel.displayToGlobalCoordinates(0,0, topLeftROI);
-				viewerPanel.displayToGlobalCoordinates(displaySize.width,displaySize.height, bottomRightROI);
-				System.out.println("image ROI: "+topLeftROI+" -> "+bottomRightROI);
-
-				//TODO: fixed here z-img-coord
-				samjOverlay.pxCoord[2] = topLeftROI.getFloatPosition(2);
-				listOfAnnotationSites.put(listOfAnnotationSites.size()+1, null);
+				System.out.println("Adding a new annotation site");
+				installNewAnnotationSite();
 			}
 		}, "samj_new_view", "A");
 	}
@@ -198,6 +188,19 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		samjOverlay.startDrawing();
 
 		//prepare pixel data, get SAMJ ready, update the combobox
+		// ---------- pixel data ----------
+		final RealPoint topLeftROI = new RealPoint(3);
+		final RealPoint bottomRightROI = new RealPoint(3);
+		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
+		viewerPanel.displayToGlobalCoordinates(0,0, topLeftROI);
+		viewerPanel.displayToGlobalCoordinates(displaySize.width,displaySize.height, bottomRightROI);
+		System.out.println("image ROI: "+topLeftROI+" -> "+bottomRightROI);
+		//no scaling of the image! just extract the view
+		//TODO
+		//Interval roi = new FinalInterval(topLeftROI,bottomRightROI);
+
+		//TODO: fixed here z-img-coord
+		samjOverlay.pxCoord[2] = topLeftROI.getFloatPosition(2);
 	}
 
 	/**

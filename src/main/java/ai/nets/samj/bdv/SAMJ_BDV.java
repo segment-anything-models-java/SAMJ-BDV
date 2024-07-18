@@ -7,6 +7,8 @@ import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.util.BdvOverlaySource;
 import bdv.viewer.ViewerPanel;
+import net.imglib2.FinalInterval;
+import net.imglib2.Interval;
 import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
 import net.imglib2.type.NativeType;
@@ -19,11 +21,11 @@ import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.awt.*;
-import java.util.List;
-import java.util.ArrayList;
 
 public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	public SAMJ_BDV(final Img<T> operateOnThisImage) {
@@ -61,6 +63,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			ex = x;
 			ey = y;
 			isLineReadyForDrawing = true;
+		}
+
+		/** Possibly switch line ends coordinates such that line would go
+		 * from "top"-"left", i.e., from smaller to larger coordinates. */
+		public void normalizeLineEnds() {
+			int tmp;
+			if (sx > ex) { tmp = sx; sx = ex; ex = tmp; }
+			if (sy > ey) { tmp = sy; sy = ey; ey = tmp; }
 		}
 
 		public void stopDrawing() {
@@ -162,10 +172,11 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			public void end( final int x, final int y )
 			{
 				samjOverlay.setEndOfLine(x,y);
-				System.out.println("TRIGGER AFTER A LINE WAS INSERTED");
+				samjOverlay.isLineReadyForDrawing = false;
+
+				if (arePromptsEnabled && currentlyUsedAnnotationSiteId > -1) processPrompt();
 			}
 		}, "samj_line", "L" );
-
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
@@ -197,6 +208,32 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			System.out.println("Switching to last visited annotation site: "+lastVisitedAnnotationSiteId);
 			displayAnnotationSite(lastVisitedAnnotationSiteId);
 		}, "samj_last_view", "shift|W");
+	}
+
+	// ======================== actions - prompts ========================
+	private boolean arePromptsEnabled = true;
+	public void enablePrompts() { arePromptsEnabled = true; }
+	public void disablePrompts() { arePromptsEnabled = false; }
+
+	private final RealPoint topLeftPoint = new RealPoint(3);
+	private final RealPoint bottomRightPoint = new RealPoint(3);
+	//
+	private void processPrompt() {
+		samjOverlay.normalizeLineEnds();
+		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
+		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
+		Interval box = new FinalInterval(
+				new long[] {
+					(long)Math.floor(topLeftPoint.getDoublePosition(0)),
+					(long)Math.floor(topLeftPoint.getDoublePosition(1))
+				}, new long[] {
+					(long)Math.ceil(bottomRightPoint.getDoublePosition(0)),
+					(long)Math.ceil(bottomRightPoint.getDoublePosition(1))
+				} );
+		System.out.println("Want to submit a box prompt: ["
+				  + box.min(0) + "," + box.min(1) + " -> "
+				  + box.max(0) + "," + box.max(1) + "]" );
+		processRectanglePromptFake(box);
 	}
 
 	// ======================== actions - annotation sites ========================
@@ -316,5 +353,15 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	public static boolean isZero(double val) {
 		final double EPSILON = 0.00001;
 		return -EPSILON < val && val < EPSILON;
+	}
+
+	// ======================== SAM network interaction ========================
+	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
+		Polygon p = new Polygon();
+		p.addPoint((int)boxInGlobalPxCoords.min(0), (int)boxInGlobalPxCoords.min(1));
+		p.addPoint((int)boxInGlobalPxCoords.max(0), (int)boxInGlobalPxCoords.min(1));
+		p.addPoint((int)boxInGlobalPxCoords.max(0), (int)boxInGlobalPxCoords.max(1));
+		p.addPoint((int)boxInGlobalPxCoords.min(0), (int)boxInGlobalPxCoords.max(1));
+		samjOverlay.addPolygon(p);
 	}
 }

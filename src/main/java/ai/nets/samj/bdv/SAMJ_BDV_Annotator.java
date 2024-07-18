@@ -72,34 +72,38 @@ public class SAMJ_BDV_Annotator {
 
 
 			SwingUtilities.invokeLater(() -> {
-						  SAMJDialog samjDialog = new SAMJDialog(
-								    //get list of recognized installations of SAM(s)
-								    new SAMModels(),
-									 //get list of available images (which would be only the one given here!)
-								    () -> Arrays.asList(new ComboBoxItem(99, imageToBeAnnotated ) {
-									    @Override
-									    public String getImageName() { return "N/A, Currently working only with the image inside BDV"; }
-									    @Override
-									    public RandomAccessibleInterval<T> getImageAsImgLib2() { return imageToBeAnnotated; }
-								    }),
-									 //loggers....
-								    guilogger, networkLogger );
-						  //create the GUI (BDV on the given image) adapter between the user inputs/prompts and SAMJ outputs
-						  samjDialog.setPromptsProvider((imgAsObject) -> new BDVPromptsProvider(imageToBeAnnotated, bdvLogger));
+				final BDVPromptsProvider<T> bdvPromptsProvider =
+					  new BDVPromptsProvider<>(imageToBeAnnotated, bdvLogger);
 
-						  JDialog dialog = new JDialog(new JFrame(), "SAMJ BDV Annotator");
-						  dialog.addWindowListener(new WindowAdapter() {
-							  @Override
-							  public void windowClosing(WindowEvent e) {
-								  samjDialog.close();
-							  }
-						  });
-						  dialog.add(samjDialog);
-						  dialog.pack();
-						  dialog.setResizable(false);
-						  dialog.setModal(false);
-						  dialog.setVisible(true);
-					  });
+				SAMJDialog samjDialog = new SAMJDialog(
+						//get list of recognized installations of SAM(s)
+						new SAMModels(),
+						//get list of available "annotation sites"
+						  bdvPromptsProvider::getListOfOpenImages,
+						//loggers....
+						guilogger, networkLogger );
+
+				//well... since our "independent images to annotate" are in fact
+				//ROIs from inside the _one-and-only_ BDV-displayed image (and
+				//we call these ROIs as "annotation sites"), and so there's always just
+				//one BDV associated with one SAMJ GUI (main dialog), we don't have to
+				//create any new prompt provider for any currently selected "independent image",
+				//and return the same one BDV again and again
+				samjDialog.setPromptsProvider( (imgAsObject) -> bdvPromptsProvider );
+
+				JDialog dialog = new JDialog(new JFrame(), "SAMJ BDV Annotator");
+				dialog.addWindowListener(new WindowAdapter() {
+				  @Override
+				  public void windowClosing(WindowEvent e) {
+					  samjDialog.close();
+				  }
+				});
+				dialog.add(samjDialog);
+				dialog.pack();
+				dialog.setResizable(false);
+				dialog.setModal(false);
+				dialog.setVisible(true);
+			});
 
 			//TODO, on BDV close call: samjDialog.close();
 		} catch (RuntimeException e) {

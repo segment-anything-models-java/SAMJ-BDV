@@ -171,6 +171,26 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				installNewAnnotationSite();
 			}
 		}, "samj_new_view", "A");
+
+		behaviours.behaviour((ClickBehaviour) (x, y) -> {
+			if (annotationSites.isEmpty()) {
+				System.out.println("Switching NOT... no annotation sites available yet.");
+				return;
+			}
+			int nextSiteId = lastVisitedAnnotationSiteId + 1;
+			if (nextSiteId > annotationSites.size()) nextSiteId = 1;
+			System.out.println("Switching to annotation site: "+nextSiteId);
+			displayAnnotationSite(nextSiteId);
+		}, "samj_next_view", "W");
+
+		behaviours.behaviour((ClickBehaviour) (x, y) -> {
+			if (annotationSites.isEmpty()) {
+				System.out.println("Switching NOT... no annotation sites available yet.");
+				return;
+			}
+			System.out.println("Switching to last visited annotation site: "+lastVisitedAnnotationSiteId);
+			displayAnnotationSite(lastVisitedAnnotationSiteId);
+		}, "samj_last_view", "shift|W");
 	}
 
 	// ======================== actions - annotation sites ========================

@@ -132,8 +132,10 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	// ======================== actions - behaviours ========================
 	void installBehaviours() {
 		//"loose" the annotation site as soon as the BDV's viewport is changed
-		bdv.getBdvHandle().getViewerPanel()
-				  .renderTransformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
+		bdv.getBdvHandle().getViewerPanel().renderTransformListeners().add( someNewIgnoredTransform -> {
+				if (!ignoreNextTransformEvent) lostViewOfAnnotationSite();
+				ignoreNextTransformEvent = false;
+			} );
 
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 		behaviours.install( bdv.getBdvHandle().getTriggerbindings(), "samj" );
@@ -230,6 +232,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	public boolean displayAnnotationSite(int id) {
 		if (!annotationSites.containsKey(id)) return false;
 
+		ignoreNextTransformEvent = true;
 		annotationSites.get(id).applyOnThis(bdv.getBdvHandle());
 		//rename source -- BDV ain't supporting this easily
 		currentlyUsedAnnotationSiteId = id;
@@ -239,6 +242,8 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		samjOverlay.startDrawing();
 		return true;
 	}
+
+	private boolean ignoreNextTransformEvent = false;
 
 	private void lostViewOfAnnotationSite() {
 		//rename source -- BDV ain't supporting this easily

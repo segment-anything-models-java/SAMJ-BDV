@@ -34,7 +34,10 @@ public class BDVPromptsProvider <T extends RealType<T>> implements PromptsResult
 	public BDVPromptsProvider(final Img<T> image, final SAMJLogger logger) {
 		this.image = image;
 		this.logger = logger;
+		this.bdv = new SAMJ_BDV<>(image);
 	}
+
+	final private SAMJ_BDV<T> bdv;
 	private final Img<T> image;
 	private final SAMJLogger logger;
 

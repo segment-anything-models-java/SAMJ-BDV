@@ -462,11 +462,15 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
+		samjOverlay.addPolygon( createFakePolygon(boxInGlobalPxCoords) );
+	}
+
+	protected Polygon createFakePolygon(final Interval insideThisBox) {
 		Polygon p = new Polygon();
-		p.addPoint((int)boxInGlobalPxCoords.min(0), (int)boxInGlobalPxCoords.min(1));
-		p.addPoint((int)boxInGlobalPxCoords.max(0), (int)boxInGlobalPxCoords.min(1));
-		p.addPoint((int)boxInGlobalPxCoords.max(0), (int)boxInGlobalPxCoords.max(1));
-		p.addPoint((int)boxInGlobalPxCoords.min(0), (int)boxInGlobalPxCoords.max(1));
-		samjOverlay.addPolygon(p);
+		p.addPoint((int) insideThisBox.min(0), (int) insideThisBox.min(1));
+		p.addPoint((int) insideThisBox.max(0), (int) insideThisBox.min(1));
+		p.addPoint((int) insideThisBox.max(0), (int) insideThisBox.max(1));
+		p.addPoint((int) insideThisBox.min(0), (int) insideThisBox.max(1));
+		return p;
 	}
 }

@@ -305,6 +305,17 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return Collections.unmodifiableCollection( annotationSites.keySet() );
 	}
 
+	public static class AnnotationSite {
+		AnnotationSite(SpatioTemporalView view, AXIS_VIEW viewDir, double fixedDimPos) {
+			this.view = view;
+			this.viewDir = viewDir;
+			this.fixedDimPos = fixedDimPos;
+		}
+		SpatioTemporalView view;
+		AXIS_VIEW viewDir;
+		double fixedDimPos;
+	}
+
 	// ======================== AXIS_VIEW stuff ========================
 	public enum AXIS_VIEW {
 		ALONG_X,

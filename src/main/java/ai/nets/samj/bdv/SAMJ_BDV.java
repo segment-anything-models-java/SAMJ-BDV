@@ -120,16 +120,15 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				viewerPanel.state().getViewerTransform(pxToScreenTransform);
 				g.setPaint(colorResults);
 				for (Polygon p : polygonList) {
-					for (int i = 0; i < p.xpoints.length; i++) {
-						//pixel coordinate
-						pxCoord[0] = p.xpoints[i];
-						pxCoord[1] = p.ypoints[i];
+					for (int i = 0; i <= p.xpoints.length; i++) {
+						//NB: the first (i=0) point is repeated to close the loop
+						pxCoord[0] = p.xpoints[i % p.xpoints.length];
+						pxCoord[1] = p.ypoints[i % p.xpoints.length];
 						if (i % 2 == 0) {
 							pxToScreenTransform.apply(pxCoord, screenCoord);
 						} else {
 							pxToScreenTransform.apply(pxCoord, screenCoordB);
 						}
-						//TODO: will be missing the line between the first and the last point
 						if (i > 0)
 							g.drawLine((int)screenCoord[0],(int)screenCoord[1], (int)screenCoordB[0],(int)screenCoordB[1]);
 					}

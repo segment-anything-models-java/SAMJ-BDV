@@ -117,13 +117,15 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 			if (shouldDrawPolygons) {
 				//draws the currently recognized polygons
+				AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
+				pxCoord[viewDir.fixedAxisDim()] = annotationSites.get(currentlyUsedAnnotationSiteId).fixedDimPos;
 				viewerPanel.state().getViewerTransform(pxToScreenTransform);
 				g.setPaint(colorResults);
 				for (Polygon p : polygonList) {
 					for (int i = 0; i <= p.xpoints.length; i++) {
 						//NB: the first (i=0) point is repeated to close the loop
-						pxCoord[0] = p.xpoints[i % p.xpoints.length];
-						pxCoord[1] = p.ypoints[i % p.xpoints.length];
+						pxCoord[viewDir.runningAxisDim1()] = p.xpoints[i % p.xpoints.length];
+						pxCoord[viewDir.runningAxisDim2()] = p.ypoints[i % p.xpoints.length];
 						if (i % 2 == 0) {
 							pxToScreenTransform.apply(pxCoord, screenCoord);
 						} else {
@@ -137,9 +139,9 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}
 
 		final AffineTransform3D pxToScreenTransform = new AffineTransform3D();
-		final float[] pxCoord = new float[3];
-		final float[] screenCoord = new float[3];
-		final float[] screenCoordB = new float[3];
+		final double[] pxCoord = new double[3];
+		final double[] screenCoord = new double[3];
+		final double[] screenCoordB = new double[3];
 	}
 
 	// ======================== actions - behaviours ========================
@@ -179,13 +181,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
-			System.out.println("View: "+viewDir);
-
-			//if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
-			if (viewDir == AXIS_VIEW.ALONG_Z) {
-				System.out.println("Adding a new annotation site");
-				installNewAnnotationSite();
-			}
+			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) installNewAnnotationSite(viewDir);
 		}, "samj_new_view", "A");
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
@@ -221,13 +217,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		samjOverlay.normalizeLineEnds();
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
+		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
 		Interval box = new FinalInterval(
 				new long[] {
-					(long)Math.floor(topLeftPoint.getDoublePosition(0)),
-					(long)Math.floor(topLeftPoint.getDoublePosition(1))
+					Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())),
+					Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2()))
 				}, new long[] {
-					(long)Math.ceil(bottomRightPoint.getDoublePosition(0)),
-					(long)Math.ceil(bottomRightPoint.getDoublePosition(1))
+					Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())),
+					Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2()))
 				} );
 		System.out.println("Want to submit a box prompt: ["
 				  + box.min(0) + "," + box.min(1) + " -> "
@@ -236,11 +233,17 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== actions - annotation sites ========================
-	public void installNewAnnotationSite() {
+	public void installNewAnnotationSite(final AXIS_VIEW viewDir) {
 		//register the new site's data
 		final int newIdx = annotationSites.size()+1;
+		//
+		viewerPanel.displayToGlobalCoordinates(0,0, topLeftPoint);
+		double fixedDimPos = topLeftPoint.getDoublePosition( viewDir.fixedAxisDim() );
+		annotationSites.put( newIdx, new AnnotationSite(
+				new SpatioTemporalView(bdv.getBdvHandle()), viewDir, fixedDimPos ) );
+		System.out.println("Adding a new annotation site: "+viewDir+" @ "+fixedDimPos);
+		//
 		List<Polygon> polygons = new ArrayList<>(100);
-		annotationSites.put( newIdx, new SpatioTemporalView(bdv.getBdvHandle()) );
 		annotationSitesPolygons.put( newIdx, polygons );
 		currentlyUsedAnnotationSiteId = newIdx;
 		lastVisitedAnnotationSiteId = newIdx;
@@ -273,7 +276,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		if (!annotationSites.containsKey(id)) return false;
 
 		ignoreNextTransformEvent = true;
-		annotationSites.get(id).applyOnThis(bdv.getBdvHandle());
+		annotationSites.get(id).view.applyOnThis(bdv.getBdvHandle());
 		//rename source -- BDV ain't supporting this easily
 		currentlyUsedAnnotationSiteId = id;
 		lastVisitedAnnotationSiteId = id;
@@ -296,7 +299,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to
 	//an object that represents that exact view, and another map for polygons associated with that view
-	private final Map<Integer, SpatioTemporalView> annotationSites = new HashMap<>(100);
+	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
 	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
 	private int lastVisitedAnnotationSiteId = -1;
@@ -305,12 +308,36 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return Collections.unmodifiableCollection( annotationSites.keySet() );
 	}
 
+	public static class AnnotationSite {
+		AnnotationSite(SpatioTemporalView view, AXIS_VIEW viewDir, double fixedDimPos) {
+			this.view = view;
+			this.viewDir = viewDir;
+			this.fixedDimPos = fixedDimPos;
+		}
+		SpatioTemporalView view;
+		AXIS_VIEW viewDir;
+		double fixedDimPos;
+	}
+
 	// ======================== AXIS_VIEW stuff ========================
 	public enum AXIS_VIEW {
 		ALONG_X,
 		ALONG_Y,
 		ALONG_Z,
-		NONE_OF_XYZ
+		NONE_OF_XYZ;
+
+		private static final int[] RUNNING_DIM1 = new int[] {1,0,0,0};
+		private static final int[] RUNNING_DIM2 = new int[] {2,2,1,0};
+		private static final int[] FIXED_DIM =    new int[] {0,1,2,0};
+		public int runningAxisDim1() {
+			return RUNNING_DIM1[this.ordinal()];
+		}
+		public int runningAxisDim2() {
+			return RUNNING_DIM2[this.ordinal()];
+		}
+		public int fixedAxisDim() {
+			return FIXED_DIM[this.ordinal()];
+		}
 	}
 
 	/**

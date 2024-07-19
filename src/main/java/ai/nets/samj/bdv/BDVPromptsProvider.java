@@ -64,11 +64,12 @@ implements PromptsResultsDisplay, UtilityMethods {
 		} else {
 			final List<ComboBoxItem> comboList = new ArrayList<>(listOfAnnotationSites.size());
 			for (int ID : listOfAnnotationSites) {
-				comboList.add( new ComboBoxItem(ID,image) {
+				RandomAccessibleInterval<T> aView = bdv.getImageFromAnnotationSite(ID);
+				comboList.add( new ComboBoxItem(ID, aView) {
 						@Override
 						public String getImageName() { return "The site #"+ID; }
 						@Override
-						public RandomAccessibleInterval getImageAsImgLib2() { return image; } //TODO: return the cropouts from the BDV
+						public RandomAccessibleInterval<T> getImageAsImgLib2() { return aView; }
 					} );
 			}
 			return comboList;
@@ -87,48 +88,52 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public Object getFocusedImage() {
 		logger.warn("getFocusedImage");
-		//here BDV reports which is the currently active "annotation site";
-		//this is used in the SAMJ GUI (main dialog) to decide if the "go!" button
-		//should trigger re-encoding, or not (when the "focused image"/"active site"
-		//is the same as the currently selected ones)
-		return getListOfOpenImages().get(0);
+		return bdv.getImageFromTheCurrentAnnotationSite();
 	}
 
 	@Override
 	public void setRectIconConsumer(BooleanConsumer consumer) {
 		logger.warn("setRectIconConsumer");
+		consumer.accept(true);
 	}
 
 	@Override
 	public void setPointsIconConsumer(BooleanConsumer consumer) {
 		logger.warn("setPointsIconConsumer");
+		//in BDV we ain't supporting points ATM
+		consumer.accept(false);
 	}
 
 	@Override
 	public void setFreelineIconConsumer(BooleanConsumer consumer) {
 		logger.warn("setFreelineIconConsumer");
+		//in BDV we ain't supporting free line drawing ATM
+		consumer.accept(false);
 	}
 
 	@Override
 	public RandomAccessibleInterval<?> giveProcessedSubImage(SAMModel selectedModel) {
 		logger.warn("giveProcessedSubImage");
-		return null;
+		return bdv.getImageFromTheCurrentAnnotationSite();
 	}
 
 	@Override
 	public void switchToThisNet(SAMModel promptsToNetAdapter) {
 		logger.warn("switchToThisNet");
+		bdv.startUsingThisSAMModel(promptsToNetAdapter);
 	}
 
 	@Override
 	public void notifyNetToClose() {
 		logger.warn("notifyNetToClose");
+		bdv.stopCommunicatingToSAMModel();
+		//or, bdv.close(); //TODO depends on when this is executed
 	}
 
 	@Override
 	public List<Polygon> getPolygonsFromRoiManager() {
 		logger.warn("getPolygonsFromRoiManager");
-		return null;
+		return bdv.getPolygonsFromTheCurrentAnnotationSite();
 	}
 
 	@Override
@@ -155,26 +160,34 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public void switchToUsingRectangles() {
 		logger.warn("switchToUsingRectangles");
+		bdv.enablePrompts();
 	}
 
 	@Override
 	public void switchToUsingBrush() {
 		logger.warn("switchToUsingBrush");
+		//NB: should not happen as we provide _false_ in setFreelineIconConsumer()
+		bdv.disablePrompts();
 	}
 
 	@Override
 	public void switchToUsingPoints() {
 		logger.warn("switchToUsingPoints");
+		//NB: should not happen as we provide _false_ in setPointsIconConsumer()
+		bdv.disablePrompts();
 	}
 
 	@Override
 	public void switchToNone() {
 		logger.warn("switchToNone");
+		bdv.disablePrompts();
 	}
 
 	@Override
 	public void notifyException(SAMJException type, Exception ex) {
-		logger.warn("notifyException");
+		logger.error("EXCEPTION CAPTURED: "+type.toString());
+		logger.error("EXCEPTION CAPTURED: "+ex.getMessage());
+		bdv.showMessage(ex.getMessage());
 	}
 
 	@Override

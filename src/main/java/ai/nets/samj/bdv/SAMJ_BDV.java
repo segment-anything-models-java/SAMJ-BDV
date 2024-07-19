@@ -1,6 +1,7 @@
 package ai.nets.samj.bdv;
 
 import ai.nets.samj.bdv.util.SpatioTemporalView;
+import ai.nets.samj.communication.model.SAMModel;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
@@ -9,16 +10,21 @@ import bdv.util.BdvOverlaySource;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
+
+import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +49,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	private final Img<T> image;
 	private final Bdv bdv;
 	final ViewerPanel viewerPanel;
+
+	public void showMessage(final String msg) {
+		if (msg != null) bdv.getBdvHandle().getViewerPanel().showMessage(msg);
+	}
+
+	public void close() {
+		bdv.getBdvHandle().close();
+	}
 
 	// ======================== overlay content ========================
 	final PromptsAndResultsDrawingOverlay samjOverlay;
@@ -253,20 +267,29 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		samjOverlay.setPolygons(polygons);
 		samjOverlay.startDrawing();
 
-		//prepare pixel data, get SAMJ ready, update the combobox
 		// ---------- pixel data ----------
-		final RealPoint topLeftROI = new RealPoint(3);
-		final RealPoint bottomRightROI = new RealPoint(3);
-		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
-		viewerPanel.displayToGlobalCoordinates(0,0, topLeftROI);
-		viewerPanel.displayToGlobalCoordinates(displaySize.width,displaySize.height, bottomRightROI);
-		System.out.println("image ROI: "+topLeftROI+" -> "+bottomRightROI);
+		//prepare pixel data, get SAMJ ready, update the combobox
 		//no scaling of the image! just extract the view
-		//TODO
-		//Interval roi = new FinalInterval(topLeftROI,bottomRightROI);
-
-		//TODO: fixed here z-img-coord
-		samjOverlay.pxCoord[2] = topLeftROI.getFloatPosition(2);
+		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
+		viewerPanel.displayToGlobalCoordinates(0,0, topLeftPoint);
+		viewerPanel.displayToGlobalCoordinates(displaySize.width,displaySize.height, bottomRightPoint);
+		//BDV's full-view corresponds to pixel coords at diagonal topLeftPoint -> bottomRightPoint,
+		//intersect it with the 'image' to be sure to stay within the bounds
+		Interval box = new FinalInterval(
+				new long[] {
+					Math.max(Math.round(topLeftPoint.getDoublePosition(0)), image.min(0)),
+					Math.max(Math.round(topLeftPoint.getDoublePosition(1)), image.min(1)),
+					Math.max(Math.round(topLeftPoint.getDoublePosition(2)), image.min(2))
+				}, new long[] {
+					Math.min(Math.round(bottomRightPoint.getDoublePosition(0)), image.max(0)),
+					Math.min(Math.round(bottomRightPoint.getDoublePosition(1)), image.max(1)),
+					Math.min(Math.round(bottomRightPoint.getDoublePosition(2)), image.max(2))
+				} );
+		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
+		System.out.println("image ROI: "+box);
+		annotationSitesImages.put( newIdx, Views.dropSingletonDimensions(Views.interval(image, box)) );
+		//ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
+		//Views.hyperSlice( Views.interval(image, box), viewDir.fixedAxisDim(), Math.round(fixedDimPos) ),
 	}
 
 	/**
@@ -302,6 +325,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	//an object that represents that exact view, and another map for polygons associated with that view
 	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
 	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
+	private final Map<Integer, RandomAccessibleInterval<T>> annotationSitesImages = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
 	private int lastVisitedAnnotationSiteId = -1;
 
@@ -318,6 +342,27 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		SpatioTemporalView view;
 		AXIS_VIEW viewDir;
 		double fixedDimPos;
+	}
+
+	// ======================== data - annotation sites ========================
+	public List<Polygon> getPolygonsFromTheLastUsedAnnotationSite() {
+		return getPolygonsFromAnnotationSite(lastVisitedAnnotationSiteId);
+	}
+	public List<Polygon> getPolygonsFromTheCurrentAnnotationSite() {
+		return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
+	}
+	public List<Polygon> getPolygonsFromAnnotationSite(int siteId) {
+		return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
+	}
+
+	public RandomAccessibleInterval<T> getImageFromTheLastUsedAnnotationSite() {
+		return getImageFromAnnotationSite(lastVisitedAnnotationSiteId);
+	}
+	public RandomAccessibleInterval<T> getImageFromTheCurrentAnnotationSite() {
+		return getImageFromAnnotationSite(currentlyUsedAnnotationSiteId);
+	}
+	public RandomAccessibleInterval<T> getImageFromAnnotationSite(int siteId) {
+		return annotationSitesImages.getOrDefault(siteId, null);
 	}
 
 	// ======================== AXIS_VIEW stuff ========================
@@ -383,6 +428,39 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== SAM network interaction ========================
+	private SAMModel activeNN = null; //NN = neural network
+	private int activeContextInNetwork = -1;
+
+	public void startUsingThisSAMModel(SAMModel network) {
+		this.activeNN = network;
+	}
+	public void stopCommunicatingToSAMModel() {
+		this.activeNN = null;
+	}
+
+	protected void askSAMModelToSwitchContext(int siteId) {
+		if (activeNN == null) return;
+		if (activeContextInNetwork == siteId) return;
+		//
+		activeContextInNetwork = siteId;
+		System.out.println("SWITCHING NETWORK CONTEXT to id: "+siteId);
+	}
+
+	protected void processRectanglePrompt(final Interval boxInGlobalPxCoords) {
+		try {
+			//TODO use local image coords
+			Interval boxInLocalPx = new FinalInterval(
+					boxInGlobalPxCoords.dimension(0),
+					boxInGlobalPxCoords.dimension(1),
+					boxInGlobalPxCoords.dimension(2) );
+			activeNN
+					.fetch2dSegmentation(boxInLocalPx)
+					.forEach(samjOverlay::addPolygon);
+		} catch (IOException | RuntimeException | InterruptedException e) {
+			System.out.println("BTW, an error working with the SAM: "+e.getMessage());
+		}
+	}
+
 	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
 		Polygon p = new Polygon();
 		p.addPoint((int)boxInGlobalPxCoords.min(0), (int)boxInGlobalPxCoords.min(1));

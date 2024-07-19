@@ -23,6 +23,8 @@ import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
+
+import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -442,6 +444,21 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		//
 		activeContextInNetwork = siteId;
 		System.out.println("SWITCHING NETWORK CONTEXT to id: "+siteId);
+	}
+
+	protected void processRectanglePrompt(final Interval boxInGlobalPxCoords) {
+		try {
+			//TODO use local image coords
+			Interval boxInLocalPx = new FinalInterval(
+					boxInGlobalPxCoords.dimension(0),
+					boxInGlobalPxCoords.dimension(1),
+					boxInGlobalPxCoords.dimension(2) );
+			activeNN
+					.fetch2dSegmentation(boxInLocalPx)
+					.forEach(samjOverlay::addPolygon);
+		} catch (IOException | RuntimeException | InterruptedException e) {
+			System.out.println("BTW, an error working with the SAM: "+e.getMessage());
+		}
 	}
 
 	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {

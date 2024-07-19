@@ -117,13 +117,15 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 			if (shouldDrawPolygons) {
 				//draws the currently recognized polygons
+				AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
+				pxCoord[viewDir.fixedAxisDim()] = annotationSites.get(currentlyUsedAnnotationSiteId).fixedDimPos;
 				viewerPanel.state().getViewerTransform(pxToScreenTransform);
 				g.setPaint(colorResults);
 				for (Polygon p : polygonList) {
 					for (int i = 0; i <= p.xpoints.length; i++) {
 						//NB: the first (i=0) point is repeated to close the loop
-						pxCoord[0] = p.xpoints[i % p.xpoints.length];
-						pxCoord[1] = p.ypoints[i % p.xpoints.length];
+						pxCoord[viewDir.runningAxisDim1()] = p.xpoints[i % p.xpoints.length];
+						pxCoord[viewDir.runningAxisDim2()] = p.ypoints[i % p.xpoints.length];
 						if (i % 2 == 0) {
 							pxToScreenTransform.apply(pxCoord, screenCoord);
 						} else {
@@ -137,9 +139,9 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}
 
 		final AffineTransform3D pxToScreenTransform = new AffineTransform3D();
-		final float[] pxCoord = new float[3];
-		final float[] screenCoord = new float[3];
-		final float[] screenCoordB = new float[3];
+		final double[] pxCoord = new double[3];
+		final double[] screenCoord = new double[3];
+		final double[] screenCoordB = new double[3];
 	}
 
 	// ======================== actions - behaviours ========================

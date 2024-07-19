@@ -179,13 +179,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
-			System.out.println("View: "+viewDir);
-
-			//if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
-			if (viewDir == AXIS_VIEW.ALONG_Z) {
-				System.out.println("Adding a new annotation site");
-				installNewAnnotationSite();
-			}
+			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) installNewAnnotationSite(viewDir);
 		}, "samj_new_view", "A");
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
@@ -236,11 +230,17 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== actions - annotation sites ========================
-	public void installNewAnnotationSite() {
+	public void installNewAnnotationSite(final AXIS_VIEW viewDir) {
 		//register the new site's data
 		final int newIdx = annotationSites.size()+1;
+		//
+		viewerPanel.displayToGlobalCoordinates(0,0, topLeftPoint);
+		double fixedDimPos = topLeftPoint.getDoublePosition( viewDir.fixedAxisDim() );
+		annotationSites.put( newIdx, new AnnotationSite(
+				new SpatioTemporalView(bdv.getBdvHandle()), viewDir, fixedDimPos ) );
+		System.out.println("Adding a new annotation site: "+viewDir+" @ "+fixedDimPos);
+		//
 		List<Polygon> polygons = new ArrayList<>(100);
-		annotationSites.put( newIdx, new SpatioTemporalView(bdv.getBdvHandle()) );
 		annotationSitesPolygons.put( newIdx, polygons );
 		currentlyUsedAnnotationSiteId = newIdx;
 		lastVisitedAnnotationSiteId = newIdx;
@@ -273,7 +273,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		if (!annotationSites.containsKey(id)) return false;
 
 		ignoreNextTransformEvent = true;
-		annotationSites.get(id).applyOnThis(bdv.getBdvHandle());
+		annotationSites.get(id).view.applyOnThis(bdv.getBdvHandle());
 		//rename source -- BDV ain't supporting this easily
 		currentlyUsedAnnotationSiteId = id;
 		lastVisitedAnnotationSiteId = id;
@@ -296,7 +296,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to
 	//an object that represents that exact view, and another map for polygons associated with that view
-	private final Map<Integer, SpatioTemporalView> annotationSites = new HashMap<>(100);
+	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
 	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
 	private int lastVisitedAnnotationSiteId = -1;

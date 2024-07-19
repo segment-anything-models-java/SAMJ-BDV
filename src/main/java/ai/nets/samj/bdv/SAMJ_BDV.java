@@ -275,7 +275,9 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				} );
 		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
 		System.out.println("image ROI: "+box);
-		ImageJFunctions.show( Views.dropSingletonDimensions( Views.interval(image, box) ), "site #"+newIdx );
+		annotationSitesImages.put( newIdx, Views.dropSingletonDimensions(Views.interval(image, box)) );
+		//ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
+		//Views.hyperSlice( Views.interval(image, box), viewDir.fixedAxisDim(), Math.round(fixedDimPos) ),
 	}
 
 	/**
@@ -311,6 +313,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	//an object that represents that exact view, and another map for polygons associated with that view
 	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
 	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
+	private final Map<Integer, RandomAccessibleInterval<T>> annotationSitesImages = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
 	private int lastVisitedAnnotationSiteId = -1;
 

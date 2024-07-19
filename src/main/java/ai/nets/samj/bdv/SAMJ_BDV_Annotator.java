@@ -115,6 +115,9 @@ public class SAMJ_BDV_Annotator {
 	public static void main(String[] args) {
 		//grab some image
 		ImgPlus image = SimplifiedIO.openImage("/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif");
+		//make border pixels a bit brighter
+		Img<? extends RealType<?>> img = image.getImg();
+		img.forEach(p -> { if (p.getRealDouble() == 0.0) p.setReal(15); });
 		new SAMJ_BDV_Annotator().startBdvAnnotation(image);
 	}
 }

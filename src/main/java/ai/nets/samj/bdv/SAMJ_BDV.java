@@ -232,6 +232,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
 		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
+		Interval viewImg = annotationSitesImages.get(currentlyUsedAnnotationSiteId);
 		Interval box = new FinalInterval(
 				new long[] {
 					Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())),
@@ -243,7 +244,9 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		System.out.println("Want to submit a box prompt: ["
 				  + box.min(0) + "," + box.min(1) + " -> "
 				  + box.max(0) + "," + box.max(1) + "]" );
-		processRectanglePromptFake(box);
+		System.out.println("Given the current image view: "+new FinalInterval(viewImg));
+		processRectanglePrompt(box, viewImg.min(0),viewImg.min(1));
+		//processRectanglePromptFake(box);
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
@@ -446,13 +449,17 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		System.out.println("SWITCHING NETWORK CONTEXT to id: "+siteId);
 	}
 
-	protected void processRectanglePrompt(final Interval boxInGlobalPxCoords) {
+	protected void processRectanglePrompt(final Interval boxInGlobalPxCoords,
+	                                      final long xOffset, final long yOffset) {
+		Interval boxInLocalPx = new FinalInterval(
+				new long[] {
+					boxInGlobalPxCoords.min(0) -xOffset,
+					boxInGlobalPxCoords.min(1) -yOffset
+				}, new long[] {
+					boxInGlobalPxCoords.max(0) -xOffset,
+					boxInGlobalPxCoords.max(1) -yOffset
+				} );
 		try {
-			//TODO use local image coords
-			Interval boxInLocalPx = new FinalInterval(
-					boxInGlobalPxCoords.dimension(0),
-					boxInGlobalPxCoords.dimension(1),
-					boxInGlobalPxCoords.dimension(2) );
 			activeNN
 					.fetch2dSegmentation(boxInLocalPx)
 					.forEach(samjOverlay::addPolygon);

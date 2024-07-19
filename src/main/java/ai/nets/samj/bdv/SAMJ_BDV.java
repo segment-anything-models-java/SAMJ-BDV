@@ -230,6 +230,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				  + box.min(0) + "," + box.min(1) + " -> "
 				  + box.max(0) + "," + box.max(1) + "]" );
 		processRectanglePromptFake(box);
+		viewerPanel.getDisplayComponent().repaint();
 	}
 
 	// ======================== actions - annotation sites ========================

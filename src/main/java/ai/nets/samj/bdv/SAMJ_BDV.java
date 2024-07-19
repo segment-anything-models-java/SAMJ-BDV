@@ -217,13 +217,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		samjOverlay.normalizeLineEnds();
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
+		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
 		Interval box = new FinalInterval(
 				new long[] {
-					(long)Math.floor(topLeftPoint.getDoublePosition(0)),
-					(long)Math.floor(topLeftPoint.getDoublePosition(1))
+					Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())),
+					Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2()))
 				}, new long[] {
-					(long)Math.ceil(bottomRightPoint.getDoublePosition(0)),
-					(long)Math.ceil(bottomRightPoint.getDoublePosition(1))
+					Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())),
+					Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2()))
 				} );
 		System.out.println("Want to submit a box prompt: ["
 				  + box.min(0) + "," + box.min(1) + " -> "

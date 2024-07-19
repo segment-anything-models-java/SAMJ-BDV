@@ -80,7 +80,7 @@ implements PromptsResultsDisplay, UtilityMethods {
 	static final List<ComboBoxItem> NO_AVAILABLE_ANNOTATIONS_SITE_COMBOBOX_LIST =
 		Collections.singletonList( new ComboBoxItem(0, fakeSmallImage) {
 			@Override
-			public String getImageName() { return "Currently there's no active site inside BDV"; }
+			public String getImageName() { return "Currently there's no active annotation site inside BDV"; }
 			@Override
 			public RandomAccessibleInterval getImageAsImgLib2() { return fakeSmallImage; }
 		} );

@@ -310,7 +310,20 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		ALONG_X,
 		ALONG_Y,
 		ALONG_Z,
-		NONE_OF_XYZ
+		NONE_OF_XYZ;
+
+		private static final int[] RUNNING_DIM1 = new int[] {1,0,0,0};
+		private static final int[] RUNNING_DIM2 = new int[] {2,2,1,0};
+		private static final int[] FIXED_DIM =    new int[] {0,1,2,0};
+		public int runningAxisDim1() {
+			return RUNNING_DIM1[this.ordinal()];
+		}
+		public int runningAxisDim2() {
+			return RUNNING_DIM2[this.ordinal()];
+		}
+		public int fixedAxisDim() {
+			return FIXED_DIM[this.ordinal()];
+		}
 	}
 
 	/**

@@ -182,7 +182,9 @@ implements PromptsResultsDisplay, UtilityMethods {
 
 	@Override
 	public void notifyException(SAMJException type, Exception ex) {
-		logger.warn("notifyException");
+		logger.error("EXCEPTION CAPTURED: "+type.toString());
+		logger.error("EXCEPTION CAPTURED: "+ex.getMessage());
+		bdv.showMessage(ex.getMessage());
 	}
 
 	@Override

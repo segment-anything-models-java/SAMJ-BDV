@@ -47,6 +47,10 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	private final Bdv bdv;
 	final ViewerPanel viewerPanel;
 
+	public void showMessage(final String msg) {
+		if (msg != null) bdv.getBdvHandle().getViewerPanel().showMessage(msg);
+	}
+
 	// ======================== overlay content ========================
 	final PromptsAndResultsDrawingOverlay samjOverlay;
 	final BdvOverlaySource<BdvOverlay> samjSource;

@@ -343,6 +343,16 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== data - annotation sites ========================
+	public List<Polygon> getPolygonsFromTheLastUsedAnnotationSite() {
+		return getPolygonsFromAnnotationSite(lastVisitedAnnotationSiteId);
+	}
+	public List<Polygon> getPolygonsFromTheCurrentAnnotationSite() {
+		return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
+	}
+	public List<Polygon> getPolygonsFromAnnotationSite(int siteId) {
+		return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
+	}
+
 	public RandomAccessibleInterval<T> getImageFromTheLastUsedAnnotationSite() {
 		return getImageFromAnnotationSite(lastVisitedAnnotationSiteId);
 	}

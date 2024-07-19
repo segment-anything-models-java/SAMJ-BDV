@@ -133,7 +133,7 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public List<Polygon> getPolygonsFromRoiManager() {
 		logger.warn("getPolygonsFromRoiManager");
-		return null;
+		return bdv.getPolygonsFromTheCurrentAnnotationSite();
 	}
 
 	@Override

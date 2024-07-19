@@ -94,16 +94,21 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public void setRectIconConsumer(BooleanConsumer consumer) {
 		logger.warn("setRectIconConsumer");
+		consumer.accept(true);
 	}
 
 	@Override
 	public void setPointsIconConsumer(BooleanConsumer consumer) {
 		logger.warn("setPointsIconConsumer");
+		//in BDV we ain't supporting points ATM
+		consumer.accept(false);
 	}
 
 	@Override
 	public void setFreelineIconConsumer(BooleanConsumer consumer) {
 		logger.warn("setFreelineIconConsumer");
+		//in BDV we ain't supporting free line drawing ATM
+		consumer.accept(false);
 	}
 
 	@Override
@@ -115,17 +120,20 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public void switchToThisNet(SAMModel promptsToNetAdapter) {
 		logger.warn("switchToThisNet");
+		bdv.startUsingThisSAMModel(promptsToNetAdapter);
 	}
 
 	@Override
 	public void notifyNetToClose() {
 		logger.warn("notifyNetToClose");
+		bdv.stopCommunicatingToSAMModel();
+		//or, bdv.close(); //TODO depends on when this is executed
 	}
 
 	@Override
 	public List<Polygon> getPolygonsFromRoiManager() {
 		logger.warn("getPolygonsFromRoiManager");
-		return null;
+		return bdv.getPolygonsFromTheCurrentAnnotationSite();
 	}
 
 	@Override
@@ -152,26 +160,34 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public void switchToUsingRectangles() {
 		logger.warn("switchToUsingRectangles");
+		bdv.enablePrompts();
 	}
 
 	@Override
 	public void switchToUsingBrush() {
 		logger.warn("switchToUsingBrush");
+		//NB: should not happen as we provide _false_ in setFreelineIconConsumer()
+		bdv.disablePrompts();
 	}
 
 	@Override
 	public void switchToUsingPoints() {
 		logger.warn("switchToUsingPoints");
+		//NB: should not happen as we provide _false_ in setPointsIconConsumer()
+		bdv.disablePrompts();
 	}
 
 	@Override
 	public void switchToNone() {
 		logger.warn("switchToNone");
+		bdv.disablePrompts();
 	}
 
 	@Override
 	public void notifyException(SAMJException type, Exception ex) {
-		logger.warn("notifyException");
+		logger.error("EXCEPTION CAPTURED: "+type.toString());
+		logger.error("EXCEPTION CAPTURED: "+ex.getMessage());
+		bdv.showMessage(ex.getMessage());
 	}
 
 	@Override

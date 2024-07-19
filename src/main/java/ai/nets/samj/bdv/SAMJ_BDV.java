@@ -1,6 +1,7 @@
 package ai.nets.samj.bdv;
 
 import ai.nets.samj.bdv.util.SpatioTemporalView;
+import ai.nets.samj.communication.model.SAMModel;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
@@ -46,6 +47,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	private final Img<T> image;
 	private final Bdv bdv;
 	final ViewerPanel viewerPanel;
+
+	public void showMessage(final String msg) {
+		if (msg != null) bdv.getBdvHandle().getViewerPanel().showMessage(msg);
+	}
+
+	public void close() {
+		bdv.getBdvHandle().close();
+	}
 
 	// ======================== overlay content ========================
 	final PromptsAndResultsDrawingOverlay samjOverlay;
@@ -334,6 +343,16 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== data - annotation sites ========================
+	public List<Polygon> getPolygonsFromTheLastUsedAnnotationSite() {
+		return getPolygonsFromAnnotationSite(lastVisitedAnnotationSiteId);
+	}
+	public List<Polygon> getPolygonsFromTheCurrentAnnotationSite() {
+		return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
+	}
+	public List<Polygon> getPolygonsFromAnnotationSite(int siteId) {
+		return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
+	}
+
 	public RandomAccessibleInterval<T> getImageFromTheLastUsedAnnotationSite() {
 		return getImageFromAnnotationSite(lastVisitedAnnotationSiteId);
 	}
@@ -407,6 +426,24 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== SAM network interaction ========================
+	private SAMModel activeNN = null; //NN = neural network
+	private int activeContextInNetwork = -1;
+
+	public void startUsingThisSAMModel(SAMModel network) {
+		this.activeNN = network;
+	}
+	public void stopCommunicatingToSAMModel() {
+		this.activeNN = null;
+	}
+
+	protected void askSAMModelToSwitchContext(int siteId) {
+		if (activeNN == null) return;
+		if (activeContextInNetwork == siteId) return;
+		//
+		activeContextInNetwork = siteId;
+		System.out.println("SWITCHING NETWORK CONTEXT to id: "+siteId);
+	}
+
 	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
 		Polygon p = new Polygon();
 		p.addPoint((int)boxInGlobalPxCoords.min(0), (int)boxInGlobalPxCoords.min(1));

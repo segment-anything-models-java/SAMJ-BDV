@@ -417,6 +417,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 	// ======================== SAM network interaction ========================
 	private SAMModel activeNN = null; //NN = neural network
+	private int activeContextInNetwork = -1;
 
 	public void startUsingThisSAMModel(SAMModel network) {
 		this.activeNN = network;
@@ -425,7 +426,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		this.activeNN = null;
 	}
 
+	protected void askSAMModelToSwitchContext(int siteId) {
+		if (activeNN == null) return;
+		if (activeContextInNetwork == siteId) return;
+		//
+		activeContextInNetwork = siteId;
+		System.out.println("SWITCHING NETWORK CONTEXT to id: "+siteId);
 	}
+
 	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
 		Polygon p = new Polygon();
 		p.addPoint((int)boxInGlobalPxCoords.min(0), (int)boxInGlobalPxCoords.min(1));

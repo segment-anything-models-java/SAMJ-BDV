@@ -9,6 +9,7 @@ import bdv.util.BdvOverlaySource;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
@@ -330,6 +331,17 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		SpatioTemporalView view;
 		AXIS_VIEW viewDir;
 		double fixedDimPos;
+	}
+
+	// ======================== data - annotation sites ========================
+	public RandomAccessibleInterval<T> getImageFromTheLastUsedAnnotationSite() {
+		return getImageFromAnnotationSite(lastVisitedAnnotationSiteId);
+	}
+	public RandomAccessibleInterval<T> getImageFromTheCurrentAnnotationSite() {
+		return getImageFromAnnotationSite(currentlyUsedAnnotationSiteId);
+	}
+	public RandomAccessibleInterval<T> getImageFromAnnotationSite(int siteId) {
+		return annotationSitesImages.getOrDefault(siteId, null);
 	}
 
 	// ======================== AXIS_VIEW stuff ========================

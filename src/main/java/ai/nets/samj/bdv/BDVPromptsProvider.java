@@ -64,11 +64,12 @@ implements PromptsResultsDisplay, UtilityMethods {
 		} else {
 			final List<ComboBoxItem> comboList = new ArrayList<>(listOfAnnotationSites.size());
 			for (int ID : listOfAnnotationSites) {
-				comboList.add( new ComboBoxItem(ID,image) {
+				RandomAccessibleInterval<T> aView = bdv.getImageFromAnnotationSite(ID);
+				comboList.add( new ComboBoxItem(ID, aView) {
 						@Override
 						public String getImageName() { return "The site #"+ID; }
 						@Override
-						public RandomAccessibleInterval getImageAsImgLib2() { return image; } //TODO: return the cropouts from the BDV
+						public RandomAccessibleInterval<T> getImageAsImgLib2() { return aView; }
 					} );
 			}
 			return comboList;
@@ -87,11 +88,7 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public Object getFocusedImage() {
 		logger.warn("getFocusedImage");
-		//here BDV reports which is the currently active "annotation site";
-		//this is used in the SAMJ GUI (main dialog) to decide if the "go!" button
-		//should trigger re-encoding, or not (when the "focused image"/"active site"
-		//is the same as the currently selected ones)
-		return getListOfOpenImages().get(0);
+		return bdv.getImageFromTheCurrentAnnotationSite();
 	}
 
 	@Override
@@ -112,7 +109,7 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public RandomAccessibleInterval<?> giveProcessedSubImage(SAMModel selectedModel) {
 		logger.warn("giveProcessedSubImage");
-		return null;
+		return bdv.getImageFromTheCurrentAnnotationSite();
 	}
 
 	@Override

@@ -11,10 +11,12 @@ import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
@@ -253,20 +255,27 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		samjOverlay.setPolygons(polygons);
 		samjOverlay.startDrawing();
 
-		//prepare pixel data, get SAMJ ready, update the combobox
 		// ---------- pixel data ----------
-		final RealPoint topLeftROI = new RealPoint(3);
-		final RealPoint bottomRightROI = new RealPoint(3);
-		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
-		viewerPanel.displayToGlobalCoordinates(0,0, topLeftROI);
-		viewerPanel.displayToGlobalCoordinates(displaySize.width,displaySize.height, bottomRightROI);
-		System.out.println("image ROI: "+topLeftROI+" -> "+bottomRightROI);
+		//prepare pixel data, get SAMJ ready, update the combobox
 		//no scaling of the image! just extract the view
-		//TODO
-		//Interval roi = new FinalInterval(topLeftROI,bottomRightROI);
-
-		//TODO: fixed here z-img-coord
-		samjOverlay.pxCoord[2] = topLeftROI.getFloatPosition(2);
+		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
+		viewerPanel.displayToGlobalCoordinates(0,0, topLeftPoint);
+		viewerPanel.displayToGlobalCoordinates(displaySize.width,displaySize.height, bottomRightPoint);
+		//BDV's full-view corresponds to pixel coords at diagonal topLeftPoint -> bottomRightPoint,
+		//intersect it with the 'image' to be sure to stay within the bounds
+		Interval box = new FinalInterval(
+				new long[] {
+					Math.max(Math.round(topLeftPoint.getDoublePosition(0)), image.min(0)),
+					Math.max(Math.round(topLeftPoint.getDoublePosition(1)), image.min(1)),
+					Math.max(Math.round(topLeftPoint.getDoublePosition(2)), image.min(2))
+				}, new long[] {
+					Math.min(Math.round(bottomRightPoint.getDoublePosition(0)), image.max(0)),
+					Math.min(Math.round(bottomRightPoint.getDoublePosition(1)), image.max(1)),
+					Math.min(Math.round(bottomRightPoint.getDoublePosition(2)), image.max(2))
+				} );
+		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
+		System.out.println("image ROI: "+box);
+		ImageJFunctions.show( Views.dropSingletonDimensions( Views.interval(image, box) ), "site #"+newIdx );
 	}
 
 	/**

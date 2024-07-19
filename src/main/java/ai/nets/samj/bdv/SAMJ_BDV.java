@@ -468,7 +468,6 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 					boxInGlobalPxCoords.max(0) -xOffset,
 					boxInGlobalPxCoords.max(1) -yOffset
 				} );
-/*
 		try {
 			activeNN
 					.fetch2dSegmentation(boxInLocalPx)
@@ -476,8 +475,6 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		} catch (IOException | RuntimeException | InterruptedException e) {
 			System.out.println("BTW, an error working with the SAM: "+e.getMessage());
 		}
-*/
-		samjOverlay.addPolygon( createFakePolygon(boxInLocalPx), (int)xOffset,(int)yOffset );
 	}
 
 	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {

@@ -120,11 +120,14 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public void switchToThisNet(SAMModel promptsToNetAdapter) {
 		logger.warn("switchToThisNet");
+		bdv.startUsingThisSAMModel(promptsToNetAdapter);
 	}
 
 	@Override
 	public void notifyNetToClose() {
 		logger.warn("notifyNetToClose");
+		bdv.stopCommunicatingToSAMModel();
+		//or, bdv.close(); //TODO depends on when this is executed
 	}
 
 	@Override

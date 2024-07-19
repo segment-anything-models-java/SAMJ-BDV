@@ -1,6 +1,7 @@
 package ai.nets.samj.bdv;
 
 import ai.nets.samj.bdv.util.SpatioTemporalView;
+import ai.nets.samj.communication.model.SAMModel;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
@@ -415,6 +416,16 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== SAM network interaction ========================
+	private SAMModel activeNN = null; //NN = neural network
+
+	public void startUsingThisSAMModel(SAMModel network) {
+		this.activeNN = network;
+	}
+	public void stopCommunicatingToSAMModel() {
+		this.activeNN = null;
+	}
+
+	}
 	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
 		Polygon p = new Polygon();
 		p.addPoint((int)boxInGlobalPxCoords.min(0), (int)boxInGlobalPxCoords.min(1));

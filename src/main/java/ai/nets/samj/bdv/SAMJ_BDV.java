@@ -241,12 +241,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
 		Interval viewImg = annotationSitesImages.get(currentlyUsedAnnotationSiteId);
 		Interval box = new FinalInterval(
+				//pattern: Math.max(viewImg.min(0),Math.min( THE_VALUE ,viewImg.max(0)))
+				//to make sure the prompt is within the 'viewImg' interval
 				new long[] {
-					Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())),
-					Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2()))
+					Math.max(viewImg.min(0),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewImg.max(0))),
+					Math.max(viewImg.min(1),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewImg.max(1)))
 				}, new long[] {
-					Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())),
-					Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2()))
+					Math.max(viewImg.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewImg.max(0))),
+					Math.max(viewImg.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewImg.max(1)))
 				} );
 		System.out.println("Want to submit a box prompt: ["
 				  + box.min(0) + "," + box.min(1) + " -> "

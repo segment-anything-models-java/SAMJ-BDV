@@ -103,6 +103,13 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		public void addPolygon(final Polygon p) {
 			polygonList.add( new Polygon(p.xpoints,p.ypoints,p.npoints) );
 		}
+		public void addPolygon(final Polygon p, final int xOffset, final int yOffset) {
+			Polygon shiftedP = new Polygon();
+			for (int i = 0; i < p.xpoints.length; ++i) {
+				shiftedP.addPoint(p.xpoints[i]+xOffset, p.ypoints[i]+yOffset);
+			}
+			polygonList.add(shiftedP);
+		}
 		public void clearPolygons() {
 			polygonList.clear();
 		}
@@ -462,7 +469,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		try {
 			activeNN
 					.fetch2dSegmentation(boxInLocalPx)
-					.forEach(samjOverlay::addPolygon);
+					.forEach(polygon -> samjOverlay.addPolygon(polygon, (int)xOffset,(int)yOffset));
 		} catch (IOException | RuntimeException | InterruptedException e) {
 			System.out.println("BTW, an error working with the SAM: "+e.getMessage());
 		}

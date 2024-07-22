@@ -157,6 +157,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 							pxToScreenTransform.apply(pxCoord, screenCoordB);
 						}
 						if (i > 0)
+							//TODO: make sure the coords are not outside the screen... negative or too large, I guess
 							g.drawLine((int)screenCoord[0],(int)screenCoord[1], (int)screenCoordB[0],(int)screenCoordB[1]);
 					}
 				}
@@ -172,7 +173,8 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	// ======================== actions - behaviours ========================
 	void installBehaviours() {
 		//"loose" the annotation site as soon as the BDV's viewport is changed
-		bdv.getBdvHandle().getViewerPanel().renderTransformListeners().add( someNewIgnoredTransform -> {
+		bdv.getBdvHandle().getViewerPanel().transformListeners().add( someNewIgnoredTransform -> {
+				//System.out.println("render transform event, ignore="+ignoreNextTransformEvent);
 				if (!ignoreNextTransformEvent) lostViewOfAnnotationSite();
 				ignoreNextTransformEvent = false;
 			} );

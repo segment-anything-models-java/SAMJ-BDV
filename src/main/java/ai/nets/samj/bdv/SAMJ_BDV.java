@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.awt.*;
+import java.util.Random;
 
 public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	public SAMJ_BDV(final Img<T> operateOnThisImage) {
@@ -487,11 +488,24 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	protected Polygon createFakePolygon(final Interval insideThisBox) {
+		Random rand = new Random();
+		final int BOUND = 4;
+
+		int minx = (int)insideThisBox.min(0), maxx = (int)insideThisBox.max(0);
+		int miny = (int)insideThisBox.min(1), maxy = (int)insideThisBox.max(1);
+
 		Polygon p = new Polygon();
-		p.addPoint((int) insideThisBox.min(0), (int) insideThisBox.min(1));
-		p.addPoint((int) insideThisBox.max(0), (int) insideThisBox.min(1));
-		p.addPoint((int) insideThisBox.max(0), (int) insideThisBox.max(1));
-		p.addPoint((int) insideThisBox.min(0), (int) insideThisBox.max(1));
+		p.addPoint(minx,          miny);
+		p.addPoint((minx+maxx)/2, miny+rand.nextInt(BOUND));
+		p.addPoint(maxx,          miny);
+
+		p.addPoint(maxx-rand.nextInt(BOUND), (miny+maxy)/2);
+
+		p.addPoint(maxx,          maxy);
+		p.addPoint((minx+maxx)/2, maxy-rand.nextInt(BOUND));
+		p.addPoint(minx,          maxy);
+
+		p.addPoint(minx+rand.nextInt(BOUND), (miny+maxy)/2);
 		return p;
 	}
 }

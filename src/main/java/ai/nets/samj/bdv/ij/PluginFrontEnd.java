@@ -12,8 +12,17 @@ public class PluginFrontEnd implements Command {
 	@Parameter
 	Dataset inputImage;
 
+	@Parameter
+	boolean showImagesSubmittedToSAM = false;
+
+	@Parameter
+	boolean useFakePromptResults = false;
+
 	@Override
 	public void run() {
-		new SAMJ_BDV_Annotator().startBdvAnnotation((Img)inputImage.getImgPlus().getImg());
+		SAMJ_BDV_Annotator annotator = new SAMJ_BDV_Annotator();
+		annotator.startBdvAnnotation((Img)inputImage.getImgPlus().getImg());
+		annotator.setShowSubmittedImagesToSAM( showImagesSubmittedToSAM );
+		annotator.setReturnFakeSAMResults( useFakePromptResults );
 	}
 }

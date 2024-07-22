@@ -21,10 +21,8 @@ package ai.nets.samj.bdv;
 
 import ai.nets.samj.communication.model.SAMModels;
 import ai.nets.samj.gui.SAMJDialog;
-import ai.nets.samj.gui.components.ComboBoxItem;
 import ai.nets.samj.ui.SAMJLogger;
 import net.imagej.ImgPlus;
-import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
@@ -33,7 +31,6 @@ import sc.fiji.simplifiedio.SimplifiedIO;
 import javax.swing.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.Arrays;
 
 /**
  * @author Vladimir Ulman
@@ -70,11 +67,10 @@ public class SAMJ_BDV_Annotator {
 				public void error(String text) {System.out.println("BDV -- " + text);}
 			};
 
+			//start the provider immediately but the dialog may come a bit later (which was somehow needed for IJ1 plugins...)
+			bdvPromptsProvider = new BDVPromptsProvider<>(imageToBeAnnotated, bdvLogger);
 
 			SwingUtilities.invokeLater(() -> {
-				final BDVPromptsProvider<T> bdvPromptsProvider =
-					  new BDVPromptsProvider<>(imageToBeAnnotated, bdvLogger);
-
 				SAMJDialog samjDialog = new SAMJDialog(
 						//get list of recognized installations of SAM(s)
 						new SAMModels(),
@@ -112,12 +108,24 @@ public class SAMJ_BDV_Annotator {
 		}
 	}
 
+	private BDVPromptsProvider<?> bdvPromptsProvider;
+
+	public void setShowSubmittedImagesToSAM(boolean newState) {
+		bdvPromptsProvider.showNewAnnotationSitesImages(newState);
+	}
+	public void setReturnFakeSAMResults(boolean newState) {
+		bdvPromptsProvider.fakeResults(newState);
+	}
+
 	public static void main(String[] args) {
 		//grab some image
 		ImgPlus image = SimplifiedIO.openImage("/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif");
 		//make border pixels a bit brighter
 		Img<? extends RealType<?>> img = image.getImg();
 		img.forEach(p -> { if (p.getRealDouble() == 0.0) p.setReal(15); });
-		new SAMJ_BDV_Annotator().startBdvAnnotation(image);
+
+		SAMJ_BDV_Annotator annotator = new SAMJ_BDV_Annotator();
+		annotator.startBdvAnnotation(image);
+		annotator.setReturnFakeSAMResults(true);
 	}
 }

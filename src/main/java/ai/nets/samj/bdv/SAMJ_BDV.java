@@ -50,6 +50,9 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	private final Bdv bdv;
 	final ViewerPanel viewerPanel;
 
+	boolean showNewAnnotationSitesImages = false;
+	boolean fakeResults = false;
+
 	public void showMessage(final String msg) {
 		if (msg != null) bdv.getBdvHandle().getViewerPanel().showMessage(msg);
 	}
@@ -254,8 +257,11 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				  + box.min(0) + "," + box.min(1) + " -> "
 				  + box.max(0) + "," + box.max(1) + "]" );
 		System.out.println("Given the current image view: "+new FinalInterval(viewImg));
-		processRectanglePrompt(box, viewImg.min(0),viewImg.min(1));
-		//processRectanglePromptFake(box);
+		if (fakeResults) {
+			processRectanglePromptFake(box);
+		} else {
+			processRectanglePrompt(box, viewImg.min(0),viewImg.min(1));
+		}
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
@@ -300,8 +306,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
 		System.out.println("image ROI: "+box);
 		annotationSitesImages.put( newIdx, Views.dropSingletonDimensions(Views.interval(image, box)) );
-		//ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
-		//Views.hyperSlice( Views.interval(image, box), viewDir.fixedAxisDim(), Math.round(fixedDimPos) ),
+		if (showNewAnnotationSitesImages) ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
 	}
 
 	/**

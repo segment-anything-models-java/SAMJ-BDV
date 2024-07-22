@@ -195,4 +195,14 @@ implements PromptsResultsDisplay, UtilityMethods {
 		logger.warn("getNetBeingUsed");
 		return null;
 	}
+
+
+	// ======================== API for plugin ========================
+	public void showNewAnnotationSitesImages(boolean newState) {
+		bdv.showNewAnnotationSitesImages = newState;
+	}
+
+	public void fakeResults(boolean newState) {
+		bdv.fakeResults = newState;
+	}
 }

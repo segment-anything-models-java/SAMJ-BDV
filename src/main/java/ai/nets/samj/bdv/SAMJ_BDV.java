@@ -208,7 +208,11 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
-			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) installNewAnnotationSite(viewDir);
+			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
+				installNewAnnotationSite(viewDir);
+			} else {
+				System.out.println("Not an orthogonal view, try Shift+X, Shift+Z, or Shift+Y to get one.");
+			}
 		}, "samj_new_view", "A");
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {

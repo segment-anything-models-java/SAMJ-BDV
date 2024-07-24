@@ -125,6 +125,7 @@ implements PromptsResultsDisplay, UtilityMethods {
 
 	@Override
 	public void notifyNetToClose() {
+		//this comes when the SAMJ GUI lost connection (disengaged) any SAM network
 		logger.warn("notifyNetToClose");
 		bdv.stopCommunicatingToSAMModel();
 		//or, bdv.close(); //TODO depends on when this is executed
@@ -179,6 +180,8 @@ implements PromptsResultsDisplay, UtilityMethods {
 
 	@Override
 	public void switchToNone() {
+		//this comes when a new annotation site is selected in the SAMJ GUI,
+		//corresponds to "unclicking" any of the three prompts buttons (rect, line, brush)
 		logger.warn("switchToNone");
 		bdv.disablePrompts();
 	}

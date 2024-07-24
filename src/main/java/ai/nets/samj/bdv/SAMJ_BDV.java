@@ -133,6 +133,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		private final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
 		private Color colorPrompt = Color.GREEN;
 		private Color colorResults = Color.RED;
+		private int colorFromBDV = -1;
 
 		@Override
 		protected void draw(Graphics2D g) {
@@ -142,10 +143,20 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
 				g.setStroke(stroke);
 				g.setPaint(colorPrompt);
-				g.drawLine(sx,sy, ex,ey);
+				g.drawLine(sx,sy, ex,sy);
+				g.drawLine(ex,sy, ex,ey);
+				g.drawLine(ex,ey, sx,ey);
+				g.drawLine(sx,ey, sx,sy);
 			}
 
 			if (shouldDrawPolygons) {
+				final int currentColor = samjOverlay.info.getColor().get();
+				if (currentColor != colorFromBDV) {
+					//NB: change color only if changed on the BDV side (mainly to prevent overuse of new())
+					colorFromBDV = currentColor;
+					colorResults = new Color( currentColor );
+				}
+
 				//draws the currently recognized polygons
 				AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
 				pxCoord[viewDir.fixedAxisDim()] = annotationSites.get(currentlyUsedAnnotationSiteId).fixedDimPos;

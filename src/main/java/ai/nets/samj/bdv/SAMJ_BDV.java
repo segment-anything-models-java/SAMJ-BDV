@@ -17,6 +17,7 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
@@ -322,8 +323,14 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
 		System.out.println("image ROI: "+box);
 		annotationSitesROIs.put( newIdx, Intervals.hyperSlice(box, viewDir.fixedAxisDim()) );
-		annotationSitesImages.put( newIdx, Views.dropSingletonDimensions(Views.interval(image, box)) );
+		annotationSitesImages.put( newIdx, prepareCroppedImageForSAMModel(box) );
 		if (showNewAnnotationSitesImages) ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
+	}
+
+	RandomAccessibleInterval<FloatType> prepareCroppedImageForSAMModel(final Interval cropOutROI) {
+		//a narrow view on the source data - "spatial" aspect
+		RandomAccessibleInterval<T> cropImg = Views.dropSingletonDimensions( Views.interval(image, cropOutROI) );
+
 	}
 
 	/**
@@ -359,7 +366,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	//an object that represents that exact view, and another map for polygons associated with that view
 	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
 	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
-	private final Map<Integer, RandomAccessibleInterval<T>> annotationSitesImages = new HashMap<>(100);
+	private final Map<Integer, RandomAccessibleInterval<FloatType>> annotationSitesImages = new HashMap<>(100);
 	private final Map<Integer, Interval> annotationSitesROIs = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
 	private int lastVisitedAnnotationSiteId = -1;

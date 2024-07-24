@@ -142,7 +142,10 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
 				g.setStroke(stroke);
 				g.setPaint(colorPrompt);
-				g.drawLine(sx,sy, ex,ey);
+				g.drawLine(sx,sy, ex,sy);
+				g.drawLine(ex,sy, ex,ey);
+				g.drawLine(ex,ey, sx,ey);
+				g.drawLine(sx,ey, sx,sy);
 			}
 
 			if (shouldDrawPolygons) {

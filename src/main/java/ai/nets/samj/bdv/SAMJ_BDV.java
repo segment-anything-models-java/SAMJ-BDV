@@ -7,6 +7,7 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.util.BdvOverlaySource;
+import bdv.util.BdvStackSource;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
@@ -221,11 +222,20 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
 			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
-				installNewAnnotationSite(viewDir);
+				installNewAnnotationSite(viewDir, false);
 			} else {
 				System.out.println("Not an orthogonal view, try Shift+X, Shift+Z, or Shift+Y to get one.");
 			}
-		}, "samj_new_view", "A");
+		}, "samj_new_original_view", "A");
+
+		behaviours.behaviour((ClickBehaviour) (x, y) -> {
+			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
+			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
+				installNewAnnotationSite(viewDir, true);
+			} else {
+				System.out.println("Not an orthogonal view, try Shift+X, Shift+Z, or Shift+Y to get one.");
+			}
+		}, "samj_new_manipulated_view", "shift|A");
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			if (annotationSites.isEmpty()) {
@@ -285,7 +295,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== actions - annotation sites ========================
-	public void installNewAnnotationSite(final AXIS_VIEW viewDir) {
+	public void installNewAnnotationSite(final AXIS_VIEW viewDir, final boolean considerBdvRangeSetting) {
 		//register the new site's data
 		final int newIdx = annotationSites.size()+1;
 		//
@@ -325,7 +335,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
 		System.out.println("image ROI: "+box);
 		annotationSitesROIs.put( newIdx, Intervals.hyperSlice(box, viewDir.fixedAxisDim()) );
-		annotationSitesImages.put( newIdx, prepareCroppedImageForSAMModel(box) );
+		annotationSitesImages.put( newIdx, considerBdvRangeSetting ? prepareCroppedImageWithSourceSettingForSAMModel(box) : prepareCroppedImageForSAMModel(box) );
 		if (showNewAnnotationSitesImages) ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
 	}
 
@@ -347,6 +357,24 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		final double range = valExtremes[1] - valExtremes[0];
 		final Img<FloatType> explicitCroppedFloatImg = ArrayImgs.floats(cropImg.max(0)-cropImg.min(0)+1, cropImg.max(1)-cropImg.min(1)+1);
 		LoopBuilder.setImages(cropImg, explicitCroppedFloatImg).forEachPixel( (i, o) -> o.setReal((i.getRealDouble() - valExtremes[0]) / range) );
+		return explicitCroppedFloatImg;
+	}
+
+	RandomAccessibleInterval<FloatType> prepareCroppedImageWithSourceSettingForSAMModel(final Interval cropOutROI) {
+		//a narrow view on the source data - "spatial" aspect
+		RandomAccessibleInterval<T> cropImg = Views.dropSingletonDimensions( Views.interval(image, cropOutROI) );
+
+		//"intensity" aspect
+		final double min = ((BdvStackSource<T>)bdv).getConverterSetups().get(0).getDisplayRangeMin();
+		double max = ((BdvStackSource<T>)bdv).getConverterSetups().get(0).getDisplayRangeMax();
+		System.out.println("Massaging is taking min = "+min+" and max = "+max);
+		if (max == min) max += 1.0;
+
+		//massage both aspects into an outcome image
+		final double range = max - min;
+		final Img<FloatType> explicitCroppedFloatImg = ArrayImgs.floats(cropImg.max(0)-cropImg.min(0)+1, cropImg.max(1)-cropImg.min(1)+1);
+		LoopBuilder.setImages(cropImg, explicitCroppedFloatImg).forEachPixel( (i, o) -> o.setReal(
+				Math.min( Math.max(i.getRealDouble() - min, 0.0) / range, 1.0 ) ) );
 		return explicitCroppedFloatImg;
 	}
 

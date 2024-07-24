@@ -13,11 +13,15 @@ import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
@@ -257,25 +261,25 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
 		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
-		Interval viewImg = annotationSitesImages.get(currentlyUsedAnnotationSiteId);
+		Interval viewBox = annotationSitesROIs.get(currentlyUsedAnnotationSiteId);
 		Interval box = new FinalInterval(
-				//pattern: Math.max(viewImg.min(0),Math.min( THE_VALUE ,viewImg.max(0)))
-				//to make sure the prompt is within the 'viewImg' interval
+				//pattern: Math.max(viewBox.min(0),Math.min( THE_VALUE ,viewBox.max(0)))
+				//to make sure the prompt is within the 'viewBox' interval
 				new long[] {
-					Math.max(viewImg.min(0),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewImg.max(0))),
-					Math.max(viewImg.min(1),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewImg.max(1)))
+					Math.max(viewBox.min(0),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
+					Math.max(viewBox.min(1),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
 				}, new long[] {
-					Math.max(viewImg.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewImg.max(0))),
-					Math.max(viewImg.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewImg.max(1)))
+					Math.max(viewBox.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
+					Math.max(viewBox.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
 				} );
 		System.out.println("Want to submit a box prompt: ["
 				  + box.min(0) + "," + box.min(1) + " -> "
 				  + box.max(0) + "," + box.max(1) + "]" );
-		System.out.println("Given the current image view: "+new FinalInterval(viewImg));
+		System.out.println("Given the current image view: "+new FinalInterval(viewBox));
 		if (fakeResults) {
 			processRectanglePromptFake(box);
 		} else {
-			processRectanglePrompt(box, viewImg.min(0),viewImg.min(1));
+			processRectanglePrompt(box, viewBox.min(0),viewBox.min(1));
 		}
 		viewerPanel.getDisplayComponent().repaint();
 	}
@@ -320,8 +324,30 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				} );
 		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
 		System.out.println("image ROI: "+box);
-		annotationSitesImages.put( newIdx, Views.dropSingletonDimensions(Views.interval(image, box)) );
+		annotationSitesROIs.put( newIdx, Intervals.hyperSlice(box, viewDir.fixedAxisDim()) );
+		annotationSitesImages.put( newIdx, prepareCroppedImageForSAMModel(box) );
 		if (showNewAnnotationSitesImages) ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
+	}
+
+	RandomAccessibleInterval<FloatType> prepareCroppedImageForSAMModel(final Interval cropOutROI) {
+		//a narrow view on the source data - "spatial" aspect
+		RandomAccessibleInterval<T> cropImg = Views.dropSingletonDimensions( Views.interval(image, cropOutROI) );
+
+		//"intensity" aspect
+		final double[] valExtremes = new double[] {Double.MAX_VALUE, Double.MIN_VALUE};
+		LoopBuilder.setImages(cropImg).forEachPixel(p -> {
+			double val = p.getRealDouble();
+			valExtremes[0] = Math.min(valExtremes[0], val);
+			valExtremes[1] = Math.max(valExtremes[1], val);
+		});
+		System.out.println("Massaging discovered min = "+valExtremes[0]+" and max = "+valExtremes[1]);
+		if (valExtremes[1] == valExtremes[0]) valExtremes[1] += 1.0;
+
+		//massage both aspects into an outcome image
+		final double range = valExtremes[1] - valExtremes[0];
+		final Img<FloatType> explicitCroppedFloatImg = ArrayImgs.floats(cropImg.max(0)-cropImg.min(0)+1, cropImg.max(1)-cropImg.min(1)+1);
+		LoopBuilder.setImages(cropImg, explicitCroppedFloatImg).forEachPixel( (i, o) -> o.setReal((i.getRealDouble() - valExtremes[0]) / range) );
+		return explicitCroppedFloatImg;
 	}
 
 	/**
@@ -357,7 +383,8 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	//an object that represents that exact view, and another map for polygons associated with that view
 	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
 	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
-	private final Map<Integer, RandomAccessibleInterval<T>> annotationSitesImages = new HashMap<>(100);
+	private final Map<Integer, RandomAccessibleInterval<FloatType>> annotationSitesImages = new HashMap<>(100);
+	private final Map<Integer, Interval> annotationSitesROIs = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
 	private int lastVisitedAnnotationSiteId = -1;
 
@@ -387,13 +414,13 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
 	}
 
-	public RandomAccessibleInterval<T> getImageFromTheLastUsedAnnotationSite() {
+	public RandomAccessibleInterval<FloatType> getImageFromTheLastUsedAnnotationSite() {
 		return getImageFromAnnotationSite(lastVisitedAnnotationSiteId);
 	}
-	public RandomAccessibleInterval<T> getImageFromTheCurrentAnnotationSite() {
+	public RandomAccessibleInterval<FloatType> getImageFromTheCurrentAnnotationSite() {
 		return getImageFromAnnotationSite(currentlyUsedAnnotationSiteId);
 	}
-	public RandomAccessibleInterval<T> getImageFromAnnotationSite(int siteId) {
+	public RandomAccessibleInterval<FloatType> getImageFromAnnotationSite(int siteId) {
 		return annotationSitesImages.getOrDefault(siteId, null);
 	}
 

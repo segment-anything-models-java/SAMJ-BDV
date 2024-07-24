@@ -64,12 +64,12 @@ implements PromptsResultsDisplay, UtilityMethods {
 		} else {
 			final List<ComboBoxItem> comboList = new ArrayList<>(listOfAnnotationSites.size());
 			for (int ID : listOfAnnotationSites) {
-				RandomAccessibleInterval<T> aView = bdv.getImageFromAnnotationSite(ID);
+				RandomAccessibleInterval<FloatType> aView = bdv.getImageFromAnnotationSite(ID);
 				comboList.add( new ComboBoxItem(ID, aView) {
 						@Override
 						public String getImageName() { return "The site #"+ID; }
 						@Override
-						public RandomAccessibleInterval<T> getImageAsImgLib2() { return aView; }
+						public RandomAccessibleInterval<FloatType> getImageAsImgLib2() { return aView; }
 					} );
 			}
 			return comboList;
@@ -82,7 +82,7 @@ implements PromptsResultsDisplay, UtilityMethods {
 			@Override
 			public String getImageName() { return "Currently there's no active annotation site inside BDV"; }
 			@Override
-			public RandomAccessibleInterval getImageAsImgLib2() { return fakeSmallImage; }
+			public RandomAccessibleInterval<FloatType> getImageAsImgLib2() { return fakeSmallImage; }
 		} );
 
 	@Override

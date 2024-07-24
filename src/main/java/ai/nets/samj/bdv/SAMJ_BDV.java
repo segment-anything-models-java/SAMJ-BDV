@@ -258,25 +258,25 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
 		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
-		Interval viewImg = annotationSitesROIs.get(currentlyUsedAnnotationSiteId);
+		Interval viewBox = annotationSitesROIs.get(currentlyUsedAnnotationSiteId);
 		Interval box = new FinalInterval(
-				//pattern: Math.max(viewImg.min(0),Math.min( THE_VALUE ,viewImg.max(0)))
-				//to make sure the prompt is within the 'viewImg' interval
+				//pattern: Math.max(viewBox.min(0),Math.min( THE_VALUE ,viewBox.max(0)))
+				//to make sure the prompt is within the 'viewBox' interval
 				new long[] {
-					Math.max(viewImg.min(0),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewImg.max(0))),
-					Math.max(viewImg.min(1),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewImg.max(1)))
+					Math.max(viewBox.min(0),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
+					Math.max(viewBox.min(1),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
 				}, new long[] {
-					Math.max(viewImg.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewImg.max(0))),
-					Math.max(viewImg.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewImg.max(1)))
+					Math.max(viewBox.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
+					Math.max(viewBox.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
 				} );
 		System.out.println("Want to submit a box prompt: ["
 				  + box.min(0) + "," + box.min(1) + " -> "
 				  + box.max(0) + "," + box.max(1) + "]" );
-		System.out.println("Given the current image view: "+new FinalInterval(viewImg));
+		System.out.println("Given the current image view: "+new FinalInterval(viewBox));
 		if (fakeResults) {
 			processRectanglePromptFake(box);
 		} else {
-			processRectanglePrompt(box, viewImg.min(0),viewImg.min(1));
+			processRectanglePrompt(box, viewBox.min(0),viewBox.min(1));
 		}
 		viewerPanel.getDisplayComponent().repaint();
 	}

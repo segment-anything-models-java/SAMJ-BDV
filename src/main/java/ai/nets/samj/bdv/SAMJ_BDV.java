@@ -13,7 +13,9 @@ import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
@@ -331,6 +333,21 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		//a narrow view on the source data - "spatial" aspect
 		RandomAccessibleInterval<T> cropImg = Views.dropSingletonDimensions( Views.interval(image, cropOutROI) );
 
+		//"intensity" aspect
+		final double[] valExtremes = new double[] {Double.MAX_VALUE, Double.MIN_VALUE};
+		LoopBuilder.setImages(cropImg).forEachPixel(p -> {
+			double val = p.getRealDouble();
+			valExtremes[0] = Math.min(valExtremes[0], val);
+			valExtremes[1] = Math.max(valExtremes[1], val);
+		});
+		System.out.println("Massaging discovered min = "+valExtremes[0]+" and max = "+valExtremes[1]);
+		if (valExtremes[1] == valExtremes[0]) valExtremes[1] += 1.0;
+
+		//massage both aspects into an outcome image
+		final double range = valExtremes[1] - valExtremes[0];
+		final Img<FloatType> explicitCroppedFloatImg = ArrayImgs.floats(cropImg.max(0)-cropImg.min(0)+1, cropImg.max(1)-cropImg.min(1)+1);
+		LoopBuilder.setImages(cropImg, explicitCroppedFloatImg).forEachPixel( (i, o) -> o.setReal((i.getRealDouble() - valExtremes[0]) / range) );
+		return explicitCroppedFloatImg;
 	}
 
 	/**

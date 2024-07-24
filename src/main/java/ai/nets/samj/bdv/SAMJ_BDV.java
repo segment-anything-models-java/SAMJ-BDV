@@ -202,7 +202,15 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				samjOverlay.setEndOfLine(x,y);
 				samjOverlay.isLineReadyForDrawing = false;
 
-				if (arePromptsEnabled && currentlyUsedAnnotationSiteId > -1) processPrompt();
+				if (!arePromptsEnabled) {
+					System.out.println("Prompts disabled, click the rectangle button in the SAMJ GUI.");
+					return;
+				}
+				if (currentlyUsedAnnotationSiteId == -1) {
+					System.out.println("No annotation site is active now, create new ('A') or visit some ('W') first.");
+					return;
+				}
+				processPrompt();
 			}
 		}, "samj_line", "L" );
 

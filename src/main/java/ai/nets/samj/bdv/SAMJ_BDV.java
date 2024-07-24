@@ -397,13 +397,13 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
 	}
 
-	public RandomAccessibleInterval<T> getImageFromTheLastUsedAnnotationSite() {
+	public RandomAccessibleInterval<FloatType> getImageFromTheLastUsedAnnotationSite() {
 		return getImageFromAnnotationSite(lastVisitedAnnotationSiteId);
 	}
-	public RandomAccessibleInterval<T> getImageFromTheCurrentAnnotationSite() {
+	public RandomAccessibleInterval<FloatType> getImageFromTheCurrentAnnotationSite() {
 		return getImageFromAnnotationSite(currentlyUsedAnnotationSiteId);
 	}
-	public RandomAccessibleInterval<T> getImageFromAnnotationSite(int siteId) {
+	public RandomAccessibleInterval<FloatType> getImageFromAnnotationSite(int siteId) {
 		return annotationSitesImages.getOrDefault(siteId, null);
 	}
 

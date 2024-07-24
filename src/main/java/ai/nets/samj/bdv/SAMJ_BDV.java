@@ -7,17 +7,22 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.util.BdvOverlaySource;
+import bdv.util.BdvStackSource;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
@@ -109,7 +114,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}
 		public void addPolygon(final Polygon p, final int xOffset, final int yOffset) {
 			Polygon shiftedP = new Polygon();
-			for (int i = 0; i < p.xpoints.length; ++i) {
+			for (int i = 0; i < p.npoints; ++i) {
 				shiftedP.addPoint(p.xpoints[i]+xOffset, p.ypoints[i]+yOffset);
 			}
 			polygonList.add(shiftedP);
@@ -147,10 +152,10 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				viewerPanel.state().getViewerTransform(pxToScreenTransform);
 				g.setPaint(colorResults);
 				for (Polygon p : polygonList) {
-					for (int i = 0; i <= p.xpoints.length; i++) {
+					for (int i = 0; i <= p.npoints; i++) {
 						//NB: the first (i=0) point is repeated to close the loop
-						pxCoord[viewDir.runningAxisDim1()] = p.xpoints[i % p.xpoints.length];
-						pxCoord[viewDir.runningAxisDim2()] = p.ypoints[i % p.xpoints.length];
+						pxCoord[viewDir.runningAxisDim1()] = p.xpoints[i % p.npoints];
+						pxCoord[viewDir.runningAxisDim2()] = p.ypoints[i % p.npoints];
 						if (i % 2 == 0) {
 							pxToScreenTransform.apply(pxCoord, screenCoord);
 						} else {
@@ -202,18 +207,35 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				samjOverlay.setEndOfLine(x,y);
 				samjOverlay.isLineReadyForDrawing = false;
 
-				if (arePromptsEnabled && currentlyUsedAnnotationSiteId > -1) processPrompt();
+				if (!arePromptsEnabled) {
+					System.out.println("Prompts disabled, click the rectangle button in the SAMJ GUI.");
+					return;
+				}
+				if (currentlyUsedAnnotationSiteId == -1) {
+					System.out.println("No annotation site is active now, create new ('A') or visit some ('W') first.");
+					return;
+				}
+				processPrompt();
 			}
 		}, "samj_line", "L" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
 			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
-				installNewAnnotationSite(viewDir);
+				installNewAnnotationSite(viewDir, false);
 			} else {
 				System.out.println("Not an orthogonal view, try Shift+X, Shift+Z, or Shift+Y to get one.");
 			}
-		}, "samj_new_view", "A");
+		}, "samj_new_original_view", "A");
+
+		behaviours.behaviour((ClickBehaviour) (x, y) -> {
+			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
+			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
+				installNewAnnotationSite(viewDir, true);
+			} else {
+				System.out.println("Not an orthogonal view, try Shift+X, Shift+Z, or Shift+Y to get one.");
+			}
+		}, "samj_new_manipulated_view", "shift|A");
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			if (annotationSites.isEmpty()) {
@@ -249,31 +271,31 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
 		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
-		Interval viewImg = annotationSitesImages.get(currentlyUsedAnnotationSiteId);
+		Interval viewBox = annotationSitesROIs.get(currentlyUsedAnnotationSiteId);
 		Interval box = new FinalInterval(
-				//pattern: Math.max(viewImg.min(0),Math.min( THE_VALUE ,viewImg.max(0)))
-				//to make sure the prompt is within the 'viewImg' interval
+				//pattern: Math.max(viewBox.min(0),Math.min( THE_VALUE ,viewBox.max(0)))
+				//to make sure the prompt is within the 'viewBox' interval
 				new long[] {
-					Math.max(viewImg.min(0),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewImg.max(0))),
-					Math.max(viewImg.min(1),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewImg.max(1)))
+					Math.max(viewBox.min(0),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
+					Math.max(viewBox.min(1),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
 				}, new long[] {
-					Math.max(viewImg.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewImg.max(0))),
-					Math.max(viewImg.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewImg.max(1)))
+					Math.max(viewBox.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
+					Math.max(viewBox.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
 				} );
 		System.out.println("Want to submit a box prompt: ["
 				  + box.min(0) + "," + box.min(1) + " -> "
 				  + box.max(0) + "," + box.max(1) + "]" );
-		System.out.println("Given the current image view: "+new FinalInterval(viewImg));
+		System.out.println("Given the current image view: "+new FinalInterval(viewBox));
 		if (fakeResults) {
 			processRectanglePromptFake(box);
 		} else {
-			processRectanglePrompt(box, viewImg.min(0),viewImg.min(1));
+			processRectanglePrompt(box, viewBox.min(0),viewBox.min(1));
 		}
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
 	// ======================== actions - annotation sites ========================
-	public void installNewAnnotationSite(final AXIS_VIEW viewDir) {
+	public void installNewAnnotationSite(final AXIS_VIEW viewDir, final boolean considerBdvRangeSetting) {
 		//register the new site's data
 		final int newIdx = annotationSites.size()+1;
 		//
@@ -312,8 +334,48 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				} );
 		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
 		System.out.println("image ROI: "+box);
-		annotationSitesImages.put( newIdx, Views.dropSingletonDimensions(Views.interval(image, box)) );
+		annotationSitesROIs.put( newIdx, Intervals.hyperSlice(box, viewDir.fixedAxisDim()) );
+		annotationSitesImages.put( newIdx, considerBdvRangeSetting ? prepareCroppedImageWithSourceSettingForSAMModel(box) : prepareCroppedImageForSAMModel(box) );
 		if (showNewAnnotationSitesImages) ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
+	}
+
+	RandomAccessibleInterval<FloatType> prepareCroppedImageForSAMModel(final Interval cropOutROI) {
+		//a narrow view on the source data - "spatial" aspect
+		RandomAccessibleInterval<T> cropImg = Views.dropSingletonDimensions( Views.interval(image, cropOutROI) );
+
+		//"intensity" aspect
+		final double[] valExtremes = new double[] {Double.MAX_VALUE, Double.MIN_VALUE};
+		LoopBuilder.setImages(cropImg).forEachPixel(p -> {
+			double val = p.getRealDouble();
+			valExtremes[0] = Math.min(valExtremes[0], val);
+			valExtremes[1] = Math.max(valExtremes[1], val);
+		});
+		System.out.println("Massaging discovered min = "+valExtremes[0]+" and max = "+valExtremes[1]);
+		if (valExtremes[1] == valExtremes[0]) valExtremes[1] += 1.0;
+
+		//massage both aspects into an outcome image
+		final double range = valExtremes[1] - valExtremes[0];
+		final Img<FloatType> explicitCroppedFloatImg = ArrayImgs.floats(cropImg.max(0)-cropImg.min(0)+1, cropImg.max(1)-cropImg.min(1)+1);
+		LoopBuilder.setImages(cropImg, explicitCroppedFloatImg).forEachPixel( (i, o) -> o.setReal((i.getRealDouble() - valExtremes[0]) / range) );
+		return explicitCroppedFloatImg;
+	}
+
+	RandomAccessibleInterval<FloatType> prepareCroppedImageWithSourceSettingForSAMModel(final Interval cropOutROI) {
+		//a narrow view on the source data - "spatial" aspect
+		RandomAccessibleInterval<T> cropImg = Views.dropSingletonDimensions( Views.interval(image, cropOutROI) );
+
+		//"intensity" aspect
+		final double min = ((BdvStackSource<T>)bdv).getConverterSetups().get(0).getDisplayRangeMin();
+		double max = ((BdvStackSource<T>)bdv).getConverterSetups().get(0).getDisplayRangeMax();
+		System.out.println("Massaging is taking min = "+min+" and max = "+max);
+		if (max == min) max += 1.0;
+
+		//massage both aspects into an outcome image
+		final double range = max - min;
+		final Img<FloatType> explicitCroppedFloatImg = ArrayImgs.floats(cropImg.max(0)-cropImg.min(0)+1, cropImg.max(1)-cropImg.min(1)+1);
+		LoopBuilder.setImages(cropImg, explicitCroppedFloatImg).forEachPixel( (i, o) -> o.setReal(
+				Math.min( Math.max(i.getRealDouble() - min, 0.0) / range, 1.0 ) ) );
+		return explicitCroppedFloatImg;
 	}
 
 	/**
@@ -349,7 +411,8 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	//an object that represents that exact view, and another map for polygons associated with that view
 	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
 	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
-	private final Map<Integer, RandomAccessibleInterval<T>> annotationSitesImages = new HashMap<>(100);
+	private final Map<Integer, RandomAccessibleInterval<FloatType>> annotationSitesImages = new HashMap<>(100);
+	private final Map<Integer, Interval> annotationSitesROIs = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
 	private int lastVisitedAnnotationSiteId = -1;
 
@@ -379,13 +442,13 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
 	}
 
-	public RandomAccessibleInterval<T> getImageFromTheLastUsedAnnotationSite() {
+	public RandomAccessibleInterval<FloatType> getImageFromTheLastUsedAnnotationSite() {
 		return getImageFromAnnotationSite(lastVisitedAnnotationSiteId);
 	}
-	public RandomAccessibleInterval<T> getImageFromTheCurrentAnnotationSite() {
+	public RandomAccessibleInterval<FloatType> getImageFromTheCurrentAnnotationSite() {
 		return getImageFromAnnotationSite(currentlyUsedAnnotationSiteId);
 	}
-	public RandomAccessibleInterval<T> getImageFromAnnotationSite(int siteId) {
+	public RandomAccessibleInterval<FloatType> getImageFromAnnotationSite(int siteId) {
 		return annotationSitesImages.getOrDefault(siteId, null);
 	}
 

@@ -18,6 +18,7 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
@@ -257,7 +258,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
 		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
-		Interval viewImg = annotationSitesImages.get(currentlyUsedAnnotationSiteId);
+		Interval viewImg = annotationSitesROIs.get(currentlyUsedAnnotationSiteId);
 		Interval box = new FinalInterval(
 				//pattern: Math.max(viewImg.min(0),Math.min( THE_VALUE ,viewImg.max(0)))
 				//to make sure the prompt is within the 'viewImg' interval
@@ -320,6 +321,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				} );
 		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
 		System.out.println("image ROI: "+box);
+		annotationSitesROIs.put( newIdx, Intervals.hyperSlice(box, viewDir.fixedAxisDim()) );
 		annotationSitesImages.put( newIdx, Views.dropSingletonDimensions(Views.interval(image, box)) );
 		if (showNewAnnotationSitesImages) ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
 	}
@@ -358,6 +360,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
 	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
 	private final Map<Integer, RandomAccessibleInterval<T>> annotationSitesImages = new HashMap<>(100);
+	private final Map<Integer, Interval> annotationSitesROIs = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
 	private int lastVisitedAnnotationSiteId = -1;
 

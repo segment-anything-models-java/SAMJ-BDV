@@ -6,7 +6,7 @@ A [BigDataViewer](https://imagej.net/plugins/bdv/) interface for the [SAMJ workh
 
 ### Wanna try at home?
 - Grab some Fiji that has SAMJ installed (hint: enable SAMJ Fiji update site).
-- Grab this [`.jar file`](samj-BDV-0.0.1-SNAPSHOT.jar) and copy it into your `Fiji.app/jars` folder.
+- Grab this [`.jar file`](https://raw.githubusercontent.com/segment-anything-models-java/SAMJ-BDV/releasing-demo/samj-BDV-0.0.1-SNAPSHOT.jar) and copy it into your `Fiji.app/jars` folder.
 - Open some 3D(!) image (breaks currently with 2D images, blame `xulman`).
 - Go Fiji -> Plugins -> SAMJ -> BDV Demo
 

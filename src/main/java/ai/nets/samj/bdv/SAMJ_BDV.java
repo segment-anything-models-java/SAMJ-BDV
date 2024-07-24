@@ -109,7 +109,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}
 		public void addPolygon(final Polygon p, final int xOffset, final int yOffset) {
 			Polygon shiftedP = new Polygon();
-			for (int i = 0; i < p.xpoints.length; ++i) {
+			for (int i = 0; i < p.npoints; ++i) {
 				shiftedP.addPoint(p.xpoints[i]+xOffset, p.ypoints[i]+yOffset);
 			}
 			polygonList.add(shiftedP);
@@ -147,10 +147,10 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				viewerPanel.state().getViewerTransform(pxToScreenTransform);
 				g.setPaint(colorResults);
 				for (Polygon p : polygonList) {
-					for (int i = 0; i <= p.xpoints.length; i++) {
+					for (int i = 0; i <= p.npoints; i++) {
 						//NB: the first (i=0) point is repeated to close the loop
-						pxCoord[viewDir.runningAxisDim1()] = p.xpoints[i % p.xpoints.length];
-						pxCoord[viewDir.runningAxisDim2()] = p.ypoints[i % p.xpoints.length];
+						pxCoord[viewDir.runningAxisDim1()] = p.xpoints[i % p.npoints];
+						pxCoord[viewDir.runningAxisDim2()] = p.ypoints[i % p.npoints];
 						if (i % 2 == 0) {
 							pxToScreenTransform.apply(pxCoord, screenCoord);
 						} else {

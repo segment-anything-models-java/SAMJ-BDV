@@ -301,10 +301,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				  + box.min(0) + "," + box.min(1) + " -> "
 				  + box.max(0) + "," + box.max(1) + "]" );
 		System.out.println("Given the current image view: "+new FinalInterval(viewBox));
-		if (fakeResults) {
-			processRectanglePromptFake(box);
-		} else {
-			processRectanglePrompt(box, viewBox.min(0),viewBox.min(1));
+		List<Polygon> polygons2D = processRectanglePrompt(box, viewBox.min(0), viewBox.min(1));
 
 		if (!polygonConsumers.isEmpty() && !polygons2D.isEmpty()) {
 			final double[] tmpVec = new double[3];
@@ -568,8 +565,10 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		System.out.println("SWITCHING NETWORK CONTEXT to id: "+siteId);
 	}
 
-	protected void processRectanglePrompt(final Interval boxInGlobalPxCoords,
-	                                      final long xOffset, final long yOffset) {
+	protected List<Polygon> processRectanglePrompt(final Interval boxInGlobalPxCoords,
+	                                               final long xOffset, final long yOffset) {
+		if (fakeResults) return processRectanglePromptFake(boxInGlobalPxCoords);
+
 		Interval boxInLocalPx = new FinalInterval(
 				new long[] {
 					boxInGlobalPxCoords.min(0) -xOffset,
@@ -579,16 +578,25 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 					boxInGlobalPxCoords.max(1) -yOffset
 				} );
 		try {
-			activeNN
-					.fetch2dSegmentation(boxInLocalPx)
-					.forEach(polygon -> samjOverlay.addPolygon(polygon, (int)xOffset,(int)yOffset));
+			List<Polygon> polygons = activeNN.fetch2dSegmentation(boxInLocalPx);
+			polygons.forEach(p -> {
+				for (int i = 0; i < p.npoints; ++i) {
+					p.xpoints[i] += xOffset;
+					p.ypoints[i] += yOffset;
+				}
+			});
+			return polygons; //polygons in global px coords again
 		} catch (IOException | RuntimeException | InterruptedException e) {
 			System.out.println("BTW, an error working with the SAM: "+e.getMessage());
 		}
+		return Collections.emptyList();
 	}
 
-	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
-		samjOverlay.addPolygon( createFakePolygon(boxInGlobalPxCoords) );
+	protected List<Polygon> processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
+		List<Polygon> fakes = new ArrayList<>(2);
+		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
+		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
+		return fakes;
 	}
 
 	protected Polygon createFakePolygon(final Interval insideThisBox) {

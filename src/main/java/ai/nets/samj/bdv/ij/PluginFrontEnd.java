@@ -21,7 +21,7 @@ public class PluginFrontEnd implements Command {
 	@Override
 	public void run() {
 		SAMJ_BDV_Annotator annotator = new SAMJ_BDV_Annotator();
-		annotator.startBdvAnnotation((Img)inputImage.getImgPlus().getImg());
+		annotator.startBdvAnnotation((Img)inputImage.getImgPlus().getImg(), inputImage.getName());
 		annotator.setShowSubmittedImagesToSAM( showImagesSubmittedToSAM );
 		annotator.setReturnFakeSAMResults( useFakePromptResults );
 	}

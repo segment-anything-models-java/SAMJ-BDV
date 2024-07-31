@@ -45,8 +45,12 @@ import java.util.Random;
 
 public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	public SAMJ_BDV(final Img<T> operateOnThisImage) {
+		this(operateOnThisImage,"SAMJ test image");
+	}
+
+	public SAMJ_BDV(final Img<T> operateOnThisImage, final String imageName) {
 		this.image = operateOnThisImage;
-		this.bdv = BdvFunctions.show( operateOnThisImage, "SAMJ test image" );
+		this.bdv = BdvFunctions.show( operateOnThisImage, imageName );
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 
 		this.samjOverlay = new PromptsAndResultsDrawingOverlay();

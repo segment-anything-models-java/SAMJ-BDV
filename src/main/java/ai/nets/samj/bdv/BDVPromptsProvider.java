@@ -41,10 +41,10 @@ import java.util.List;
 public class BDVPromptsProvider <T extends RealType<T> & NativeType<T>>
 implements PromptsResultsDisplay, UtilityMethods {
 
-	public BDVPromptsProvider(final Img<T> image, final SAMJLogger logger) {
+	public BDVPromptsProvider(final Img<T> image, final String imageName, final SAMJLogger logger) {
 		this.image = image;
 		this.logger = logger;
-		this.bdv = new SAMJ_BDV<>(image);
+		this.bdv = new SAMJ_BDV<>(image, imageName);
 	}
 
 	final private SAMJ_BDV<T> bdv;

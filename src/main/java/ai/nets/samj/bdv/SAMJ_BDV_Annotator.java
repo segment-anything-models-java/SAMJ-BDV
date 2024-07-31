@@ -38,7 +38,7 @@ import java.awt.event.WindowEvent;
 public class SAMJ_BDV_Annotator {
 
 	//TODO: maybe RAI would be enough
-	public <T extends RealType<T> & NativeType<T>> void startBdvAnnotation(final Img<T> imageToBeAnnotated) {
+	public <T extends RealType<T> & NativeType<T>> void startBdvAnnotation(final Img<T> imageToBeAnnotated, final String imageName) {
 		try {
 			// TODO I (Carlos) don't know how to develop in IJ2 Logger guiSublogger = log.subLogger("PromptsResults window");
 			SAMJLogger guilogger = new SAMJLogger() {
@@ -68,7 +68,7 @@ public class SAMJ_BDV_Annotator {
 			};
 
 			//start the provider immediately but the dialog may come a bit later (which was somehow needed for IJ1 plugins...)
-			bdvPromptsProvider = new BDVPromptsProvider<>(imageToBeAnnotated, bdvLogger);
+			bdvPromptsProvider = new BDVPromptsProvider<>(imageToBeAnnotated, imageName, bdvLogger);
 
 			SwingUtilities.invokeLater(() -> {
 				SAMJDialog samjDialog = new SAMJDialog(
@@ -125,7 +125,7 @@ public class SAMJ_BDV_Annotator {
 		img.forEach(p -> { if (p.getRealDouble() == 0.0) p.setReal(15); });
 
 		SAMJ_BDV_Annotator annotator = new SAMJ_BDV_Annotator();
-		annotator.startBdvAnnotation(image);
+		annotator.startBdvAnnotation(image, "IDE test image");
 		annotator.setReturnFakeSAMResults(true);
 	}
 }

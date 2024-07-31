@@ -306,7 +306,18 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		if (!polygonConsumers.isEmpty() && !polygons2D.isEmpty()) {
 			final double[] tmpVec = new double[3];
 			tmpVec[viewDir.fixedAxisDim()] = topLeftPoint.getDoublePosition(viewDir.fixedAxisDim()); //NB: we can do this because of the axis-aligned views!
-			final AffineTransform3D t = viewerPanel.state().getViewerTransform();
+
+			final double[] matrix = new double[12];
+			matrix[viewDir.runningAxisDim1()] = 1.0;
+			matrix[3] = -viewBox.min(0);
+			//
+			matrix[4+viewDir.runningAxisDim2()] = 1.0;
+			matrix[7] = -viewBox.min(1);
+			//
+			matrix[8+ viewDir.fixedAxisDim()] = 1.0;
+			matrix[11] = -tmpVec[viewDir.fixedAxisDim()];
+			final AffineTransform3D t = new AffineTransform3D();
+			t.set(matrix);
 
 			for (Polygon p : polygons2D) {
 				Polygon3D.Builder builder = new Polygon3D.Builder(p.npoints, t);
@@ -466,12 +477,19 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return getPolygonsFromAnnotationSite(lastVisitedAnnotationSiteId);
 	}
 	public List<Polygon> getPolygonsFromTheCurrentAnnotationSite() {
-		return null; //TODO
-		//return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
+		return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
 	}
 	public List<Polygon> getPolygonsFromAnnotationSite(int siteId) {
-		return null; //TODO
-		//return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
+		List<Polygon> export = new ArrayList<>();
+		annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList()).forEach(p -> {
+			Polygon awtP = new Polygon();
+			for (int i = 0; i < p.size(); ++i) {
+				double[] c = p.coordinate2D(i);
+				awtP.addPoint((int)Math.round(c[0]), (int)Math.round(c[1]));
+			}
+			export.add(awtP);
+		});
+		return export;
 	}
 
 	public RandomAccessibleInterval<FloatType> getImageFromTheLastUsedAnnotationSite() {
@@ -594,7 +612,6 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 	protected List<Polygon> processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
 		List<Polygon> fakes = new ArrayList<>(2);
-		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
 		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
 		return fakes;
 	}

@@ -595,7 +595,6 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	protected List<Polygon> processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
 		List<Polygon> fakes = new ArrayList<>(2);
 		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
-		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
 		return fakes;
 	}
 

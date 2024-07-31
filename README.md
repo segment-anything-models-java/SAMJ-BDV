@@ -13,8 +13,10 @@ A [BigDataViewer](https://imagej.net/plugins/bdv/) interface for the [SAMJ workh
 ![BDV Demo dialog](doc/BDV_demo_dialog.png)
 
 The two options are:
+
 - `ShowImagesSubmittedToSAM` - will show in ImageJ the image that is submitted to the network; useful to understand what's the scope of data that the network will see and use, also to be able to test the "standard" SAMJ on it.
 - `UseFakePromptResults` - the prompts from BDV will never make it to any network (no matter what you click later), instead fake results are directly returned; this is a mode for getting familiar first with the BDV and SAMJ integration itself.
+- `DrawSmallXYcrossesIntoPolygonsCentres` - the results of prompts (which are polygons) will be "marked" in the original image with a black cross in each polygon centre; this is a lame proof that [plugins can read the polygons back from BDV](https://github.com/segment-anything-models-java/SAMJ-BDV/blob/344f197a36bf098f99a62cfd2fb57dd71c21ddde/src/main/java/ai/nets/samj/bdv/ij/PluginFrontEnd.java#L37-L74).
 
 ### The concept of annotation sites
 Since BigDataViewer (BDV) can display images much larger than SAM networks can consume, the BDV is considered to be "only" an explorer of the image data that allows the user to maneuver, or obtain, a particular (2D) view on the image data. The 2D views, the displayed content on the screen, of the potentially larger 3D+ volume and the ability to change the views is an important concept here. The integration layer (this SW) of BDV with SAMJ is memorizing the user-defined views, which are called here **annotation sites**, and allows to recall and switch them, and of course annotate them.

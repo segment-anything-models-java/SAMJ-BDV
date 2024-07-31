@@ -42,21 +42,18 @@ public class Polygon3D {
 		}
 
 		public void addVertex(double x, double y, double z) {
-			coordsA[0] = x;
-			coordsA[1] = y;
-			coordsA[2] = z;
+			double[] c = new double[] {x,y,z};
 
-			transform3Dto2D.apply(coordsA,coordsB);
-			if (coordsB[2] < toleranceDelta || coordsB[2] > toleranceDelta) {
+			transform3Dto2D.apply(c,coordsB);
+			if (coordsB[2] < -toleranceDelta || coordsB[2] > toleranceDelta) {
 				throw new IllegalArgumentException("Input coord ["+x+","+y+","+z
 						+"] maps to ["+coordsB[0]+","+coordsB[1]+","+coordsB[2]
 						+"], the third mapped coord is outside the 2D tolerance ("+toleranceDelta+")");
 			}
 
-			XYZs.add(coordsA);
+			XYZs.add(c);
 		}
 
-		private final double[] coordsA = new double[3];
 		private final double[] coordsB = new double[3];
 
 		public Polygon3D build() {

@@ -37,12 +37,12 @@ public class Polygon2Din3DSpace {
 			XYs = new ArrayList<>(2*expectedNoOfVertices);
 		}
 
-		final private List<Double> XYs;
+		final private List<Long> XYs;
 		private long min_x,min_y, max_x,max_y;
 		private boolean min_set = false, max_set = false;
 		private AffineTransform3D xyTo3D;
 
-		public void addVertex(double x, double y) {
+		public void addVertex(long x, long y) {
 			XYs.add(x);
 			XYs.add(y);
 		}
@@ -76,14 +76,14 @@ public class Polygon2Din3DSpace {
 	}
 
 
-	private Polygon2Din3DSpace(final List<Double> XYs,
+	private Polygon2Din3DSpace(final List<Long> XYs,
 	                           final AffineTransform3D tranform,
 	                           final long min_x, final long min_y,
 	                           final long max_x, final long max_y) {
 		final int cnt = XYs.size() / 2;
 		coords = new ArrayList<>(cnt);
 		for (int i = 0; i < cnt; ++i) {
-			double[] c = new double[2];
+			long[] c = new long[2];
 			c[0] = XYs.get(2*i   );
 			c[1] = XYs.get(2*i +1);
 			coords.add(c);
@@ -93,23 +93,42 @@ public class Polygon2Din3DSpace {
 		sweeping2dInterval = new FinalInterval(new long[] {min_x,min_y}, new long[] {max_x,max_y});
 	}
 
-	final private List<double[]> coords;
-	final private double[] forExportCoord = new double[3];
+	final private List<long[]> coords;
+	final private long[]   forExportCoord2D = new long[2];
+	final private double[] forExportCoord3D = new double[3];
 
-	final AffineTransform3D transformTo3D;
-	final Interval sweeping2dInterval;
+	final private AffineTransform3D transformTo3D;
+	final private Interval sweeping2dInterval;
+
+	public AffineTransform3D getTransformTo3D() {
+		return transformTo3D.copy();
+	}
+
+	public Interval getSweeping2dInterval() {
+		return sweeping2dInterval;
+	}
 
 	public int size() {
 		return coords.size();
 	}
 
-	public double[] coordinate(int index) {
+	public long[] coordinateLocal2D(int index) {
 		if (index < 0 || index >= coords.size()) return null;
 
-		double[] c = coords.get(index);
-		forExportCoord[0] = c[0];
-		forExportCoord[1] = c[1];
-		forExportCoord[2] = 0.0;
-		return forExportCoord;
+		long[] c = coords.get(index);
+		forExportCoord2D[0] = c[0];
+		forExportCoord2D[1] = c[1];
+		return forExportCoord2D;
+	}
+
+	public double[] coordinate3D(int index) {
+		if (index < 0 || index >= coords.size()) return null;
+
+		long[] c = coords.get(index);
+		forExportCoord3D[0] = c[0];
+		forExportCoord3D[1] = c[1];
+		forExportCoord3D[2] = 0.0;
+		transformTo3D.apply(forExportCoord3D,forExportCoord3D);
+		return forExportCoord3D;
 	}
 }

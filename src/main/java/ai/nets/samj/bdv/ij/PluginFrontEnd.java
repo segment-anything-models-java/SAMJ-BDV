@@ -3,6 +3,7 @@ package ai.nets.samj.bdv.ij;
 import ai.nets.samj.bdv.SAMJ_BDV_Annotator;
 import net.imagej.Dataset;
 import net.imglib2.img.Img;
+import net.imglib2.type.numeric.RealType;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -21,7 +22,10 @@ public class PluginFrontEnd implements Command {
 	@Override
 	public void run() {
 		SAMJ_BDV_Annotator annotator = new SAMJ_BDV_Annotator();
-		annotator.startBdvAnnotation((Img)inputImage.getImgPlus().getImg(), inputImage.getName());
+		Img<? extends RealType<?>> origImage = inputImage.getImgPlus().getImg();
+		//TODO: make sure it is a 3D image
+
+		annotator.startBdvAnnotation((Img)origImage, inputImage.getName());
 		annotator.setShowSubmittedImagesToSAM( showImagesSubmittedToSAM );
 		annotator.setReturnFakeSAMResults( useFakePromptResults );
 	}

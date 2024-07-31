@@ -29,7 +29,9 @@ import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
+import java.util.function.Consumer;
 import ai.nets.samj.bdv.polygons.Polygon3D;
+
 import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
@@ -72,7 +74,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	final PromptsAndResultsDrawingOverlay samjOverlay;
 	final BdvOverlaySource<BdvOverlay> samjSource;
 
-	class PromptsAndResultsDrawingOverlay extends BdvOverlay {
+	class PromptsAndResultsDrawingOverlay extends BdvOverlay implements Consumer<Polygon3D> {
 		private int sx,sy; //starting coordinate of the line, the "first end"
 		private int ex,ey; //ending coordinate of the line, the "second end"
 		private boolean shouldDrawLine = false;
@@ -107,27 +109,21 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			shouldDrawPolygons = true;
 		}
 
-		private List<Polygon> polygonList = new ArrayList<>(100);
+		private List<Polygon3D> polygonList = new ArrayList<>(100);
 		private boolean shouldDrawPolygons = false;
 
-		public void addPolygon(final Polygon p) {
-			polygonList.add( new Polygon(p.xpoints,p.ypoints,p.npoints) );
-		}
-		public void addPolygon(final Polygon p, final int xOffset, final int yOffset) {
-			Polygon shiftedP = new Polygon();
-			for (int i = 0; i < p.npoints; ++i) {
-				shiftedP.addPoint(p.xpoints[i]+xOffset, p.ypoints[i]+yOffset);
-			}
-			polygonList.add(shiftedP);
+		@Override
+		public void accept(Polygon3D polygon) {
+			polygonList.add(polygon);
 		}
 		public void clearPolygons() {
 			polygonList.clear();
 		}
 
-		public void setPolygons(List<Polygon> polygons) {
+		public void setPolygons(List<Polygon3D> polygons) {
 			polygonList = polygons;
 		}
-		public List<Polygon> getPolygons() {
+		public List<Polygon3D> getPolygons() {
 			return polygonList;
 		}
 
@@ -159,19 +155,16 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				}
 
 				//draws the currently recognized polygons
-				AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
-				pxCoord[viewDir.fixedAxisDim()] = annotationSites.get(currentlyUsedAnnotationSiteId).fixedDimPos;
 				viewerPanel.state().getViewerTransform(pxToScreenTransform);
 				g.setPaint(colorResults);
-				for (Polygon p : polygonList) {
-					for (int i = 0; i <= p.npoints; i++) {
+				for (Polygon3D p : polygonList) {
+					for (int i = 0; i <= p.size(); i++) {
 						//NB: the first (i=0) point is repeated to close the loop
-						pxCoord[viewDir.runningAxisDim1()] = p.xpoints[i % p.npoints];
-						pxCoord[viewDir.runningAxisDim2()] = p.ypoints[i % p.npoints];
+						double[] coord = p.coordinate3D(i % p.size());
 						if (i % 2 == 0) {
-							pxToScreenTransform.apply(pxCoord, screenCoord);
+							pxToScreenTransform.apply(coord, screenCoord);
 						} else {
-							pxToScreenTransform.apply(pxCoord, screenCoordB);
+							pxToScreenTransform.apply(coord, screenCoordB);
 						}
 						if (i > 0)
 							//TODO: make sure the coords are not outside the screen... negative or too large, I guess
@@ -182,7 +175,6 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}
 
 		final AffineTransform3D pxToScreenTransform = new AffineTransform3D();
-		final double[] pxCoord = new double[3];
 		final double[] screenCoord = new double[3];
 		final double[] screenCoordB = new double[3];
 	}

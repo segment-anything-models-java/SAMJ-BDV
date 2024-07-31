@@ -306,7 +306,18 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		if (!polygonConsumers.isEmpty() && !polygons2D.isEmpty()) {
 			final double[] tmpVec = new double[3];
 			tmpVec[viewDir.fixedAxisDim()] = topLeftPoint.getDoublePosition(viewDir.fixedAxisDim()); //NB: we can do this because of the axis-aligned views!
-			final AffineTransform3D t = viewerPanel.state().getViewerTransform();
+
+			final double[] matrix = new double[12];
+			matrix[viewDir.runningAxisDim1()] = 1.0;
+			matrix[3] = -viewBox.min(0);
+			//
+			matrix[4+viewDir.runningAxisDim2()] = 1.0;
+			matrix[7] = -viewBox.min(1);
+			//
+			matrix[8+ viewDir.fixedAxisDim()] = 1.0;
+			matrix[11] = -tmpVec[viewDir.fixedAxisDim()];
+			final AffineTransform3D t = new AffineTransform3D();
+			t.set(matrix);
 
 			for (Polygon p : polygons2D) {
 				Polygon3D.Builder builder = new Polygon3D.Builder(p.npoints, t);

@@ -92,4 +92,11 @@ public class Polygon3D {
 		transform3Dto2D.apply(c,forExportCoord);
 		return forExportCoord;
 	}
+
+	public AffineTransform3D getTransform3Dto2D() {
+		return transform3Dto2D.copy();
+	}
+	public AffineTransform3D getTransform2Dto3D() {
+		return transform3Dto2D.inverse().copy();
+	}
 }

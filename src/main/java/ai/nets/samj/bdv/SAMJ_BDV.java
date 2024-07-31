@@ -29,6 +29,7 @@ import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
+import ai.nets.samj.bdv.polygons.Polygon3D;
 import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
@@ -316,7 +317,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				new SpatioTemporalView(bdv.getBdvHandle()), viewDir, fixedDimPos ) );
 		System.out.println("Adding a new annotation site: "+viewDir+" @ "+fixedDimPos);
 		//
-		List<Polygon> polygons = new ArrayList<>(100);
+		List<Polygon3D> polygons = new ArrayList<>(100);
 		annotationSitesPolygons.put( newIdx, polygons );
 		currentlyUsedAnnotationSiteId = newIdx;
 		lastVisitedAnnotationSiteId = newIdx;
@@ -421,7 +422,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to
 	//an object that represents that exact view, and another map for polygons associated with that view
 	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
-	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
+	private final Map<Integer, List<Polygon3D>> annotationSitesPolygons = new HashMap<>(100);
 	private final Map<Integer, RandomAccessibleInterval<FloatType>> annotationSitesImages = new HashMap<>(100);
 	private final Map<Integer, Interval> annotationSitesROIs = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
@@ -447,10 +448,12 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return getPolygonsFromAnnotationSite(lastVisitedAnnotationSiteId);
 	}
 	public List<Polygon> getPolygonsFromTheCurrentAnnotationSite() {
-		return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
+		return null; //TODO
+		//return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
 	}
 	public List<Polygon> getPolygonsFromAnnotationSite(int siteId) {
-		return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
+		return null; //TODO
+		//return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
 	}
 
 	public RandomAccessibleInterval<FloatType> getImageFromTheLastUsedAnnotationSite() {

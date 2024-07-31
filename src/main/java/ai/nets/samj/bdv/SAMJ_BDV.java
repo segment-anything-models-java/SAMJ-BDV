@@ -29,6 +29,10 @@ import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
+import java.util.function.Consumer;
+import ai.nets.samj.bdv.polygons.Polygon3D;
+import ai.nets.samj.bdv.polygons.Polygons3dExampleConsumer;
+
 import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
@@ -49,7 +53,20 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		this.samjSource = BdvFunctions.showOverlay(samjOverlay, "SAMJ overlay", BdvOptions.options().addTo(bdv));
 		samjSource.setColor(new ARGBType( this.samjOverlay.colorResults.getRGB() ));
 
+		//register our own (polygons drawing) overlay as a polygon consumer
+		this.addPolygonsConsumer(samjOverlay);
+		this.addPolygonsConsumer(new Polygons3dExampleConsumer());
 		installBehaviours();
+	}
+
+	/*
+	public SAMJ_BDV(final Bdv operateOnThisBdv, final BdvStackSource<T> onThisSource) {
+	}
+	*/
+
+	private final List<Consumer<Polygon3D>> polygonConsumers = new ArrayList<>(10);
+	public void addPolygonsConsumer(final Consumer<Polygon3D> consumer) {
+		polygonConsumers.add(consumer);
 	}
 
 	private final Img<T> image;
@@ -71,7 +88,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	final PromptsAndResultsDrawingOverlay samjOverlay;
 	final BdvOverlaySource<BdvOverlay> samjSource;
 
-	class PromptsAndResultsDrawingOverlay extends BdvOverlay {
+	class PromptsAndResultsDrawingOverlay extends BdvOverlay implements Consumer<Polygon3D> {
 		private int sx,sy; //starting coordinate of the line, the "first end"
 		private int ex,ey; //ending coordinate of the line, the "second end"
 		private boolean shouldDrawLine = false;
@@ -109,6 +126,16 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		private List<Polygon> polygonList = new ArrayList<>(100);
 		private boolean shouldDrawPolygons = false;
 
+		@Override
+		public void accept(Polygon3D polygon) {
+			Interval viewBox = annotationSitesROIs.get(currentlyUsedAnnotationSiteId);
+			Polygon p = new Polygon();
+			for (int i = 0; i < polygon.size(); ++i) {
+				long[] coord = polygon.coordinateLocal2D(i);
+				p.addPoint((int)(coord[0] +viewBox.min(0)), (int)(coord[1] +viewBox.min(1)));
+			}
+			polygonList.add(p);
+		}
 		public void addPolygon(final Polygon p) {
 			polygonList.add( new Polygon(p.xpoints,p.ypoints,p.npoints) );
 		}
@@ -301,7 +328,31 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			processRectanglePromptFake(box);
 		} else {
 			processRectanglePrompt(box, viewBox.min(0),viewBox.min(1));
+		if (!polygonConsumers.isEmpty()) {
+			final double[] tmpVec = new double[3];
+			tmpVec[viewDir.runningAxisDim1()] = viewBox.min(0);
+			tmpVec[viewDir.runningAxisDim2()] = viewBox.min(1);
+			tmpVec[viewDir.fixedAxisDim()] = topLeftPoint.getDoublePosition(viewDir.fixedAxisDim()); //NB: we can do this because of the axis-aligned views!
+			//
+			final AffineTransform3D to3D = new AffineTransform3D();
+			to3D.setTranslation(tmpVec);
+			//TODO: don't forget the permutation... but hey.. the screen to global should work, just remove the scaling...
+
+			for (Polygon p : resultsInRelativeCoords) {
+				Polygon3D.Builder builder = new Polygon3D.Builder(p.npoints);
+				for (int i = 0; i < p.npoints; ++i) {
+					tmpVec[viewDir.runningAxisDim1()] = p.xpoints[i];
+					tmpVec[viewDir.runningAxisDim2()] = p.ypoints[i];
+					tmpVec[viewDir.fixedAxisDim()] = 0.0;
+					to3D.apply(tmpVec,tmpVec);
+					builder.addVertex(tmpVec[0],tmpVec[1],tmpVec[2]);
+				}
+				Polygon3D polygon = builder.build();
+				polygonConsumers.forEach(c -> c.accept(polygon));
+			}
 		}
+
+		//request redraw, just in case, after all polygons are consumed
 		viewerPanel.getDisplayComponent().repaint();
 	}
 

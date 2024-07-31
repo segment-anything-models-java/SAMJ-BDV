@@ -31,6 +31,7 @@ import org.scijava.ui.behaviour.util.Behaviours;
 
 import java.util.function.Consumer;
 import ai.nets.samj.bdv.polygons.Polygon3D;
+import ai.nets.samj.bdv.polygons.Polygons3DExampleConsumer;
 
 import java.io.IOException;
 import java.util.Map;
@@ -52,7 +53,15 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		this.samjSource = BdvFunctions.showOverlay(samjOverlay, "SAMJ overlay", BdvOptions.options().addTo(bdv));
 		samjSource.setColor(new ARGBType( this.samjOverlay.colorResults.getRGB() ));
 
+		//register our own (polygons drawing) overlay as a polygon consumer
+		this.addPolygonsConsumer(samjOverlay);
+		this.addPolygonsConsumer(new Polygons3DExampleConsumer());
 		installBehaviours();
+	}
+
+	private final List<Consumer<Polygon3D>> polygonConsumers = new ArrayList<>(10);
+	public void addPolygonsConsumer(final Consumer<Polygon3D> consumer) {
+		polygonConsumers.add(consumer);
 	}
 
 	private final Img<T> image;
@@ -274,6 +283,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		samjOverlay.normalizeLineEnds();
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
+
 		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
 		Interval viewBox = annotationSitesROIs.get(currentlyUsedAnnotationSiteId);
 		Interval box = new FinalInterval(
@@ -286,6 +296,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 					Math.max(viewBox.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
 					Math.max(viewBox.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
 				} );
+
 		System.out.println("Want to submit a box prompt: ["
 				  + box.min(0) + "," + box.min(1) + " -> "
 				  + box.max(0) + "," + box.max(1) + "]" );
@@ -294,7 +305,25 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			processRectanglePromptFake(box);
 		} else {
 			processRectanglePrompt(box, viewBox.min(0),viewBox.min(1));
+
+		if (!polygonConsumers.isEmpty() && !polygons2D.isEmpty()) {
+			final double[] tmpVec = new double[3];
+			tmpVec[viewDir.fixedAxisDim()] = topLeftPoint.getDoublePosition(viewDir.fixedAxisDim()); //NB: we can do this because of the axis-aligned views!
+			final AffineTransform3D t = viewerPanel.state().getViewerTransform();
+
+			for (Polygon p : polygons2D) {
+				Polygon3D.Builder builder = new Polygon3D.Builder(p.npoints, t);
+				for (int i = 0; i < p.npoints; ++i) {
+					tmpVec[viewDir.runningAxisDim1()] = p.xpoints[i];
+					tmpVec[viewDir.runningAxisDim2()] = p.ypoints[i];
+					builder.addVertex(tmpVec);
+				}
+				Polygon3D polygon = builder.build();
+				polygonConsumers.forEach(c -> c.accept(polygon));
+			}
 		}
+
+		//request redraw, just in case, after all polygons are consumed, and to make sure the prompt rectangle disappears
 		viewerPanel.getDisplayComponent().repaint();
 	}
 

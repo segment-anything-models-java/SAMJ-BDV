@@ -29,6 +29,10 @@ import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
+import java.util.function.Consumer;
+import ai.nets.samj.bdv.polygons.Polygon3D;
+import ai.nets.samj.bdv.polygons.Polygons3DExampleConsumer;
+
 import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
@@ -49,7 +53,15 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		this.samjSource = BdvFunctions.showOverlay(samjOverlay, "SAMJ overlay", BdvOptions.options().addTo(bdv));
 		samjSource.setColor(new ARGBType( this.samjOverlay.colorResults.getRGB() ));
 
+		//register our own (polygons drawing) overlay as a polygon consumer
+		this.addPolygonsConsumer(samjOverlay);
+		this.addPolygonsConsumer(new Polygons3DExampleConsumer());
 		installBehaviours();
+	}
+
+	private final List<Consumer<Polygon3D>> polygonConsumers = new ArrayList<>(10);
+	public void addPolygonsConsumer(final Consumer<Polygon3D> consumer) {
+		polygonConsumers.add(consumer);
 	}
 
 	private final Img<T> image;
@@ -71,7 +83,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	final PromptsAndResultsDrawingOverlay samjOverlay;
 	final BdvOverlaySource<BdvOverlay> samjSource;
 
-	class PromptsAndResultsDrawingOverlay extends BdvOverlay {
+	class PromptsAndResultsDrawingOverlay extends BdvOverlay implements Consumer<Polygon3D> {
 		private int sx,sy; //starting coordinate of the line, the "first end"
 		private int ex,ey; //ending coordinate of the line, the "second end"
 		private boolean shouldDrawLine = false;
@@ -106,27 +118,21 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			shouldDrawPolygons = true;
 		}
 
-		private List<Polygon> polygonList = new ArrayList<>(100);
+		private List<Polygon3D> polygonList = new ArrayList<>(100);
 		private boolean shouldDrawPolygons = false;
 
-		public void addPolygon(final Polygon p) {
-			polygonList.add( new Polygon(p.xpoints,p.ypoints,p.npoints) );
-		}
-		public void addPolygon(final Polygon p, final int xOffset, final int yOffset) {
-			Polygon shiftedP = new Polygon();
-			for (int i = 0; i < p.npoints; ++i) {
-				shiftedP.addPoint(p.xpoints[i]+xOffset, p.ypoints[i]+yOffset);
-			}
-			polygonList.add(shiftedP);
+		@Override
+		public void accept(Polygon3D polygon) {
+			polygonList.add(polygon);
 		}
 		public void clearPolygons() {
 			polygonList.clear();
 		}
 
-		public void setPolygons(List<Polygon> polygons) {
+		public void setPolygons(List<Polygon3D> polygons) {
 			polygonList = polygons;
 		}
-		public List<Polygon> getPolygons() {
+		public List<Polygon3D> getPolygons() {
 			return polygonList;
 		}
 
@@ -158,19 +164,16 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				}
 
 				//draws the currently recognized polygons
-				AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
-				pxCoord[viewDir.fixedAxisDim()] = annotationSites.get(currentlyUsedAnnotationSiteId).fixedDimPos;
 				viewerPanel.state().getViewerTransform(pxToScreenTransform);
 				g.setPaint(colorResults);
-				for (Polygon p : polygonList) {
-					for (int i = 0; i <= p.npoints; i++) {
+				for (Polygon3D p : polygonList) {
+					for (int i = 0; i <= p.size(); i++) {
 						//NB: the first (i=0) point is repeated to close the loop
-						pxCoord[viewDir.runningAxisDim1()] = p.xpoints[i % p.npoints];
-						pxCoord[viewDir.runningAxisDim2()] = p.ypoints[i % p.npoints];
+						double[] coord = p.coordinate3D(i % p.size());
 						if (i % 2 == 0) {
-							pxToScreenTransform.apply(pxCoord, screenCoord);
+							pxToScreenTransform.apply(coord, screenCoord);
 						} else {
-							pxToScreenTransform.apply(pxCoord, screenCoordB);
+							pxToScreenTransform.apply(coord, screenCoordB);
 						}
 						if (i > 0)
 							//TODO: make sure the coords are not outside the screen... negative or too large, I guess
@@ -181,7 +184,6 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}
 
 		final AffineTransform3D pxToScreenTransform = new AffineTransform3D();
-		final double[] pxCoord = new double[3];
 		final double[] screenCoord = new double[3];
 		final double[] screenCoordB = new double[3];
 	}
@@ -281,6 +283,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		samjOverlay.normalizeLineEnds();
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
+
 		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
 		Interval viewBox = annotationSitesROIs.get(currentlyUsedAnnotationSiteId);
 		Interval box = new FinalInterval(
@@ -293,15 +296,31 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 					Math.max(viewBox.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
 					Math.max(viewBox.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
 				} );
+
 		System.out.println("Want to submit a box prompt: ["
 				  + box.min(0) + "," + box.min(1) + " -> "
 				  + box.max(0) + "," + box.max(1) + "]" );
 		System.out.println("Given the current image view: "+new FinalInterval(viewBox));
-		if (fakeResults) {
-			processRectanglePromptFake(box);
-		} else {
-			processRectanglePrompt(box, viewBox.min(0),viewBox.min(1));
+		List<Polygon> polygons2D = processRectanglePrompt(box, viewBox.min(0), viewBox.min(1));
+
+		if (!polygonConsumers.isEmpty() && !polygons2D.isEmpty()) {
+			final double[] tmpVec = new double[3];
+			tmpVec[viewDir.fixedAxisDim()] = topLeftPoint.getDoublePosition(viewDir.fixedAxisDim()); //NB: we can do this because of the axis-aligned views!
+			final AffineTransform3D t = viewerPanel.state().getViewerTransform();
+
+			for (Polygon p : polygons2D) {
+				Polygon3D.Builder builder = new Polygon3D.Builder(p.npoints, t);
+				for (int i = 0; i < p.npoints; ++i) {
+					tmpVec[viewDir.runningAxisDim1()] = p.xpoints[i];
+					tmpVec[viewDir.runningAxisDim2()] = p.ypoints[i];
+					builder.addVertex(tmpVec);
+				}
+				Polygon3D polygon = builder.build();
+				polygonConsumers.forEach(c -> c.accept(polygon));
+			}
 		}
+
+		//request redraw, just in case, after all polygons are consumed, and to make sure the prompt rectangle disappears
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
@@ -316,7 +335,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				new SpatioTemporalView(bdv.getBdvHandle()), viewDir, fixedDimPos ) );
 		System.out.println("Adding a new annotation site: "+viewDir+" @ "+fixedDimPos);
 		//
-		List<Polygon> polygons = new ArrayList<>(100);
+		List<Polygon3D> polygons = new ArrayList<>(100);
 		annotationSitesPolygons.put( newIdx, polygons );
 		currentlyUsedAnnotationSiteId = newIdx;
 		lastVisitedAnnotationSiteId = newIdx;
@@ -421,7 +440,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to
 	//an object that represents that exact view, and another map for polygons associated with that view
 	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
-	private final Map<Integer, List<Polygon>> annotationSitesPolygons = new HashMap<>(100);
+	private final Map<Integer, List<Polygon3D>> annotationSitesPolygons = new HashMap<>(100);
 	private final Map<Integer, RandomAccessibleInterval<FloatType>> annotationSitesImages = new HashMap<>(100);
 	private final Map<Integer, Interval> annotationSitesROIs = new HashMap<>(100);
 	private int currentlyUsedAnnotationSiteId = -1;
@@ -447,10 +466,12 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return getPolygonsFromAnnotationSite(lastVisitedAnnotationSiteId);
 	}
 	public List<Polygon> getPolygonsFromTheCurrentAnnotationSite() {
-		return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
+		return null; //TODO
+		//return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
 	}
 	public List<Polygon> getPolygonsFromAnnotationSite(int siteId) {
-		return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
+		return null; //TODO
+		//return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
 	}
 
 	public RandomAccessibleInterval<FloatType> getImageFromTheLastUsedAnnotationSite() {
@@ -544,8 +565,10 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		System.out.println("SWITCHING NETWORK CONTEXT to id: "+siteId);
 	}
 
-	protected void processRectanglePrompt(final Interval boxInGlobalPxCoords,
-	                                      final long xOffset, final long yOffset) {
+	protected List<Polygon> processRectanglePrompt(final Interval boxInGlobalPxCoords,
+	                                               final long xOffset, final long yOffset) {
+		if (fakeResults) return processRectanglePromptFake(boxInGlobalPxCoords);
+
 		Interval boxInLocalPx = new FinalInterval(
 				new long[] {
 					boxInGlobalPxCoords.min(0) -xOffset,
@@ -555,16 +578,25 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 					boxInGlobalPxCoords.max(1) -yOffset
 				} );
 		try {
-			activeNN
-					.fetch2dSegmentation(boxInLocalPx)
-					.forEach(polygon -> samjOverlay.addPolygon(polygon, (int)xOffset,(int)yOffset));
+			List<Polygon> polygons = activeNN.fetch2dSegmentation(boxInLocalPx);
+			polygons.forEach(p -> {
+				for (int i = 0; i < p.npoints; ++i) {
+					p.xpoints[i] += xOffset;
+					p.ypoints[i] += yOffset;
+				}
+			});
+			return polygons; //polygons in global px coords again
 		} catch (IOException | RuntimeException | InterruptedException e) {
 			System.out.println("BTW, an error working with the SAM: "+e.getMessage());
 		}
+		return Collections.emptyList();
 	}
 
-	protected void processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
-		samjOverlay.addPolygon( createFakePolygon(boxInGlobalPxCoords) );
+	protected List<Polygon> processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
+		List<Polygon> fakes = new ArrayList<>(2);
+		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
+		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
+		return fakes;
 	}
 
 	protected Polygon createFakePolygon(final Interval insideThisBox) {

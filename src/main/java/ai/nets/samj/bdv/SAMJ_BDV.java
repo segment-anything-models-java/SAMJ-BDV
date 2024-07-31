@@ -477,12 +477,19 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return getPolygonsFromAnnotationSite(lastVisitedAnnotationSiteId);
 	}
 	public List<Polygon> getPolygonsFromTheCurrentAnnotationSite() {
-		return null; //TODO
-		//return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
+		return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
 	}
 	public List<Polygon> getPolygonsFromAnnotationSite(int siteId) {
-		return null; //TODO
-		//return annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList());
+		List<Polygon> export = new ArrayList<>();
+		annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList()).forEach(p -> {
+			Polygon awtP = new Polygon();
+			for (int i = 0; i < p.size(); ++i) {
+				double[] c = p.coordinate2D(i);
+				awtP.addPoint((int)Math.round(c[0]), (int)Math.round(c[1]));
+			}
+			export.add(awtP);
+		});
+		return export;
 	}
 
 	public RandomAccessibleInterval<FloatType> getImageFromTheLastUsedAnnotationSite() {

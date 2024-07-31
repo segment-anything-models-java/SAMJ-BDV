@@ -38,6 +38,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import java.util.function.Consumer;
+import ai.nets.samj.bdv.polygons.Polygon3D;
+
 public class BDVPromptsProvider <T extends RealType<T> & NativeType<T>>
 implements PromptsResultsDisplay, UtilityMethods {
 
@@ -207,5 +210,9 @@ implements PromptsResultsDisplay, UtilityMethods {
 
 	public void fakeResults(boolean newState) {
 		bdv.fakeResults = newState;
+	}
+
+	public void newPolygonsConsumer(final Consumer<Polygon3D> consumer) {
+		bdv.addPolygonsConsumer(consumer);
 	}
 }

@@ -32,6 +32,9 @@ import javax.swing.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
+import java.util.function.Consumer;
+import ai.nets.samj.bdv.polygons.Polygon3D;
+
 /**
  * @author Vladimir Ulman
  */
@@ -115,6 +118,10 @@ public class SAMJ_BDV_Annotator {
 	}
 	public void setReturnFakeSAMResults(boolean newState) {
 		bdvPromptsProvider.fakeResults(newState);
+	}
+
+	public void registerPolygonsConsumer(final Consumer<Polygon3D> consumer) {
+		bdvPromptsProvider.newPolygonsConsumer(consumer);
 	}
 
 	public static void main(String[] args) {

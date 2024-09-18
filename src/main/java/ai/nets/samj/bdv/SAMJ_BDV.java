@@ -9,13 +9,16 @@ import bdv.util.BdvOverlay;
 import bdv.util.BdvOverlaySource;
 import bdv.util.BdvStackSource;
 import bdv.viewer.ViewerPanel;
+import net.imglib2.Cursor;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
+import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
@@ -242,6 +245,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				installNewAnnotationSite(viewDir, false);
 			} else {
 				System.out.println("Not an orthogonal view, try Shift+X, Shift+Z, or Shift+Y to get one.");
+				ImageJFunctions.show( collectViewPixelData(this.image) );
 			}
 		}, "samj_new_original_view", "A");
 
@@ -382,6 +386,25 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		annotationSitesROIs.put( newIdx, Intervals.hyperSlice(box, viewDir.fixedAxisDim()) );
 		annotationSitesImages.put( newIdx, considerBdvRangeSetting ? prepareCroppedImageWithSourceSettingForSAMModel(box) : prepareCroppedImageForSAMModel(box) );
 		if (showNewAnnotationSitesImages) ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
+	}
+
+	public Img<T> collectViewPixelData(final Img<T> srcImg) {
+		final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NearestNeighborInterpolatorFactory<>());
+		final RealPoint srcPos = new RealPoint(3);  //orig underlying 3D image
+
+		final double[] viewPos = new double[2];      //the current view 2D image
+		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
+		Img<T> viewImg = srcImg.factory().create(displaySize.width, displaySize.height);
+
+		Cursor<T> viewCursor = viewImg.localizingCursor();
+		while (viewCursor.hasNext()) {
+			T px = viewCursor.next();
+			viewCursor.localize(viewPos);
+			viewerPanel.displayToGlobalCoordinates(viewPos[0],viewPos[1], srcPos); //TODO optimize (inside is a RealPoint created over and over again)
+			px.setReal( srcRealImg.getAt(srcPos).getRealDouble() ); //TODO optimize (avoid using getAt())
+		}
+
+		return viewImg;
 	}
 
 	RandomAccessibleInterval<FloatType> prepareCroppedImageForSAMModel(final Interval cropOutROI) {

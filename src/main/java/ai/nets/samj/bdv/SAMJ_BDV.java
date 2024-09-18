@@ -647,23 +647,36 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 	protected Polygon createFakePolygon(final Interval insideThisBox) {
 		Random rand = new Random();
-		final int BOUND = 4;
+		final int BOUND = 8;
 
 		int minx = (int)insideThisBox.min(0), maxx = (int)insideThisBox.max(0);
 		int miny = (int)insideThisBox.min(1), maxy = (int)insideThisBox.max(1);
 
 		Polygon p = new Polygon();
-		p.addPoint(minx,          miny);
-		p.addPoint((minx+maxx)/2, miny+rand.nextInt(BOUND));
-		p.addPoint(maxx,          miny);
+		int r = rand.nextInt(BOUND);
+		addPointsAlongLine(p, minx, miny, (minx+maxx)/2, miny+r);
+		addPointsAlongLine(p, (minx+maxx)/2, miny+r, maxx, miny);
 
-		p.addPoint(maxx-rand.nextInt(BOUND), (miny+maxy)/2);
+		r = rand.nextInt(BOUND);
+		addPointsAlongLine(p, maxx, miny, maxx-r, (miny+maxy)/2);
+		addPointsAlongLine(p, maxx-r, (miny+maxy)/2, maxx, maxy);
 
-		p.addPoint(maxx,          maxy);
-		p.addPoint((minx+maxx)/2, maxy-rand.nextInt(BOUND));
-		p.addPoint(minx,          maxy);
+		r = rand.nextInt(BOUND);
+		addPointsAlongLine(p, maxx, maxy, (minx+maxx)/2, maxy-r);
+		addPointsAlongLine(p, (minx+maxx)/2, maxy-r, minx, maxy);
 
-		p.addPoint(minx+rand.nextInt(BOUND), (miny+maxy)/2);
+		r = rand.nextInt(BOUND);
+		addPointsAlongLine(p, minx, maxy, minx+r, (miny+maxy)/2);
+		addPointsAlongLine(p, minx+r, (miny+maxy)/2, minx, miny);
 		return p;
+	}
+
+	protected void addPointsAlongLine(final Polygon p, int sx, int sy, int ex, int ey) {
+		float steps = Math.max(Math.abs(ex-sx), Math.abs(ey-sy));
+		for (int i = 0; i < steps; ++i) {
+			int x = (int)( (float)i * (float)(ex-sx)/steps );
+			int y = (int)( (float)i * (float)(ey-sy)/steps );
+			p.addPoint(sx+x,sy+y);
+		}
 	}
 }

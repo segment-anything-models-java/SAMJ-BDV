@@ -18,6 +18,7 @@ import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.loops.LoopBuilder;
@@ -407,7 +408,8 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 	public Img<T> collectViewPixelData(final Img<T> srcImg) {
 		//final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NearestNeighborInterpolatorFactory<>());
-		final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NLinearInterpolatorFactory<>());
+		//final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NLinearInterpolatorFactory<>());
+		final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
 		final RealPoint srcPos = new RealPoint(3);  //orig underlying 3D image
 
 		final double[] viewPos = new double[2];      //the current view 2D image

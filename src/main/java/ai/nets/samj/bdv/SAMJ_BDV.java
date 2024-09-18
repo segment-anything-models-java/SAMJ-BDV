@@ -474,7 +474,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		currentlyUsedAnnotationSiteId = -1;
 		//
 		//disable drawing of lines and polygons
-		samjOverlay.stopDrawing();
+		//samjOverlay.stopDrawing();
 	}
 
 	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to

@@ -149,6 +149,8 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		private Color colorResults = Color.RED;
 		private int colorFromBDV = -1;
 
+		double toleratedOffViewPlaneDistance = 6.0;
+
 		@Override
 		protected void draw(Graphics2D g) {
 			if (shouldDrawLine && isLineReadyForDrawing) {
@@ -174,16 +176,19 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				//draws the currently recognized polygons
 				viewerPanel.state().getViewerTransform(pxToScreenTransform);
 				g.setPaint(colorResults);
+				boolean isCloseToViewingPlane = true, isCloseToViewingPlaneB = true;
 				for (Polygon3D p : polygonList) {
 					for (int i = 0; i <= p.size(); i++) {
 						//NB: the first (i=0) point is repeated to close the loop
 						double[] coord = p.coordinate3D(i % p.size());
 						if (i % 2 == 0) {
 							pxToScreenTransform.apply(coord, screenCoord);
+							isCloseToViewingPlane = Math.abs(screenCoord[2]) < toleratedOffViewPlaneDistance;
 						} else {
 							pxToScreenTransform.apply(coord, screenCoordB);
+							isCloseToViewingPlaneB = Math.abs(screenCoordB[2]) < toleratedOffViewPlaneDistance;
 						}
-						if (i > 0)
+						if (i > 0 && isCloseToViewingPlane && isCloseToViewingPlaneB)
 							//TODO: make sure the coords are not outside the screen... negative or too large, I guess
 							g.drawLine((int)screenCoord[0],(int)screenCoord[1], (int)screenCoordB[0],(int)screenCoordB[1]);
 					}
@@ -239,6 +244,17 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				processPrompt();
 			}
 		}, "samj_line", "L" );
+
+		behaviours.behaviour((ClickBehaviour) (x, y) -> {
+			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
+			viewerPanel.getDisplayComponent().repaint();
+			System.out.println("Current tolerated view off-plane distance: "+samjOverlay.toleratedOffViewPlaneDistance);
+		}, "samj_shorter_view_distance", "shift|D");
+		behaviours.behaviour((ClickBehaviour) (x, y) -> {
+			samjOverlay.toleratedOffViewPlaneDistance = Math.max(1.0, samjOverlay.toleratedOffViewPlaneDistance - 1.0);
+			viewerPanel.getDisplayComponent().repaint();
+			System.out.println("Current tolerated view off-plane distance: "+samjOverlay.toleratedOffViewPlaneDistance);
+		}, "samj_longer_view_distance", "D");
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );

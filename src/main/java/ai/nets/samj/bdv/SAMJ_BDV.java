@@ -98,7 +98,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	class PromptsAndResultsDrawingOverlay extends BdvOverlay implements Consumer<PlanarPolygonIn3D> {
 		private int sx,sy; //starting coordinate of the line, the "first end"
 		private int ex,ey; //ending coordinate of the line, the "second end"
-		private boolean shouldDrawLine = false;
+		private boolean shouldDrawLine = true;
 		private boolean isLineReadyForDrawing = false;
 
 		public void setStartOfLine(int x, int y) {
@@ -121,17 +121,17 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}
 
 		public void stopDrawing() {
-			shouldDrawLine = false;
-			shouldDrawPolygons = false;
+			//shouldDrawLine = false;
+			//shouldDrawPolygons = false;
 		}
 		public void startDrawing() {
 			isLineReadyForDrawing = false;
-			shouldDrawLine = true;
-			shouldDrawPolygons = true;
+			//shouldDrawLine = true;
+			//shouldDrawPolygons = true;
 		}
 
 		private List<PlanarPolygonIn3D> polygonList = new ArrayList<>(500);
-		private boolean shouldDrawPolygons = false;
+		private boolean shouldDrawPolygons = true;
 
 		@Override
 		public void accept(PlanarPolygonIn3D polygon) {
@@ -288,58 +288,23 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	private final RealPoint bottomRightPoint = new RealPoint(3);
 	//
 	private void processPrompt() {
+		if (isNextPromptOnNewAnnotationSite) installNewAnnotationSite();
+
+		//create prompt coords w.r.t. the image above
 		samjOverlay.normalizeLineEnds();
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
 		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
 
-		AXIS_VIEW viewDir = annotationSites.get(currentlyUsedAnnotationSiteId).viewDir;
-		Interval viewBox = annotationSitesROIs.get(currentlyUsedAnnotationSiteId);
-		Interval box = new FinalInterval(
-				//pattern: Math.max(viewBox.min(0),Math.min( THE_VALUE ,viewBox.max(0)))
-				//to make sure the prompt is within the 'viewBox' interval
-				new long[] {
-					Math.max(viewBox.min(0),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
-					Math.max(viewBox.min(1),Math.min( Math.round(topLeftPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
-				}, new long[] {
-					Math.max(viewBox.min(0),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim1())) ,viewBox.max(0))),
-					Math.max(viewBox.min(1),Math.min( Math.round(bottomRightPoint.getDoublePosition(viewDir.runningAxisDim2())) ,viewBox.max(1)))
-				} );
+		//submit the prompt to polygons producers
+		//TODO: use also annotationSiteViewImg
+		//TODO... for now only the fake generator
+		List<PlanarPolygonIn3D> producedPolygons = new ArrayList<>(10);
 
-		System.out.println("Want to submit a box prompt: ["
-				  + box.min(0) + "," + box.min(1) + " -> "
-				  + box.max(0) + "," + box.max(1) + "]" );
-		System.out.println("Given the current image view: "+new FinalInterval(viewBox));
-		List<Polygon> polygons2D = processRectanglePrompt(box, viewBox.min(0), viewBox.min(1));
+		//submit the created polygons to the polygon consumers
+		producedPolygons.forEach( poly -> polygonConsumers.forEach(c -> c.accept(poly)) );
 
-		if (!polygonConsumers.isEmpty() && !polygons2D.isEmpty()) {
-			final double[] tmpVec = new double[3];
-			tmpVec[viewDir.fixedAxisDim()] = topLeftPoint.getDoublePosition(viewDir.fixedAxisDim()); //NB: we can do this because of the axis-aligned views!
-
-			final double[] matrix = new double[12];
-			matrix[viewDir.runningAxisDim1()] = 1.0;
-			matrix[3] = -viewBox.min(0);
-			//
-			matrix[4+viewDir.runningAxisDim2()] = 1.0;
-			matrix[7] = -viewBox.min(1);
-			//
-			matrix[8+ viewDir.fixedAxisDim()] = 1.0;
-			matrix[11] = -tmpVec[viewDir.fixedAxisDim()];
-			final AffineTransform3D t = new AffineTransform3D();
-			t.set(matrix);
-
-			for (Polygon p : polygons2D) {
-				Polygon3D.Builder builder = new Polygon3D.Builder(p.npoints, t);
-				for (int i = 0; i < p.npoints; ++i) {
-					tmpVec[viewDir.runningAxisDim1()] = p.xpoints[i];
-					tmpVec[viewDir.runningAxisDim2()] = p.ypoints[i];
-					builder.addVertex(tmpVec);
-				}
-				Polygon3D polygon = builder.build();
-				polygonConsumers.forEach(c -> c.accept(polygon));
-			}
-		}
-
-		//request redraw, just in case, after all polygons are consumed, and to make sure the prompt rectangle disappears
+		//request redraw, just in case after all polygons are consumed,
+		//and also to make sure the prompt rectangle disappears
 		viewerPanel.getDisplayComponent().repaint();
 	}
 

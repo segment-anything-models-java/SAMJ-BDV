@@ -61,7 +61,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		this.samjOverlay = new PromptsAndResultsDrawingOverlay();
 		this.samjSource = BdvFunctions.showOverlay(samjOverlay, "SAMJ overlay", BdvOptions.options().addTo(bdv));
-		samjSource.setColor(new ARGBType( this.samjOverlay.colorResults.getRGB() ));
+		samjSource.setColor(new ARGBType( this.samjOverlay.colorPolygons.getRGB() ));
 
 		//register our own (polygons drawing) overlay as a polygon consumer
 		this.addPolygonsConsumer(samjOverlay);
@@ -148,7 +148,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		private final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
 		private Color colorPrompt = Color.GREEN;
-		private Color colorResults = Color.RED;
+		private Color colorPolygons = Color.RED;
 		private int colorFromBDV = -1;
 
 		double toleratedOffViewPlaneDistance = 6.0;
@@ -172,12 +172,12 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				if (currentColor != colorFromBDV) {
 					//NB: change color only if changed on the BDV side (mainly to prevent overuse of new())
 					colorFromBDV = currentColor;
-					colorResults = new Color( currentColor );
+					colorPolygons = new Color( currentColor );
 				}
 
 				//draws the currently recognized polygons
 				viewerPanel.state().getViewerTransform(imgToScreenTransform);
-				g.setPaint(colorResults);
+				g.setPaint(colorPolygons);
 				boolean isCloseToViewingPlane = true, isCloseToViewingPlaneB = true;
 				for (PlanarPolygonIn3D p : polygonList) {
 					p.getTransformTo3d(polyToImgTransform);

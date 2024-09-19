@@ -1,6 +1,5 @@
 package bdv.interactive.prompts;
 
-import ai.nets.samj.bdv.planarshapes.AbstractPlanarShapeWithImgIn3D;
 import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
 import ai.nets.samj.bdv.planarshapes.PlanarRectangleIn3D;
 import ai.nets.samj.bdv.views.SpatioTemporalView;
@@ -31,7 +30,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 	public BdvPrompts(final Img<T> operateOnThisImage) {
@@ -71,15 +69,19 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 		return polygonsConsumers.remove(consumer);
 	}
 
-	public void addPromptsProcessor(final Function< AbstractPlanarShapeWithImgIn3D<T>, List<PlanarPolygonIn3D> > promptToPolygonsGenerator) {
+	public void addPromptsProcessor(final PromptsProcessor<T> promptToPolygonsGenerator) {
 		promptsProcessors.add(promptToPolygonsGenerator);
 	}
-	public boolean removePromptsProcessor(final Function< AbstractPlanarShapeWithImgIn3D<T>, List<PlanarPolygonIn3D> > promptToPolygonsGenerator) {
+	public boolean removePromptsProcessor(final PromptsProcessor<T> promptToPolygonsGenerator) {
 		return promptsProcessors.remove(promptToPolygonsGenerator);
 	}
 
+	public interface PromptsProcessor <PT extends RealType<PT>> {
+		List<PlanarPolygonIn3D> process(final PlanarRectangleIn3D<PT> prompt);
+	}
+
 	private final List< Consumer<PlanarPolygonIn3D> > polygonsConsumers = new ArrayList<>(10);
-	private final List< Function< AbstractPlanarShapeWithImgIn3D<T>, List<PlanarPolygonIn3D> > > promptsProcessors = new ArrayList<>(10);
+	private final List< PromptsProcessor<T> > promptsProcessors = new ArrayList<>(10);
 
 	public void showMessage(final String msg) {
 		if (msg != null) bdv.getBdvHandle().getViewerPanel().showMessage(msg);
@@ -296,7 +298,7 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 
 		//submit the prompt to polygons processors (producers, in fact)
 		final List<PlanarPolygonIn3D> obtainedPolygons = new ArrayList<>(500);
-		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.apply(prompt) ) );
+		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.process(prompt) ) );
 
 		//submit the created polygons to the polygon consumers
 		obtainedPolygons.forEach( poly -> polygonsConsumers.forEach(c -> c.accept(poly)) );

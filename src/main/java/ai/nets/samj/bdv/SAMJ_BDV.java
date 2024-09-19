@@ -69,8 +69,8 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		installBehaviours();
 	}
 
-	private final List<Consumer<Polygon3D>> polygonConsumers = new ArrayList<>(10);
-	public void addPolygonsConsumer(final Consumer<Polygon3D> consumer) {
+	private final List<Consumer<PlanarPolygonIn3D>> polygonConsumers = new ArrayList<>(10);
+	public void addPolygonsConsumer(final Consumer<PlanarPolygonIn3D> consumer) {
 		polygonConsumers.add(consumer);
 	}
 

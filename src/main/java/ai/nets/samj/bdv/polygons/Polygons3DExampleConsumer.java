@@ -2,9 +2,9 @@ package ai.nets.samj.bdv.polygons;
 
 import java.util.function.Consumer;
 
-public class Polygons3DExampleConsumer implements Consumer<Polygon3D> {
+public class Polygons3DExampleConsumer implements Consumer<PlanarPolygonIn3D> {
 	@Override
-	public void accept(Polygon3D polygon) {
+	public void accept(PlanarPolygonIn3D polygon) {
 		StringBuilder sb = new StringBuilder("Got 3D poly: [ ");
 		for (int i = 0; i < polygon.size(); ++i) {
 			double[] c = polygon.coordinate3D(i);

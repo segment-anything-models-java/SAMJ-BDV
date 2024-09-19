@@ -2,7 +2,7 @@ package ai.nets.samj.bdv;
 
 import ai.nets.samj.bdv.planarshapes.PlanarRectangleIn3D;
 import ai.nets.samj.bdv.prompts.FakeResponder;
-import ai.nets.samj.bdv.util.SpatioTemporalView;
+import ai.nets.samj.bdv.views.SpatioTemporalView;
 import ai.nets.samj.communication.model.SAMModel;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;

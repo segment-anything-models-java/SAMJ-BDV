@@ -343,7 +343,13 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
+	// ======================== prompts - image data ========================
+	private Img<T> annotationSiteViewImg;
 
+	public RandomAccessibleInterval<FloatType> getImageFromTheCurrentAnnotationSite() {
+		return Converters.convert( (RandomAccessibleInterval<T>) annotationSiteViewImg,
+				  (input, output) -> output.setReal( input.getRealDouble() ),
+				  new FloatType() );
 	}
 
 	public Img<T> collectViewPixelData(final Img<T> srcImg) {
@@ -406,18 +412,46 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return explicitCroppedFloatImg;
 	}
 
+	// ======================== actions - annotation sites ========================
+	/** Basically, flags that the encoding is no longer valid */
+	private boolean isNextPromptOnNewAnnotationSite = true;
 
 	private void lostViewOfAnnotationSite() {
+		isNextPromptOnNewAnnotationSite = true;
 	}
 
+	private void installNewAnnotationSite() {
+		//register the new site's data
+		final int newIdx = annotationSites.size()+1;
+		annotationSites.put(newIdx, new SpatioTemporalView(bdv.getBdvHandle()));
+		lastVisitedAnnotationSiteId = newIdx;
 
+		annotationSiteViewImg = collectViewPixelData(this.image);
+		isNextPromptOnNewAnnotationSite = false;
 
+		if (showNewAnnotationSitesImages) ImageJFunctions.show(annotationSiteViewImg);
 	}
 
 	/**
+	 * @param id ID of the requested annotation site.
+	 * @return False if the requested site is not available, and thus no action was taken.
 	 */
+	private boolean displayAnnotationSite(int id) {
+		if (!annotationSites.containsKey(id)) return false;
+
+		//NB: if the switch would lead to a new annotation site, the monitor
+		//    of the rendering will call this.lostViewOfAnnotationSite(), but
+		//    if the switch has no visible effect, we could continue with the
+		//    current annotation site data (esp. with this.annotationSiteViewImg)
+		annotationSites.get(id).applyOnThis(bdv.getBdvHandle());
+		lastVisitedAnnotationSiteId = id;
+		return true;
 	}
 
+	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to
+	//an object that represents that exact view, and another map for polygons associated with that view
+	private final Map<Integer, SpatioTemporalView> annotationSites = new HashMap<>(100);
+	private int lastVisitedAnnotationSiteId = -1;
 
 	// ======================== SAM network interaction ========================
 	private SAMModel activeNN = null; //NN = neural network

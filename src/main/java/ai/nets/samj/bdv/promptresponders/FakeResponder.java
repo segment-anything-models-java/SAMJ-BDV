@@ -11,7 +11,7 @@ import java.util.Random;
 
 public class FakeResponder <T extends RealType<T>> implements BdvPrompts.PromptsProcessor<T> {
 	@Override
-	public List<PlanarPolygonIn3D> process(PlanarRectangleIn3D<T> prompt) {
+	public List<PlanarPolygonIn3D> process(PlanarRectangleIn3D<T> prompt, final boolean hasViewChangedSinceBefore) {
 		final PlanarPolygonIn3D polygon = new PlanarPolygonIn3D(1000, prompt.getTransformTo3d());
 		final Interval insideThisBox = prompt.getBbox2D();
 

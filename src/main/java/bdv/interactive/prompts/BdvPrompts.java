@@ -93,7 +93,15 @@ public class BdvPrompts<T extends RealType<T>> {
 	}
 
 	public interface PromptsProcessor <PT extends RealType<PT>> {
-		List<PlanarPolygonIn3D> process(final PlanarRectangleIn3D<PT> prompt);
+		/**
+		 * @param prompt The current rectangular/box prompt created by user in BDV.
+		 * @param hasViewChangedSinceBefore If false, the image in the 'prompt' is exactly the same as it was provider
+		 *                                  in a previous call to this processor. Processor can re-use any previous
+		 *                                  own data that depend solely on that 'viewImage2D' image because (again) this
+		 *                                  image hasn't changed since the last call.
+		 * @return The output list can be of zero length (e.g., when the processor acts as a sink), but must not be null!
+		 */
+		List<PlanarPolygonIn3D> process(final PlanarRectangleIn3D<PT> prompt, final boolean hasViewChangedSinceBefore);
 	}
 
 	private final List< Consumer<PlanarPolygonIn3D> > polygonsConsumers = new ArrayList<>(10);
@@ -303,6 +311,7 @@ public class BdvPrompts<T extends RealType<T>> {
 
 	// ======================== prompts - execution ========================
 	private void processRectanglePrompt() {
+		final boolean isNewViewImage = isNextPromptOnNewAnnotationSite;
 		if (isNextPromptOnNewAnnotationSite) installNewAnnotationSite();
 
 		//create prompt with coords w.r.t. the annotation site image
@@ -314,7 +323,7 @@ public class BdvPrompts<T extends RealType<T>> {
 
 		//submit the prompt to polygons processors (producers, in fact)
 		final List<PlanarPolygonIn3D> obtainedPolygons = new ArrayList<>(500);
-		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.process(prompt) ) );
+		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.process(prompt, isNewViewImage) ) );
 
 		//submit the created polygons to the polygon consumers
 		obtainedPolygons.forEach( poly -> polygonsConsumers.forEach(c -> c.accept(poly)) );

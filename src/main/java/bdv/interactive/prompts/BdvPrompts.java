@@ -68,7 +68,7 @@ public class BdvPrompts<T extends RealType<T>> {
 	/** The class registers itself as a polygon consumer,
 	 *  and consumes them by showing them in the BDV.
 	 *  Returns itself to allow for the calls chaining. */
-	public BdvPrompts<T> showPolygons() {
+	public BdvPrompts<T> enableShowingPolygons() {
 		this.addPolygonsConsumer(this.samjOverlay);
 		return this;
 	}
@@ -329,7 +329,7 @@ public class BdvPrompts<T extends RealType<T>> {
 	private final RealPoint srcPos = new RealPoint(3);  //orig underlying 3D image
 	private final double[] viewPos = new double[2];     //the current view 2D image
 
-	public Img<T> collectViewPixelData(final Img<T> srcImg) {
+	protected Img<T> collectViewPixelData(final Img<T> srcImg) {
 		//final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NearestNeighborInterpolatorFactory<>());
 		//final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NLinearInterpolatorFactory<>());
 		final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());

@@ -1,34 +1,24 @@
 package bdv.interactive.prompts;
 
+import ai.nets.samj.bdv.planarshapes.AbstractPlanarShapeWithImgIn3D;
 import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
 import ai.nets.samj.bdv.planarshapes.PlanarRectangleIn3D;
-import ai.nets.samj.bdv.prompts.FakeResponder;
 import ai.nets.samj.bdv.views.SpatioTemporalView;
-import ai.nets.samj.communication.model.SAMModel;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.util.BdvOverlaySource;
-import bdv.util.BdvStackSource;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
-import net.imglib2.FinalInterval;
-import net.imglib2.Interval;
-import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
-import net.imglib2.loops.LoopBuilder;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
@@ -36,14 +26,12 @@ import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
 import java.awt.*;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
+import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.ArrayList;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 	public BdvPrompts(final Img<T> operateOnThisImage) {
@@ -55,34 +43,43 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 		this.bdv = BdvFunctions.show( operateOnThisImage, bdvWindowName );
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 
-		this.samjOverlay = new PromptsAndResultsDrawingOverlay();
-		this.samjSource = BdvFunctions.showOverlay(samjOverlay, overlayName, BdvOptions.options().addTo(bdv));
-		samjSource.setColor(new ARGBType( this.samjOverlay.colorPolygons.getRGB() ));
-
+		this.addAndSwitchToAnotherOverlay(overlayName);
 		installBehaviours();
 	}
-	//TODO: move into some example this.addPolygonsConsumer(new PlanarPolygonsExampleConsumer());
+
+	private Img<T> image;
+	private final Bdv bdv;
+	private final ViewerPanel viewerPanel;
 
 	/** The class registers itself as a polygon consumer,
 	 *  and consumes them by showing them in the BDV.
 	 *  Returns itself to allow for the calls chaining. */
 	public BdvPrompts<T> showPolygons() {
-		this.addPolygonsConsumer(samjOverlay);
+		this.addPolygonsConsumer(this.samjOverlay);
 		return this;
 	}
 
-	private final List<Consumer<PlanarPolygonIn3D>> polygonsConsumers = new ArrayList<>(10);
+	public void switchToThisImage(final Img<T> operateOnThisImage) {
+		this.image = operateOnThisImage;
+		this.isNextPromptOnNewAnnotationSite = true;
+	}
 
 	public void addPolygonsConsumer(final Consumer<PlanarPolygonIn3D> consumer) {
 		polygonsConsumers.add(consumer);
 	}
+	public boolean removePolygonsConsumer(final Consumer<PlanarPolygonIn3D> consumer) {
+		return polygonsConsumers.remove(consumer);
+	}
 
-	private final Img<T> image;
-	private final Bdv bdv;
-	final ViewerPanel viewerPanel;
+	public void addPromptsProcessor(final Function< AbstractPlanarShapeWithImgIn3D<T>, List<PlanarPolygonIn3D> > promptToPolygonsGenerator) {
+		promptsProcessors.add(promptToPolygonsGenerator);
+	}
+	public boolean removePromptsProcessor(final Function< AbstractPlanarShapeWithImgIn3D<T>, List<PlanarPolygonIn3D> > promptToPolygonsGenerator) {
+		return promptsProcessors.remove(promptToPolygonsGenerator);
+	}
 
-	boolean showNewAnnotationSitesImages = false;
-	boolean fakeResults = false;
+	private final List< Consumer<PlanarPolygonIn3D> > polygonsConsumers = new ArrayList<>(10);
+	private final List< Function< AbstractPlanarShapeWithImgIn3D<T>, List<PlanarPolygonIn3D> > > promptsProcessors = new ArrayList<>(10);
 
 	public void showMessage(final String msg) {
 		if (msg != null) bdv.getBdvHandle().getViewerPanel().showMessage(msg);
@@ -93,13 +90,39 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 	}
 
 	// ======================== overlay content ========================
-	final PromptsAndResultsDrawingOverlay samjOverlay;
-	final BdvOverlaySource<BdvOverlay> samjSource;
+	private PromptsAndPolygonsDrawingOverlay samjOverlay;
+	private BdvOverlaySource<BdvOverlay> samjSource;
 
-	class PromptsAndResultsDrawingOverlay extends BdvOverlay implements Consumer<PlanarPolygonIn3D> {
+	public BdvOverlaySource<BdvOverlay> addAndSwitchToAnotherOverlay(final String newOverlayName) {
+		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
+		this.samjSource = BdvFunctions.showOverlay(samjOverlay, newOverlayName, BdvOptions.options().addTo(bdv));
+		samjSource.setColor(new ARGBType( this.samjOverlay.colorPolygons.getRGB() ));
+		return samjSource;
+	}
+
+	public BdvOverlaySource<BdvOverlay> getOverlay() {
+		return this.samjSource;
+	}
+
+	public void stopDrawing() {
+		samjOverlay.shouldDrawLine = false;
+		samjOverlay.shouldDrawPolygons = false;
+	}
+
+	public void startDrawing() {
+		samjOverlay.isLineReadyForDrawing = false;
+		samjOverlay.shouldDrawLine = true;
+		samjOverlay.shouldDrawPolygons = true;
+	}
+
+	public void forgetPolygons() {
+		samjOverlay.polygonList.clear();
+	}
+
+	class PromptsAndPolygonsDrawingOverlay extends BdvOverlay implements Consumer<PlanarPolygonIn3D> {
 		private int sx,sy; //starting coordinate of the line, the "first end"
 		private int ex,ey; //ending coordinate of the line, the "second end"
-		private boolean shouldDrawLine = true;
+		protected boolean shouldDrawLine = true;
 		private boolean isLineReadyForDrawing = false;
 
 		public void setStartOfLine(int x, int y) {
@@ -121,40 +144,20 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 			if (sy > ey) { tmp = sy; sy = ey; ey = tmp; }
 		}
 
-		public void stopDrawing() {
-			//shouldDrawLine = false;
-			//shouldDrawPolygons = false;
-		}
-		public void startDrawing() {
-			isLineReadyForDrawing = false;
-			//shouldDrawLine = true;
-			//shouldDrawPolygons = true;
-		}
-
 		private List<PlanarPolygonIn3D> polygonList = new ArrayList<>(500);
-		private boolean shouldDrawPolygons = true;
+		protected boolean shouldDrawPolygons = true;
 
 		@Override
 		public void accept(PlanarPolygonIn3D polygon) {
 			polygonList.add(polygon);
 		}
 
-		public void setPolygons(List<PlanarPolygonIn3D> polygons) {
-			polygonList = polygons;
-		}
-		public Collection<PlanarPolygonIn3D> getPolygons() {
-			return polygonList;
-		}
-		public void clearPolygons() {
-			polygonList.clear();
-		}
-
-		private final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
-		private Color colorPrompt = Color.GREEN;
-		private Color colorPolygons = Color.RED;
+		protected final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
+		protected Color colorPrompt = Color.GREEN;
+		protected Color colorPolygons = Color.RED;
 		private int colorFromBDV = -1;
 
-		double toleratedOffViewPlaneDistance = 6.0;
+		protected double toleratedOffViewPlaneDistance = 6.0;
 
 		@Override
 		protected void draw(Graphics2D g) {
@@ -185,14 +188,17 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 				for (PlanarPolygonIn3D p : polygonList) {
 					p.getTransformTo3d(polyToImgTransform);
 					polyToImgTransform.preConcatenate(imgToScreenTransform);
+					//TODO: don't loop if bbox is already far away
 					for (int i = 0; i <= p.size(); i++) {
 						//NB: the first (i=0) point is repeated to close the loop
 						p.coordinate2D(i % p.size(), auxCoord3D);
 						if (i % 2 == 0) {
 							polyToImgTransform.apply(auxCoord3D, screenCoord);
+							//TODO: scale in BDV
 							isCloseToViewingPlane = Math.abs(screenCoord[2]) < toleratedOffViewPlaneDistance;
 						} else {
 							polyToImgTransform.apply(auxCoord3D, screenCoordB);
+							//TODO: scale in BDV
 							isCloseToViewingPlaneB = Math.abs(screenCoordB[2]) < toleratedOffViewPlaneDistance;
 						}
 						if (i > 0 && isCloseToViewingPlane && isCloseToViewingPlaneB)
@@ -203,6 +209,7 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 			}
 		}
 
+		//mem placeholders to avoid repeating calls to new()
 		final AffineTransform3D polyToImgTransform = new AffineTransform3D();
 		final AffineTransform3D imgToScreenTransform = new AffineTransform3D();
 		final double[] auxCoord3D = new double[3];
@@ -218,7 +225,7 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 			} );
 
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
-		behaviours.install( bdv.getBdvHandle().getTriggerbindings(), "samj" );
+		behaviours.install( bdv.getBdvHandle().getTriggerbindings(), "bdvprompts" );
 
 		//install behaviour for moving a line in the BDV view, with shortcut "L"
 		behaviours.behaviour( new DragBehaviour() {
@@ -240,24 +247,20 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 				samjOverlay.setEndOfLine(x,y);
 				samjOverlay.isLineReadyForDrawing = false;
 
-				if (!arePromptsEnabled) {
-					System.out.println("Prompts disabled, click the rectangle button in the SAMJ GUI.");
-					return;
-				}
 				processRectanglePrompt();
 			}
-		}, "samj_rectangle", "L" );
+		}, "bdvprompts_rectangle", "L" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
 			viewerPanel.getDisplayComponent().repaint();
 			System.out.println("Current tolerated view off-plane distance: "+samjOverlay.toleratedOffViewPlaneDistance);
-		}, "samj_shorter_view_distance", "shift|D");
+		}, "bdvprompts_shorter_view_distance", "shift|D");
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance = Math.max(1.0, samjOverlay.toleratedOffViewPlaneDistance - 1.0);
 			viewerPanel.getDisplayComponent().repaint();
 			System.out.println("Current tolerated view off-plane distance: "+samjOverlay.toleratedOffViewPlaneDistance);
-		}, "samj_longer_view_distance", "D");
+		}, "bdvprompts_longer_view_distance", "D");
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			if (annotationSites.isEmpty()) {
@@ -268,7 +271,7 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 			if (nextSiteId > annotationSites.size()) nextSiteId = 1;
 			System.out.println("Switching to annotation site: "+nextSiteId);
 			displayAnnotationSite(nextSiteId);
-		}, "samj_next_view", "W");
+		}, "bdvprompts_next_view", "W");
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			if (annotationSites.isEmpty()) {
@@ -277,17 +280,10 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 			}
 			System.out.println("Switching to last visited annotation site: "+lastVisitedAnnotationSiteId);
 			displayAnnotationSite(lastVisitedAnnotationSiteId);
-		}, "samj_last_view", "shift|W");
+		}, "bdvprompts_last_view", "shift|W");
 	}
 
 	// ======================== prompts - execution ========================
-	private boolean arePromptsEnabled = true;
-	public void enablePrompts() { arePromptsEnabled = true; }
-	public void disablePrompts() { arePromptsEnabled = false; }
-
-	private final RealPoint topLeftPoint = new RealPoint(3);
-	private final RealPoint bottomRightPoint = new RealPoint(3);
-	//
 	private void processRectanglePrompt() {
 		if (isNextPromptOnNewAnnotationSite) installNewAnnotationSite();
 
@@ -298,9 +294,9 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 		samjOverlay.normalizeLineEnds();
 		prompt.setDiagonal(samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
 
-		//submit the prompt to polygons producers
-		//TODO... for now only the fake generator
-		List<PlanarPolygonIn3D> obtainedPolygons = FakeResponder.polygons(prompt);
+		//submit the prompt to polygons processors (producers, in fact)
+		final List<PlanarPolygonIn3D> obtainedPolygons = new ArrayList<>(500);
+		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.apply(prompt) ) );
 
 		//submit the created polygons to the polygon consumers
 		obtainedPolygons.forEach( poly -> polygonsConsumers.forEach(c -> c.accept(poly)) );
@@ -312,20 +308,14 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 
 	// ======================== prompts - image data ========================
 	private Img<T> annotationSiteViewImg;
-
-	public RandomAccessibleInterval<FloatType> getImageFromTheCurrentAnnotationSite() {
-		return Converters.convert( (RandomAccessibleInterval<T>) annotationSiteViewImg,
-				  (input, output) -> output.setReal( input.getRealDouble() ),
-				  new FloatType() );
-	}
+	private final RealPoint srcPos = new RealPoint(3);  //orig underlying 3D image
+	private final double[] viewPos = new double[2];     //the current view 2D image
 
 	public Img<T> collectViewPixelData(final Img<T> srcImg) {
 		//final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NearestNeighborInterpolatorFactory<>());
 		//final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NLinearInterpolatorFactory<>());
 		final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
-		final RealPoint srcPos = new RealPoint(3);  //orig underlying 3D image
 
-		final double[] viewPos = new double[2];      //the current view 2D image
 		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
 		Img<T> viewImg = srcImg.factory().create(displaySize.width, displaySize.height);
 
@@ -340,46 +330,7 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 		return viewImg;
 	}
 
-	RandomAccessibleInterval<FloatType> prepareCroppedImageForSAMModel(final Interval cropOutROI) {
-		//a narrow view on the source data - "spatial" aspect
-		RandomAccessibleInterval<T> cropImg = Views.dropSingletonDimensions( Views.interval(image, cropOutROI) );
-
-		//"intensity" aspect
-		final double[] valExtremes = new double[] {Double.MAX_VALUE, Double.MIN_VALUE};
-		LoopBuilder.setImages(cropImg).forEachPixel(p -> {
-			double val = p.getRealDouble();
-			valExtremes[0] = Math.min(valExtremes[0], val);
-			valExtremes[1] = Math.max(valExtremes[1], val);
-		});
-		System.out.println("Massaging discovered min = "+valExtremes[0]+" and max = "+valExtremes[1]);
-		if (valExtremes[1] == valExtremes[0]) valExtremes[1] += 1.0;
-
-		//massage both aspects into an outcome image
-		final double range = valExtremes[1] - valExtremes[0];
-		final Img<FloatType> explicitCroppedFloatImg = ArrayImgs.floats(cropImg.max(0)-cropImg.min(0)+1, cropImg.max(1)-cropImg.min(1)+1);
-		LoopBuilder.setImages(cropImg, explicitCroppedFloatImg).forEachPixel( (i, o) -> o.setReal((i.getRealDouble() - valExtremes[0]) / range) );
-		return explicitCroppedFloatImg;
-	}
-
-	RandomAccessibleInterval<FloatType> prepareCroppedImageWithSourceSettingForSAMModel(final Interval cropOutROI) {
-		//a narrow view on the source data - "spatial" aspect
-		RandomAccessibleInterval<T> cropImg = Views.dropSingletonDimensions( Views.interval(image, cropOutROI) );
-
-		//"intensity" aspect
-		final double min = ((BdvStackSource<T>)bdv).getConverterSetups().get(0).getDisplayRangeMin();
-		double max = ((BdvStackSource<T>)bdv).getConverterSetups().get(0).getDisplayRangeMax();
-		System.out.println("Massaging is taking min = "+min+" and max = "+max);
-		if (max == min) max += 1.0;
-
-		//massage both aspects into an outcome image
-		final double range = max - min;
-		final Img<FloatType> explicitCroppedFloatImg = ArrayImgs.floats(cropImg.max(0)-cropImg.min(0)+1, cropImg.max(1)-cropImg.min(1)+1);
-		LoopBuilder.setImages(cropImg, explicitCroppedFloatImg).forEachPixel( (i, o) -> o.setReal(
-				Math.min( Math.max(i.getRealDouble() - min, 0.0) / range, 1.0 ) ) );
-		return explicitCroppedFloatImg;
-	}
-
-	// ======================== actions - annotation sites ========================
+	// ======================== prompts - annotation sites ========================
 	/** Basically, flags that the encoding is no longer valid */
 	private boolean isNextPromptOnNewAnnotationSite = true;
 
@@ -395,8 +346,6 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 
 		annotationSiteViewImg = collectViewPixelData(this.image);
 		isNextPromptOnNewAnnotationSite = false;
-
-		if (showNewAnnotationSitesImages) ImageJFunctions.show(annotationSiteViewImg);
 	}
 
 	/**
@@ -419,50 +368,4 @@ public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
 	//an object that represents that exact view, and another map for polygons associated with that view
 	private final Map<Integer, SpatioTemporalView> annotationSites = new HashMap<>(100);
 	private int lastVisitedAnnotationSiteId = -1;
-
-	// ======================== SAM network interaction ========================
-	private SAMModel activeNN = null; //NN = neural network
-	private int activeContextInNetwork = -1;
-
-	public void startUsingThisSAMModel(SAMModel network) {
-		this.activeNN = network;
-	}
-	public void stopCommunicatingToSAMModel() {
-		this.activeNN = null;
-	}
-
-	protected void askSAMModelToSwitchContext(int siteId) {
-		if (activeNN == null) return;
-		if (activeContextInNetwork == siteId) return;
-		//
-		activeContextInNetwork = siteId;
-		System.out.println("SWITCHING NETWORK CONTEXT to id: "+siteId);
-	}
-
-	protected List<Polygon> processRectanglePrompt(final Interval boxInGlobalPxCoords,
-	                                               final long xOffset, final long yOffset) {
-		//if (fakeResults) return processRectanglePromptFake(boxInGlobalPxCoords);
-
-		Interval boxInLocalPx = new FinalInterval(
-				new long[] {
-					boxInGlobalPxCoords.min(0) -xOffset,
-					boxInGlobalPxCoords.min(1) -yOffset
-				}, new long[] {
-					boxInGlobalPxCoords.max(0) -xOffset,
-					boxInGlobalPxCoords.max(1) -yOffset
-				} );
-		try {
-			List<Polygon> polygons = activeNN.fetch2dSegmentation(boxInLocalPx);
-			polygons.forEach(p -> {
-				for (int i = 0; i < p.npoints; ++i) {
-					p.xpoints[i] += xOffset;
-					p.ypoints[i] += yOffset;
-				}
-			});
-			return polygons; //polygons in global px coords again
-		} catch (IOException | RuntimeException | InterruptedException e) {
-			System.out.println("BTW, an error working with the SAM: "+e.getMessage());
-		}
-		return Collections.emptyList();
-	}
 }

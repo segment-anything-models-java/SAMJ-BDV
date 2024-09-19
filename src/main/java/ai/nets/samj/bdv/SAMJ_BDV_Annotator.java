@@ -33,7 +33,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 import java.util.function.Consumer;
-import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
+import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 
 /**
  * @author Vladimir Ulman

@@ -1,8 +1,7 @@
 package ai.nets.samj.bdv;
 
-import ai.nets.samj.bdv.planarshapes.PlanarRectangleIn3D;
-import ai.nets.samj.bdv.prompts.FakeResponder;
-import ai.nets.samj.bdv.views.SpatioTemporalView;
+import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
+import bdv.interactive.prompts.views.SpatioTemporalView;
 import ai.nets.samj.communication.model.SAMModel;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
@@ -35,8 +34,8 @@ import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
 import java.util.function.Consumer;
-import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
-import ai.nets.samj.bdv.planarshapes.consumers.PlanarPolygonsExampleConsumer;
+import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
+import ai.nets.samj.bdv.polygonconsumers.PolygonsPrinterConsumer;
 
 import java.io.IOException;
 import java.util.Map;
@@ -63,7 +62,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		//register our own (polygons drawing) overlay as a polygon consumer
 		this.addPolygonsConsumer(samjOverlay);
-		this.addPolygonsConsumer(new PlanarPolygonsExampleConsumer());
+		this.addPolygonsConsumer(new PolygonsPrinterConsumer());
 		installBehaviours();
 	}
 
@@ -295,10 +294,10 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		//submit the prompt to polygons producers
 		//TODO... for now only the fake generator
-		List<PlanarPolygonIn3D> obtainedPolygons = FakeResponder.polygons(prompt);
+		//List<PlanarPolygonIn3D> obtainedPolygons = FakeResponder.polygons(prompt);
 
 		//submit the created polygons to the polygon consumers
-		obtainedPolygons.forEach( poly -> polygonConsumers.forEach(c -> c.accept(poly)) );
+		//obtainedPolygons.forEach( poly -> polygonConsumers.forEach(c -> c.accept(poly)) );
 
 		//request redraw, just in case after all polygons are consumed,
 		//and also to make sure the prompt rectangle disappears

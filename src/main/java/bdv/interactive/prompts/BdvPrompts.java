@@ -8,6 +8,7 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.util.BdvOverlaySource;
+import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
 import net.imglib2.RealPoint;
@@ -35,10 +36,26 @@ public class BdvPrompts<T extends RealType<T>> {
 		this(operateOnThisImage, "Input image", "Prompts");
 	}
 
+	/** Opens a new BDV over the provided image, and enables this addon in it. */
 	public BdvPrompts(final Img<T> operateOnThisImage, final String imageName, final String overlayName) {
 		this.image = operateOnThisImage;
 		this.bdv = BdvFunctions.show( operateOnThisImage, imageName );
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
+
+		this.addAndSwitchToAnotherOverlay(overlayName);
+		installBehaviours();
+	}
+
+	public Bdv getBdv() {
+		return this.bdv;
+	}
+
+	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
+	public BdvPrompts(final Bdv openedBdv, SourceAndConverter<T> operateOnThisSource, final String overlayName) {
+		this.bdv = openedBdv;
+		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
+		//TODO: dangerous casting!
+		this.image = (Img<T>)operateOnThisSource.getSpimSource().getSource(viewerPanel.state().getCurrentTimepoint(), 0);
 
 		this.addAndSwitchToAnotherOverlay(overlayName);
 		installBehaviours();

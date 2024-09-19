@@ -1,5 +1,7 @@
 package ai.nets.samj.bdv;
 
+import ai.nets.samj.bdv.planarshapes.PlanarRectangleIn3D;
+import ai.nets.samj.bdv.prompts.FakeResponder;
 import ai.nets.samj.bdv.util.SpatioTemporalView;
 import ai.nets.samj.communication.model.SAMModel;
 import bdv.util.Bdv;
@@ -15,21 +17,17 @@ import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.converter.Converter;
 import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
-import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
@@ -48,7 +46,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.awt.*;
-import java.util.Random;
 
 public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	public SAMJ_BDV(final Img<T> operateOnThisImage) {
@@ -242,9 +239,9 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 					System.out.println("Prompts disabled, click the rectangle button in the SAMJ GUI.");
 					return;
 				}
-				processPrompt();
+				processRectanglePrompt();
 			}
-		}, "samj_line", "L" );
+		}, "samj_rectangle", "L" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
@@ -286,21 +283,22 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	private final RealPoint topLeftPoint = new RealPoint(3);
 	private final RealPoint bottomRightPoint = new RealPoint(3);
 	//
-	private void processPrompt() {
+	private void processRectanglePrompt() {
 		if (isNextPromptOnNewAnnotationSite) installNewAnnotationSite();
 
-		//create prompt coords w.r.t. the image above
+		//create prompt with coords w.r.t. the annotation site image
+		PlanarRectangleIn3D<T> prompt = new PlanarRectangleIn3D<>(
+				  this.annotationSiteViewImg,
+				  this.viewerPanel.state().getViewerTransform().inverse());
 		samjOverlay.normalizeLineEnds();
-		viewerPanel.displayToGlobalCoordinates(samjOverlay.sx,samjOverlay.sy, topLeftPoint);
-		viewerPanel.displayToGlobalCoordinates(samjOverlay.ex,samjOverlay.ey, bottomRightPoint);
+		prompt.setDiagonal(samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
 
 		//submit the prompt to polygons producers
-		//TODO: use also annotationSiteViewImg
 		//TODO... for now only the fake generator
-		List<PlanarPolygonIn3D> producedPolygons = new ArrayList<>(10);
+		List<PlanarPolygonIn3D> obtainedPolygons = FakeResponder.polygons(prompt);
 
 		//submit the created polygons to the polygon consumers
-		producedPolygons.forEach( poly -> polygonConsumers.forEach(c -> c.accept(poly)) );
+		obtainedPolygons.forEach( poly -> polygonConsumers.forEach(c -> c.accept(poly)) );
 
 		//request redraw, just in case after all polygons are consumed,
 		//and also to make sure the prompt rectangle disappears
@@ -438,7 +436,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 	protected List<Polygon> processRectanglePrompt(final Interval boxInGlobalPxCoords,
 	                                               final long xOffset, final long yOffset) {
-		if (fakeResults) return processRectanglePromptFake(boxInGlobalPxCoords);
+		//if (fakeResults) return processRectanglePromptFake(boxInGlobalPxCoords);
 
 		Interval boxInLocalPx = new FinalInterval(
 				new long[] {
@@ -461,11 +459,5 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			System.out.println("BTW, an error working with the SAM: "+e.getMessage());
 		}
 		return Collections.emptyList();
-	}
-
-	protected List<Polygon> processRectanglePromptFake(final Interval boxInGlobalPxCoords) {
-		List<Polygon> fakes = new ArrayList<>(2);
-		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
-		return fakes;
 	}
 }

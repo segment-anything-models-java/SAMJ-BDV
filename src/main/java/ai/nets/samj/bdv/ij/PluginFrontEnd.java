@@ -1,8 +1,10 @@
 package ai.nets.samj.bdv.ij;
 
+import ai.nets.samj.bdv.promptresponders.FakeResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.EfficientSAM;
+import ai.nets.samj.communication.model.SAM2Tiny;
 import bdv.interactive.prompts.BdvPrompts;
 import net.imagej.Dataset;
 import net.imagej.ImgPlus;
@@ -20,37 +22,47 @@ public class PluginFrontEnd implements Command {
 	@Parameter
 	Dataset inputImage;
 
-	@Parameter
-	boolean showImagesSubmittedToSAM = false;
+	@Parameter(label = "Select network to use: ",
+			  choices = {"Efficient SAM", "SAM2 Tiny", "fake responses"})
+			  //TODO use initializator to readout which networks are installed
+	String selectedNetwork = "fake";
 
-	@Parameter
-	boolean useFakePromptResults = false;
+	@Parameter(label = "Show encoded images: ")
+	boolean showImagesSubmittedToNetwork = false;
 
 	@Override
 	public void run() {
 		Img<? extends RealType<?>> origImage = inputImage.getImgPlus().getImg();
-		//TODO: make sure it is a 3D image
 
-		run((Img)origImage);
+		if (origImage.numDimensions() < 3)
+			throw new IllegalArgumentException("Sorry, can't handle pure 2D images.");
+
+		annotateWithBDV((Img)origImage);
 	}
 
-
-	public static void main(String[] args) {
-		ImgPlus image = SimplifiedIO.openImage("/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif");
-		//make border pixels a bit brighter
-		//img.forEach(p -> { if (p.getRealDouble() == 0.0) p.setReal(15); });
-		run(image.getImg());
-	}
-
-	public static <T extends RealType<T>> void run(final Img<T> img) {
-		BdvPrompts<T> annotator = new BdvPrompts<>(img).enableShowingPolygons();
-		annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
-		//annotator.addPromptsProcessor( new FakeResponder<>() );
+	public <T extends RealType<T>> void annotateWithBDV(final Img<T> img) {
+		final BdvPrompts<T> annotator = new BdvPrompts<>(img).enableShowingPolygons();
+		if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
 		try {
-			annotator.addPromptsProcessor( new SamjResponder<>( new EfficientSAM() ));
+			if (selectedNetwork.startsWith("Efficient")) {
+				System.out.println("...working with Efficient SAM");
+				annotator.addPromptsProcessor( new SamjResponder<>( new EfficientSAM() ));
+			} else if (selectedNetwork.startsWith("SAM2 Tiny")) {
+				System.out.println("...working with SAM2 Tiny");
+				annotator.addPromptsProcessor( new SamjResponder<>( new SAM2Tiny() ));
+			} else {
+				//in any other case, just add the fake responder...
+				System.out.println("...working with fake responses");
+				annotator.addPromptsProcessor( new FakeResponder<>() );
+			}
 		} catch (IOException|InterruptedException e) {
 			System.out.println("Exception occurred during EfficientSAM initialization: "+e.getMessage());
 		}
+	}
+
+	public static void main(String[] args) {
+		ImgPlus image = SimplifiedIO.openImage("/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif");
+		new PluginFrontEnd().annotateWithBDV(image.getImg());
 	}
 }

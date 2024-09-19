@@ -1,4 +1,4 @@
-package ai.nets.samj.bdv.prompts;
+package ai.nets.samj.bdv.promptresponders;
 
 import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
 import ai.nets.samj.bdv.planarshapes.PlanarRectangleIn3D;

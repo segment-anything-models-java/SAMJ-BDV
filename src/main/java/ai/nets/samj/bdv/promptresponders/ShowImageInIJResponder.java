@@ -1,7 +1,7 @@
 package ai.nets.samj.bdv.promptresponders;
 
-import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
-import ai.nets.samj.bdv.planarshapes.PlanarRectangleIn3D;
+import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
+import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import bdv.interactive.prompts.BdvPrompts;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.RealType;

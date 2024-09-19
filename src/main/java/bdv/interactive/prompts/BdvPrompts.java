@@ -1,8 +1,8 @@
 package bdv.interactive.prompts;
 
-import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
-import ai.nets.samj.bdv.planarshapes.PlanarRectangleIn3D;
-import ai.nets.samj.bdv.views.SpatioTemporalView;
+import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
+import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
+import bdv.interactive.prompts.views.SpatioTemporalView;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;

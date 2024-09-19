@@ -1,6 +1,6 @@
 package ai.nets.samj.bdv.polygonconsumers;
 
-import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
+import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import java.util.function.Consumer;
 
 public class PolygonsPrinterConsumer implements Consumer<PlanarPolygonIn3D> {

@@ -16,4 +16,8 @@ public abstract class AbstractPlanarShapeWithImgIn3D <T extends RealType<T>> ext
 	}
 
 	protected final Img<T> supportingViewImage2D;
+
+	public Img<T> getViewImage2D() {
+		return supportingViewImage2D;
+	}
 }

@@ -15,7 +15,6 @@ import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
@@ -31,14 +30,14 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
-public class BdvPrompts<T extends RealType<T> & NativeType<T>> {
+public class BdvPrompts<T extends RealType<T>> {
 	public BdvPrompts(final Img<T> operateOnThisImage) {
-		this(operateOnThisImage, "Interactive prompts BDV", "Prompts");
+		this(operateOnThisImage, "Input image", "Prompts");
 	}
 
-	public BdvPrompts(final Img<T> operateOnThisImage, final String bdvWindowName, final String overlayName) {
+	public BdvPrompts(final Img<T> operateOnThisImage, final String imageName, final String overlayName) {
 		this.image = operateOnThisImage;
-		this.bdv = BdvFunctions.show( operateOnThisImage, bdvWindowName );
+		this.bdv = BdvFunctions.show( operateOnThisImage, imageName );
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 
 		this.addAndSwitchToAnotherOverlay(overlayName);

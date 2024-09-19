@@ -93,7 +93,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	final PromptsAndResultsDrawingOverlay samjOverlay;
 	final BdvOverlaySource<BdvOverlay> samjSource;
 
-	class PromptsAndResultsDrawingOverlay extends BdvOverlay implements Consumer<Polygon3D> {
+	class PromptsAndResultsDrawingOverlay extends BdvOverlay implements Consumer<PlanarPolygonIn3D> {
 		private int sx,sy; //starting coordinate of the line, the "first end"
 		private int ex,ey; //ending coordinate of the line, the "second end"
 		private boolean shouldDrawLine = false;
@@ -132,18 +132,18 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		private boolean shouldDrawPolygons = false;
 
 		@Override
-		public void accept(Polygon3D polygon) {
+		public void accept(PlanarPolygonIn3D polygon) {
 			polygonList.add(polygon);
+		}
+
+		public void setPolygons(List<PlanarPolygonIn3D> polygons) {
+			polygonList = polygons;
+		}
+		public Collection<PlanarPolygonIn3D> getPolygons() {
+			return polygonList;
 		}
 		public void clearPolygons() {
 			polygonList.clear();
-		}
-
-		public void setPolygons(List<Polygon3D> polygons) {
-			polygonList = polygons;
-		}
-		public List<Polygon3D> getPolygons() {
-			return polygonList;
 		}
 
 		private final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess

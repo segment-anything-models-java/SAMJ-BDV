@@ -33,8 +33,6 @@ import net.imglib2.type.numeric.real.FloatType;
 
 import java.io.File;
 import java.awt.Polygon;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
@@ -57,26 +55,7 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public List<ComboBoxItem> getListOfOpenImages() {
 		logger.info("getListOfOpenImages");
-
-		//a list of sites IDs that BDV is registering currently
-		final Collection<Integer> listOfAnnotationSites = bdv.getAnnotationSitesIDs();
-
-		//turn it into a combobox content for SAMJ GUI (main dialog)
-		if (listOfAnnotationSites.isEmpty()) {
-			return NO_AVAILABLE_ANNOTATIONS_SITE_COMBOBOX_LIST;
-		} else {
-			final List<ComboBoxItem> comboList = new ArrayList<>(listOfAnnotationSites.size());
-			for (int ID : listOfAnnotationSites) {
-				RandomAccessibleInterval<FloatType> aView = bdv.getImageFromAnnotationSite(ID);
-				comboList.add( new ComboBoxItem(ID, aView) {
-						@Override
-						public String getImageName() { return "The site #"+ID; }
-						@Override
-						public RandomAccessibleInterval<FloatType> getImageAsImgLib2() { return aView; }
-					} );
-			}
-			return comboList;
-		}
+		return NO_AVAILABLE_ANNOTATIONS_SITE_COMBOBOX_LIST;
 	}
 
 	static final Img<FloatType> fakeSmallImage = ArrayImgs.floats(256,256);
@@ -137,7 +116,7 @@ implements PromptsResultsDisplay, UtilityMethods {
 	@Override
 	public List<Polygon> getPolygonsFromRoiManager() {
 		logger.warn("getPolygonsFromRoiManager");
-		return bdv.getPolygonsFromTheCurrentAnnotationSite();
+		return Collections.emptyList(); //bdv.getAllPolygonsFromTheCurrentAnnotationSite();
 	}
 
 	@Override

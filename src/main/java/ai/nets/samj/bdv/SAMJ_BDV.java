@@ -15,6 +15,8 @@ import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccessible;
+import net.imglib2.converter.Converter;
+import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
@@ -211,9 +213,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 	void installBehaviours() {
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		bdv.getBdvHandle().getViewerPanel().transformListeners().add( someNewIgnoredTransform -> {
-				//System.out.println("render transform event, ignore="+ignoreNextTransformEvent);
-				if (!ignoreNextTransformEvent) lostViewOfAnnotationSite();
-				ignoreNextTransformEvent = false;
+				lostViewOfAnnotationSite();
 			} );
 
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
@@ -243,10 +243,6 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 					System.out.println("Prompts disabled, click the rectangle button in the SAMJ GUI.");
 					return;
 				}
-				if (currentlyUsedAnnotationSiteId == -1) {
-					System.out.println("No annotation site is active now, create new ('A') or visit some ('W') first.");
-					return;
-				}
 				processPrompt();
 			}
 		}, "samj_line", "L" );
@@ -261,25 +257,6 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			viewerPanel.getDisplayComponent().repaint();
 			System.out.println("Current tolerated view off-plane distance: "+samjOverlay.toleratedOffViewPlaneDistance);
 		}, "samj_longer_view_distance", "D");
-
-		behaviours.behaviour((ClickBehaviour) (x, y) -> {
-			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
-			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
-				installNewAnnotationSite(viewDir, false);
-			} else {
-				System.out.println("Not an orthogonal view, try Shift+X, Shift+Z, or Shift+Y to get one.");
-				ImageJFunctions.show( collectViewPixelData(this.image) );
-			}
-		}, "samj_new_original_view", "A");
-
-		behaviours.behaviour((ClickBehaviour) (x, y) -> {
-			AXIS_VIEW viewDir = whatDimensionIsViewAlong( viewerPanel.state().getViewerTransform() );
-			if (viewDir != AXIS_VIEW.NONE_OF_XYZ) {
-				installNewAnnotationSite(viewDir, true);
-			} else {
-				System.out.println("Not an orthogonal view, try Shift+X, Shift+Z, or Shift+Y to get one.");
-			}
-		}, "samj_new_manipulated_view", "shift|A");
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			if (annotationSites.isEmpty()) {
@@ -302,7 +279,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		}, "samj_last_view", "shift|W");
 	}
 
-	// ======================== actions - prompts ========================
+	// ======================== prompts - execution ========================
 	private boolean arePromptsEnabled = true;
 	public void enablePrompts() { arePromptsEnabled = true; }
 	public void disablePrompts() { arePromptsEnabled = false; }
@@ -366,49 +343,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
-	// ======================== actions - annotation sites ========================
-	public void installNewAnnotationSite(final AXIS_VIEW viewDir, final boolean considerBdvRangeSetting) {
-		//register the new site's data
-		final int newIdx = annotationSites.size()+1;
-		//
-		viewerPanel.displayToGlobalCoordinates(0,0, topLeftPoint);
-		double fixedDimPos = topLeftPoint.getDoublePosition( viewDir.fixedAxisDim() );
-		annotationSites.put( newIdx, new AnnotationSite(
-				new SpatioTemporalView(bdv.getBdvHandle()), viewDir, fixedDimPos ) );
-		System.out.println("Adding a new annotation site: "+viewDir+" @ "+fixedDimPos);
-		//
-		List<Polygon3D> polygons = new ArrayList<>(100);
-		annotationSitesPolygons.put( newIdx, polygons );
-		currentlyUsedAnnotationSiteId = newIdx;
-		lastVisitedAnnotationSiteId = newIdx;
 
-		//make it visible
-		samjOverlay.setPolygons(polygons);
-		samjOverlay.startDrawing();
-
-		// ---------- pixel data ----------
-		//prepare pixel data, get SAMJ ready, update the combobox
-		//no scaling of the image! just extract the view
-		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
-		viewerPanel.displayToGlobalCoordinates(0,0, topLeftPoint);
-		viewerPanel.displayToGlobalCoordinates(displaySize.width,displaySize.height, bottomRightPoint);
-		//BDV's full-view corresponds to pixel coords at diagonal topLeftPoint -> bottomRightPoint,
-		//intersect it with the 'image' to be sure to stay within the bounds
-		Interval box = new FinalInterval(
-				new long[] {
-					Math.max(Math.round(topLeftPoint.getDoublePosition(0)), image.min(0)),
-					Math.max(Math.round(topLeftPoint.getDoublePosition(1)), image.min(1)),
-					Math.max(Math.round(topLeftPoint.getDoublePosition(2)), image.min(2))
-				}, new long[] {
-					Math.min(Math.round(bottomRightPoint.getDoublePosition(0)), image.max(0)),
-					Math.min(Math.round(bottomRightPoint.getDoublePosition(1)), image.max(1)),
-					Math.min(Math.round(bottomRightPoint.getDoublePosition(2)), image.max(2))
-				} );
-		System.out.println("image ROI: "+topLeftPoint+" -> "+bottomRightPoint);
-		System.out.println("image ROI: "+box);
-		annotationSitesROIs.put( newIdx, Intervals.hyperSlice(box, viewDir.fixedAxisDim()) );
-		annotationSitesImages.put( newIdx, considerBdvRangeSetting ? prepareCroppedImageWithSourceSettingForSAMModel(box) : prepareCroppedImageForSAMModel(box) );
-		if (showNewAnnotationSitesImages) ImageJFunctions.show( annotationSitesImages.get(newIdx), "site #"+newIdx );
 	}
 
 	public Img<T> collectViewPixelData(final Img<T> srcImg) {
@@ -471,150 +406,18 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		return explicitCroppedFloatImg;
 	}
 
-	/**
-	 * @param id ID of the requested annotation site.
-	 * @return False if the requested site is not available, and thus no action was taken.
-	 */
-	public boolean displayAnnotationSite(int id) {
-		if (!annotationSites.containsKey(id)) return false;
-
-		ignoreNextTransformEvent = true;
-		annotationSites.get(id).view.applyOnThis(bdv.getBdvHandle());
-		//rename source -- BDV ain't supporting this easily
-		currentlyUsedAnnotationSiteId = id;
-		lastVisitedAnnotationSiteId = id;
-
-		samjOverlay.setPolygons(annotationSitesPolygons.get(id));
-		samjOverlay.startDrawing();
-		return true;
-	}
-
-	private boolean ignoreNextTransformEvent = false;
 
 	private void lostViewOfAnnotationSite() {
-		//rename source -- BDV ain't supporting this easily
-		//store polygons from the last annotation -- they're shared, so no explicit action is needed
-		currentlyUsedAnnotationSiteId = -1;
-		//
-		//disable drawing of lines and polygons
-		//samjOverlay.stopDrawing();
 	}
 
-	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to
-	//an object that represents that exact view, and another map for polygons associated with that view
-	private final Map<Integer, AnnotationSite> annotationSites = new HashMap<>(100);
-	private final Map<Integer, List<Polygon3D>> annotationSitesPolygons = new HashMap<>(100);
-	private final Map<Integer, RandomAccessibleInterval<FloatType>> annotationSitesImages = new HashMap<>(100);
-	private final Map<Integer, Interval> annotationSitesROIs = new HashMap<>(100);
-	private int currentlyUsedAnnotationSiteId = -1;
-	private int lastVisitedAnnotationSiteId = -1;
 
-	public Collection<Integer> getAnnotationSitesIDs() {
-		return Collections.unmodifiableCollection( annotationSites.keySet() );
-	}
 
-	public static class AnnotationSite {
-		AnnotationSite(SpatioTemporalView view, AXIS_VIEW viewDir, double fixedDimPos) {
-			this.view = view;
-			this.viewDir = viewDir;
-			this.fixedDimPos = fixedDimPos;
-		}
-		SpatioTemporalView view;
-		AXIS_VIEW viewDir;
-		double fixedDimPos;
-	}
-
-	// ======================== data - annotation sites ========================
-	public List<Polygon> getPolygonsFromTheLastUsedAnnotationSite() {
-		return getPolygonsFromAnnotationSite(lastVisitedAnnotationSiteId);
-	}
-	public List<Polygon> getPolygonsFromTheCurrentAnnotationSite() {
-		return getPolygonsFromAnnotationSite(currentlyUsedAnnotationSiteId);
-	}
-	public List<Polygon> getPolygonsFromAnnotationSite(int siteId) {
-		List<Polygon> export = new ArrayList<>();
-		annotationSitesPolygons.getOrDefault(siteId, Collections.emptyList()).forEach(p -> {
-			Polygon awtP = new Polygon();
-			for (int i = 0; i < p.size(); ++i) {
-				double[] c = p.coordinate2D(i);
-				awtP.addPoint((int)Math.round(c[0]), (int)Math.round(c[1]));
-			}
-			export.add(awtP);
-		});
-		return export;
-	}
-
-	public RandomAccessibleInterval<FloatType> getImageFromTheLastUsedAnnotationSite() {
-		return getImageFromAnnotationSite(lastVisitedAnnotationSiteId);
-	}
-	public RandomAccessibleInterval<FloatType> getImageFromTheCurrentAnnotationSite() {
-		return getImageFromAnnotationSite(currentlyUsedAnnotationSiteId);
-	}
-	public RandomAccessibleInterval<FloatType> getImageFromAnnotationSite(int siteId) {
-		return annotationSitesImages.getOrDefault(siteId, null);
-	}
-
-	// ======================== AXIS_VIEW stuff ========================
-	public enum AXIS_VIEW {
-		ALONG_X,
-		ALONG_Y,
-		ALONG_Z,
-		NONE_OF_XYZ;
-
-		private static final int[] RUNNING_DIM1 = new int[] {1,0,0,0};
-		private static final int[] RUNNING_DIM2 = new int[] {2,2,1,0};
-		private static final int[] FIXED_DIM =    new int[] {0,1,2,0};
-		public int runningAxisDim1() {
-			return RUNNING_DIM1[this.ordinal()];
-		}
-		public int runningAxisDim2() {
-			return RUNNING_DIM2[this.ordinal()];
-		}
-		public int fixedAxisDim() {
-			return FIXED_DIM[this.ordinal()];
-		}
 	}
 
 	/**
-	 * @param view
-	 * @return -1 if the view is not along any axis, or 0,1,2 for x-,y-,z-axis
 	 */
-	public static AXIS_VIEW whatDimensionIsViewAlong(final AffineTransform3D view) {
-		/* along x: 0,0,?    along y: ?,0,0    along z: ?,0,0
-		 *          0,?,0             0,0,?             0,?,0
-		 *          ?,0,0             0,?,0             0,0,?
-		 */
-		if ( isZeroElem(view, 0,0) ) {
-			//candidate for "along x"
-			if (isZeroElem(view, 0,1)
-					&& isZeroElem(view, 1,0) && isZeroElem(view, 1,2)
-					&& isZeroElem(view, 2,1) && isZeroElem(view, 2,2))
-					return AXIS_VIEW.ALONG_X;
-		} else if (isZeroElem(view, 0,1) && isZeroElem(view, 0,2)) {
-			//candidate for "along y or z"
-			if (isZeroElem(view, 1,1)) {
-				//for "along y"
-				if (isZeroElem(view, 1,0)
-						&& isZeroElem(view, 2,0) && isZeroElem(view, 2,2))
-						return AXIS_VIEW.ALONG_Y;
-			} else {
-				//for "along z"
-				if (isZeroElem(view, 1,0) && isZeroElem(view, 1,2)
-						&& isZeroElem(view, 2,0) && isZeroElem(view, 2,1))
-						return AXIS_VIEW.ALONG_Z;
-			}
-		}
-		return AXIS_VIEW.NONE_OF_XYZ;
 	}
 
-	public static boolean isZeroElem(final AffineTransform3D view, int row, int column) {
-		return isZero( view.get(row,column) );
-	}
-
-	public static boolean isZero(double val) {
-		final double EPSILON = 0.00001;
-		return -EPSILON < val && val < EPSILON;
-	}
 
 	// ======================== SAM network interaction ========================
 	private SAMModel activeNN = null; //NN = neural network

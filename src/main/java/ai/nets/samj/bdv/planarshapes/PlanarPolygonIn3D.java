@@ -1,4 +1,4 @@
-package ai.nets.samj.bdv.polygons;
+package ai.nets.samj.bdv.planarshapes;
 
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;

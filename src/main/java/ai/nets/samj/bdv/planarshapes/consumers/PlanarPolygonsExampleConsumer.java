@@ -1,8 +1,10 @@
-package ai.nets.samj.bdv.polygons;
+package ai.nets.samj.bdv.planarshapes.consumers;
+
+import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
 
 import java.util.function.Consumer;
 
-public class Polygons3DExampleConsumer implements Consumer<PlanarPolygonIn3D> {
+public class PlanarPolygonsExampleConsumer implements Consumer<PlanarPolygonIn3D> {
 	final double[] c = new double[3];
 	@Override
 	public void accept(PlanarPolygonIn3D polygon) {

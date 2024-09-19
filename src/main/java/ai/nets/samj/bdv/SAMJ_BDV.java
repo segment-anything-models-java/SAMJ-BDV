@@ -37,9 +37,8 @@ import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
 import java.util.function.Consumer;
-import ai.nets.samj.bdv.polygons.PlanarPolygonIn3D;
-import ai.nets.samj.bdv.polygons.Polygon3D;
-import ai.nets.samj.bdv.polygons.Polygons3DExampleConsumer;
+import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
+import ai.nets.samj.bdv.planarshapes.consumers.PlanarPolygonsExampleConsumer;
 
 import java.io.IOException;
 import java.util.Map;
@@ -67,7 +66,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		//register our own (polygons drawing) overlay as a polygon consumer
 		this.addPolygonsConsumer(samjOverlay);
-		this.addPolygonsConsumer(new Polygons3DExampleConsumer());
+		this.addPolygonsConsumer(new PlanarPolygonsExampleConsumer());
 		installBehaviours();
 	}
 

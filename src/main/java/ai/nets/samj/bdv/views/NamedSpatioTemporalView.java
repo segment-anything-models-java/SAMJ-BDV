@@ -1,4 +1,4 @@
-package ai.nets.samj.bdv.util;
+package ai.nets.samj.bdv.views;
 
 import bdv.util.BdvHandle;
 

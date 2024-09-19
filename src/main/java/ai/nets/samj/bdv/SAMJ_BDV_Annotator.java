@@ -33,7 +33,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
 import java.util.function.Consumer;
-import ai.nets.samj.bdv.polygons.Polygon3D;
+import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
 
 /**
  * @author Vladimir Ulman
@@ -120,7 +120,7 @@ public class SAMJ_BDV_Annotator {
 		bdvPromptsProvider.fakeResults(newState);
 	}
 
-	public void registerPolygonsConsumer(final Consumer<Polygon3D> consumer) {
+	public void registerPolygonsConsumer(final Consumer<PlanarPolygonIn3D> consumer) {
 		bdvPromptsProvider.newPolygonsConsumer(consumer);
 	}
 

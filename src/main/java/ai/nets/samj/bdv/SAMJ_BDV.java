@@ -35,6 +35,7 @@ import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
 import java.util.function.Consumer;
+import ai.nets.samj.bdv.polygons.PlanarPolygonIn3D;
 import ai.nets.samj.bdv.polygons.Polygon3D;
 import ai.nets.samj.bdv.polygons.Polygons3DExampleConsumer;
 
@@ -127,7 +128,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			shouldDrawPolygons = true;
 		}
 
-		private List<Polygon3D> polygonList = new ArrayList<>(100);
+		private List<PlanarPolygonIn3D> polygonList = new ArrayList<>(500);
 		private boolean shouldDrawPolygons = false;
 
 		@Override
@@ -175,18 +176,20 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 				}
 
 				//draws the currently recognized polygons
-				viewerPanel.state().getViewerTransform(pxToScreenTransform);
+				viewerPanel.state().getViewerTransform(imgToScreenTransform);
 				g.setPaint(colorResults);
 				boolean isCloseToViewingPlane = true, isCloseToViewingPlaneB = true;
-				for (Polygon3D p : polygonList) {
+				for (PlanarPolygonIn3D p : polygonList) {
+					p.getTransformTo3d(polyToImgTransform);
+					polyToImgTransform.preConcatenate(imgToScreenTransform);
 					for (int i = 0; i <= p.size(); i++) {
 						//NB: the first (i=0) point is repeated to close the loop
-						double[] coord = p.coordinate3D(i % p.size());
+						p.coordinate2D(i % p.size(), auxCoord3D);
 						if (i % 2 == 0) {
-							pxToScreenTransform.apply(coord, screenCoord);
+							polyToImgTransform.apply(auxCoord3D, screenCoord);
 							isCloseToViewingPlane = Math.abs(screenCoord[2]) < toleratedOffViewPlaneDistance;
 						} else {
-							pxToScreenTransform.apply(coord, screenCoordB);
+							polyToImgTransform.apply(auxCoord3D, screenCoordB);
 							isCloseToViewingPlaneB = Math.abs(screenCoordB[2]) < toleratedOffViewPlaneDistance;
 						}
 						if (i > 0 && isCloseToViewingPlane && isCloseToViewingPlaneB)
@@ -197,7 +200,9 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 			}
 		}
 
-		final AffineTransform3D pxToScreenTransform = new AffineTransform3D();
+		final AffineTransform3D polyToImgTransform = new AffineTransform3D();
+		final AffineTransform3D imgToScreenTransform = new AffineTransform3D();
+		final double[] auxCoord3D = new double[3];
 		final double[] screenCoord = new double[3];
 		final double[] screenCoordB = new double[3];
 	}

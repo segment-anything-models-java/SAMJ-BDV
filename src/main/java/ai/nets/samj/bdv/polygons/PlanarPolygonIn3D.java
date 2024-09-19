@@ -23,6 +23,9 @@ public class PlanarPolygonIn3D {
 	public AffineTransform3D getTransformTo3d() {
 		return transformTo3d.copy();
 	}
+	public void getTransformTo3d(AffineTransform3D fillThisOutput) {
+		fillThisOutput.set(transformTo3d);
+	}
 
 	/** Corner points of the 2D polygon, which must be
 	 * inside {@link PlanarPolygonIn3D#bbox2D} */
@@ -40,6 +43,10 @@ public class PlanarPolygonIn3D {
 
 	public Collection<double[]> getAllPoints() {
 		return Collections.unmodifiableCollection(coords2D);
+	}
+
+	public int size() {
+		return coords2D.size();
 	}
 
 	/** A interger-coords 2D box inside which exists the polygon.

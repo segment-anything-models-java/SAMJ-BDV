@@ -1,13 +1,18 @@
 package ai.nets.samj.bdv.ij;
 
 import ai.nets.samj.bdv.SAMJ_BDV_Annotator;
+import ai.nets.samj.bdv.promptresponders.FakeResponder;
+import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
+import bdv.interactive.prompts.BdvPrompts;
 import net.imagej.Dataset;
+import net.imagej.ImgPlus;
 import net.imglib2.RandomAccess;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import sc.fiji.simplifiedio.SimplifiedIO;
 
 @Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>SAMJ>BDV demo")
 public class PluginFrontEnd implements Command {
@@ -74,5 +79,20 @@ public class PluginFrontEnd implements Command {
 				}
 			});
 		}
+	}
+
+
+	public static void main(String[] args) {
+		ImgPlus image = SimplifiedIO.openImage("/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif");
+		run(image.getImg());
+	}
+
+	public static <T extends RealType<T>> void run(final Img<T> img) {
+		//make border pixels a bit brighter
+		img.forEach(p -> { if (p.getRealDouble() == 0.0) p.setReal(15); });
+
+		BdvPrompts<T> annotator = new BdvPrompts<>(img).enableShowingPolygons();
+		annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
+		annotator.addPromptsProcessor( new FakeResponder<>() );
 	}
 }

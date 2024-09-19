@@ -37,9 +37,8 @@ import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
 import java.util.function.Consumer;
-import ai.nets.samj.bdv.polygons.PlanarPolygonIn3D;
-import ai.nets.samj.bdv.polygons.Polygon3D;
-import ai.nets.samj.bdv.polygons.Polygons3DExampleConsumer;
+import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
+import ai.nets.samj.bdv.planarshapes.consumers.PlanarPolygonsExampleConsumer;
 
 import java.io.IOException;
 import java.util.Map;
@@ -67,7 +66,7 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 
 		//register our own (polygons drawing) overlay as a polygon consumer
 		this.addPolygonsConsumer(samjOverlay);
-		this.addPolygonsConsumer(new Polygons3DExampleConsumer());
+		this.addPolygonsConsumer(new PlanarPolygonsExampleConsumer());
 		installBehaviours();
 	}
 
@@ -468,40 +467,5 @@ public class SAMJ_BDV<T extends RealType<T> & NativeType<T>> {
 		List<Polygon> fakes = new ArrayList<>(2);
 		fakes.add( createFakePolygon(boxInGlobalPxCoords) );
 		return fakes;
-	}
-
-	protected Polygon createFakePolygon(final Interval insideThisBox) {
-		Random rand = new Random();
-		final int BOUND = 8;
-
-		int minx = (int)insideThisBox.min(0), maxx = (int)insideThisBox.max(0);
-		int miny = (int)insideThisBox.min(1), maxy = (int)insideThisBox.max(1);
-
-		Polygon p = new Polygon();
-		int r = rand.nextInt(BOUND);
-		addPointsAlongLine(p, minx, miny, (minx+maxx)/2, miny+r);
-		addPointsAlongLine(p, (minx+maxx)/2, miny+r, maxx, miny);
-
-		r = rand.nextInt(BOUND);
-		addPointsAlongLine(p, maxx, miny, maxx-r, (miny+maxy)/2);
-		addPointsAlongLine(p, maxx-r, (miny+maxy)/2, maxx, maxy);
-
-		r = rand.nextInt(BOUND);
-		addPointsAlongLine(p, maxx, maxy, (minx+maxx)/2, maxy-r);
-		addPointsAlongLine(p, (minx+maxx)/2, maxy-r, minx, maxy);
-
-		r = rand.nextInt(BOUND);
-		addPointsAlongLine(p, minx, maxy, minx+r, (miny+maxy)/2);
-		addPointsAlongLine(p, minx+r, (miny+maxy)/2, minx, miny);
-		return p;
-	}
-
-	protected void addPointsAlongLine(final Polygon p, int sx, int sy, int ex, int ey) {
-		float steps = Math.max(Math.abs(ex-sx), Math.abs(ey-sy));
-		for (int i = 0; i < steps; ++i) {
-			int x = (int)( (float)i * (float)(ex-sx)/steps );
-			int y = (int)( (float)i * (float)(ey-sy)/steps );
-			p.addPoint(sx+x,sy+y);
-		}
 	}
 }

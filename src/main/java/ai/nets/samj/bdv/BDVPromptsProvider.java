@@ -37,7 +37,7 @@ import java.util.Collections;
 import java.util.List;
 
 import java.util.function.Consumer;
-import ai.nets.samj.bdv.polygons.PlanarPolygonIn3D;
+import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
 
 public class BDVPromptsProvider <T extends RealType<T> & NativeType<T>>
 implements PromptsResultsDisplay, UtilityMethods {

@@ -34,10 +34,11 @@ public class PluginFrontEnd implements Command {
 		annotator.setReturnFakeSAMResults( useFakePromptResults );
 
 		if (drawSmallXYcrossesIntoPolygonsCentres) {
+			double[] c = new double[3];
 			annotator.registerPolygonsConsumer(p -> {
 				double[] centre = new double[3];
 				for (int i = 0; i < p.size(); ++i) {
-					double[] c = p.coordinate3D(i);
+					p.coordinate3D(i,c);
 					centre[0] += c[0];
 					centre[1] += c[1];
 					centre[2] += c[2];

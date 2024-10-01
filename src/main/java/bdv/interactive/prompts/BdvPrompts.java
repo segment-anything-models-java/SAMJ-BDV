@@ -42,7 +42,13 @@ public class BdvPrompts<T extends RealType<T>> {
 		final BdvStackSource<T> bdv = BdvFunctions.show(operateOnThisImage, imageName);
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 
-		this.addAndSwitchToAnotherOverlay(overlayName);
+		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
+		BdvFunctions.showOverlay(samjOverlay, overlayName, BdvOptions.options().addTo(bdv))
+				  .setColor(new ARGBType( this.samjOverlay.colorPolygons.getRGB() ));
+
+		//"loose" the annotation site as soon as the BDV's viewport is changed
+		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
+
 		installBehaviours( bdv.getBdvHandle().getTriggerbindings() );
 	}
 
@@ -55,7 +61,17 @@ public class BdvPrompts<T extends RealType<T>> {
 		this.image = (Img<T>)operateOnThisSource.getSpimSource().getSource(bdvViewerPanel.state().getCurrentTimepoint(), 0);
 		this.viewerPanel = bdvViewerPanel;
 
-		this.addAndSwitchToAnotherOverlay(overlayName);
+		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
+		bdvViewerPanel.getDisplay().overlays().add(this.samjOverlay);
+
+		//"loose" the annotation site as soon as the BDV's viewport is changed
+		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
+		this.viewerPanel.timePointListeners().add( currentTP -> {
+			//TODO: dangerous casting!
+			this.image = (Img<T>)operateOnThisSource.getSpimSource().getSource(currentTP, 0);
+			lostViewOfAnnotationSite();
+		} );
+
 		installBehaviours( bindBehavioursHere );
 	}
 
@@ -105,7 +121,7 @@ public class BdvPrompts<T extends RealType<T>> {
 	private final List< PromptsProcessor<T> > promptsProcessors = new ArrayList<>(10);
 
 	// ======================== overlay content ========================
-	private PromptsAndPolygonsDrawingOverlay samjOverlay;
+	private final PromptsAndPolygonsDrawingOverlay samjOverlay;
 
 	public void stopDrawing() {
 		samjOverlay.shouldDrawLine = false;
@@ -222,11 +238,6 @@ public class BdvPrompts<T extends RealType<T>> {
 
 	// ======================== actions - behaviours ========================
 	protected void installBehaviours(final TriggerBehaviourBindings bindThemHere) {
-		//"loose" the annotation site as soon as the BDV's viewport is changed
-		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> {
-				lostViewOfAnnotationSite();
-			} );
-
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 		behaviours.install( bindThemHere, "bdvprompts" );
 

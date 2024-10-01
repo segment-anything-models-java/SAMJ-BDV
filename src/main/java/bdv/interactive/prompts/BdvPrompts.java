@@ -10,11 +10,15 @@ import bdv.util.BdvStackSource;
 import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
+import net.imglib2.img.planar.PlanarImg;
+import net.imglib2.img.planar.PlanarImgFactory;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
@@ -31,15 +35,20 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.function.Consumer;
 
-public class BdvPrompts<T extends RealType<T>> {
-	public BdvPrompts(final Img<T> operateOnThisImage) {
-		this(operateOnThisImage, "Input image", "Prompts");
+/**
+ * @param <IT> pixel type of the input image on which the prompts operate
+ * @param <OT> pixel type of the image submitted to the prompts processors
+ */
+public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & NativeType<OT>> {
+	public BdvPrompts(final Img<IT> operateOnThisImage, final OT promptsPixelType) {
+		this(operateOnThisImage, "Input image", "Prompts", promptsPixelType);
 	}
 
 	/** Opens a new BDV over the provided image, and enables this addon in it. */
-	public BdvPrompts(final Img<T> operateOnThisImage, final String imageName, final String overlayName) {
+	public BdvPrompts(final Img<IT> operateOnThisImage, final String imageName, final String overlayName, final OT promptsPixelType) {
+		this.annotationSiteImgType = promptsPixelType;
 		this.image = operateOnThisImage;
-		final BdvStackSource<T> bdv = BdvFunctions.show(operateOnThisImage, imageName);
+		final BdvStackSource<IT> bdv = BdvFunctions.show(operateOnThisImage, imageName);
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
@@ -54,11 +63,11 @@ public class BdvPrompts<T extends RealType<T>> {
 
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
 	public BdvPrompts(final ViewerPanel bdvViewerPanel,
-	                  SourceAndConverter<T> operateOnThisSource,
+	                  SourceAndConverter<IT> operateOnThisSource,
 	                  final TriggerBehaviourBindings bindBehavioursHere,
-	                  final String overlayName) {
-		//TODO: dangerous casting!
-		this.image = (Img<T>)operateOnThisSource.getSpimSource().getSource(bdvViewerPanel.state().getCurrentTimepoint(), 0);
+	                  final String overlayName, final OT promptsPixelType) {
+		this.annotationSiteImgType = promptsPixelType;
+		this.image = operateOnThisSource.getSpimSource().getSource(bdvViewerPanel.state().getCurrentTimepoint(), 0);
 		this.viewerPanel = bdvViewerPanel;
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
@@ -67,26 +76,25 @@ public class BdvPrompts<T extends RealType<T>> {
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 		this.viewerPanel.timePointListeners().add( currentTP -> {
-			//TODO: dangerous casting!
-			this.image = (Img<T>)operateOnThisSource.getSpimSource().getSource(currentTP, 0);
+			this.image = operateOnThisSource.getSpimSource().getSource(currentTP, 0);
 			lostViewOfAnnotationSite();
 		} );
 
 		installBehaviours( bindBehavioursHere );
 	}
 
-	private Img<T> image;
+	private RandomAccessibleInterval<IT> image;
 	private final ViewerPanel viewerPanel;
 
 	/** The class registers itself as a polygon consumer,
 	 *  and consumes them by showing them in the BDV.
 	 *  Returns itself to allow for the calls chaining. */
-	public BdvPrompts<T> enableShowingPolygons() {
+	public BdvPrompts<IT,OT> enableShowingPolygons() {
 		this.addPolygonsConsumer(this.samjOverlay);
 		return this;
 	}
 
-	public void switchToThisImage(final Img<T> operateOnThisImage) {
+	public void switchToThisImage(final RandomAccessibleInterval<IT> operateOnThisImage) {
 		this.image = operateOnThisImage;
 		this.isNextPromptOnNewAnnotationSite = true;
 	}
@@ -98,10 +106,10 @@ public class BdvPrompts<T extends RealType<T>> {
 		return polygonsConsumers.remove(consumer);
 	}
 
-	public void addPromptsProcessor(final PromptsProcessor<T> promptToPolygonsGenerator) {
+	public void addPromptsProcessor(final PromptsProcessor<OT> promptToPolygonsGenerator) {
 		promptsProcessors.add(promptToPolygonsGenerator);
 	}
-	public boolean removePromptsProcessor(final PromptsProcessor<T> promptToPolygonsGenerator) {
+	public boolean removePromptsProcessor(final PromptsProcessor<OT> promptToPolygonsGenerator) {
 		return promptsProcessors.remove(promptToPolygonsGenerator);
 	}
 
@@ -118,7 +126,7 @@ public class BdvPrompts<T extends RealType<T>> {
 	}
 
 	private final List< Consumer<PlanarPolygonIn3D> > polygonsConsumers = new ArrayList<>(10);
-	private final List< PromptsProcessor<T> > promptsProcessors = new ArrayList<>(10);
+	private final List< PromptsProcessor<OT> > promptsProcessors = new ArrayList<>(10);
 
 	// ======================== overlay content ========================
 	private final PromptsAndPolygonsDrawingOverlay samjOverlay;
@@ -303,7 +311,7 @@ public class BdvPrompts<T extends RealType<T>> {
 		if (isNextPromptOnNewAnnotationSite) installNewAnnotationSite();
 
 		//create prompt with coords w.r.t. the annotation site image
-		PlanarRectangleIn3D<T> prompt = new PlanarRectangleIn3D<>(
+		PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
 				  this.annotationSiteViewImg,
 				  this.viewerPanel.state().getViewerTransform().inverse());
 		samjOverlay.normalizeLineEnds();
@@ -322,21 +330,20 @@ public class BdvPrompts<T extends RealType<T>> {
 	}
 
 	// ======================== prompts - image data ========================
-	private Img<T> annotationSiteViewImg;
+	private final OT annotationSiteImgType;
+	private Img<OT> annotationSiteViewImg;
 	private final RealPoint srcPos = new RealPoint(3);  //orig underlying 3D image
 	private final double[] viewPos = new double[2];     //the current view 2D image
 
-	protected Img<T> collectViewPixelData(final Img<T> srcImg) {
-		//final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NearestNeighborInterpolatorFactory<>());
-		//final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new NLinearInterpolatorFactory<>());
-		final RealRandomAccessible<T> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
+	protected Img<OT> collectViewPixelData(final RandomAccessibleInterval<IT> srcImg) {
+		final RealRandomAccessible<IT> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
 
 		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
-		Img<T> viewImg = srcImg.factory().create(displaySize.width, displaySize.height);
+		PlanarImg<OT, ?> viewImg = new PlanarImgFactory<>(annotationSiteImgType).create(displaySize.width, displaySize.height);
 
-		Cursor<T> viewCursor = viewImg.localizingCursor();
+		Cursor<OT> viewCursor = viewImg.localizingCursor();
 		while (viewCursor.hasNext()) {
-			T px = viewCursor.next();
+			OT px = viewCursor.next();
 			viewCursor.localize(viewPos);
 			viewerPanel.displayToGlobalCoordinates(viewPos[0],viewPos[1], srcPos); //TODO optimize (inside is a RealPoint created over and over again)
 			px.setReal( srcRealImg.getAt(srcPos).getRealDouble() ); //TODO optimize (avoid using getAt())

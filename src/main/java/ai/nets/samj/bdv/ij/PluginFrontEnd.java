@@ -10,6 +10,7 @@ import net.imagej.Dataset;
 import net.imagej.ImgPlus;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.real.FloatType;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -41,7 +42,7 @@ public class PluginFrontEnd implements Command {
 	}
 
 	public <T extends RealType<T>> void annotateWithBDV(final Img<T> img) {
-		final BdvPrompts<T> annotator = new BdvPrompts<>(img).enableShowingPolygons();
+		final BdvPrompts<T, FloatType> annotator = new BdvPrompts<>(img, new FloatType()).enableShowingPolygons();
 		if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
 		try {

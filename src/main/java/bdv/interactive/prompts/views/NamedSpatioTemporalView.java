@@ -1,10 +1,10 @@
 package bdv.interactive.prompts.views;
 
-import bdv.util.BdvHandle;
+import bdv.viewer.ViewerPanel;
 
 public class NamedSpatioTemporalView extends SpatioTemporalView {
-	public NamedSpatioTemporalView(BdvHandle bdv, String name) {
-		super(bdv);
+	public NamedSpatioTemporalView(ViewerPanel bdvViewerPanel, String name) {
+		super(bdvViewerPanel);
 		this.name = name;
 	}
 

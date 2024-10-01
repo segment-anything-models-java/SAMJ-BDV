@@ -46,10 +46,6 @@ public class BdvPrompts<T extends RealType<T>> {
 		installBehaviours();
 	}
 
-	public Bdv getBdv() {
-		return this.bdv;
-	}
-
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
 	public BdvPrompts(final Bdv openedBdv, SourceAndConverter<T> operateOnThisSource, final String overlayName) {
 		this.bdv = openedBdv;
@@ -106,14 +102,6 @@ public class BdvPrompts<T extends RealType<T>> {
 
 	private final List< Consumer<PlanarPolygonIn3D> > polygonsConsumers = new ArrayList<>(10);
 	private final List< PromptsProcessor<T> > promptsProcessors = new ArrayList<>(10);
-
-	public void showMessage(final String msg) {
-		if (msg != null) bdv.getBdvHandle().getViewerPanel().showMessage(msg);
-	}
-
-	public void close() {
-		bdv.getBdvHandle().close();
-	}
 
 	// ======================== overlay content ========================
 	private PromptsAndPolygonsDrawingOverlay samjOverlay;

@@ -7,7 +7,6 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.util.BdvStackSource;
-import bdv.util.BdvOverlaySource;
 import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
@@ -107,18 +106,6 @@ public class BdvPrompts<T extends RealType<T>> {
 
 	// ======================== overlay content ========================
 	private PromptsAndPolygonsDrawingOverlay samjOverlay;
-	private BdvOverlaySource<BdvOverlay> samjSource;
-
-	public BdvOverlaySource<BdvOverlay> addAndSwitchToAnotherOverlay(final String newOverlayName) {
-		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
-		this.samjSource = BdvFunctions.showOverlay(samjOverlay, newOverlayName, BdvOptions.options().addTo(bdv));
-		samjSource.setColor(new ARGBType( this.samjOverlay.colorPolygons.getRGB() ));
-		return samjSource;
-	}
-
-	public BdvOverlaySource<BdvOverlay> getOverlay() {
-		return this.samjSource;
-	}
 
 	public void stopDrawing() {
 		samjOverlay.shouldDrawLine = false;

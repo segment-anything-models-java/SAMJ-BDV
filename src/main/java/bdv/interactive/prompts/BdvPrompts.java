@@ -3,10 +3,10 @@ package bdv.interactive.prompts;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import bdv.interactive.prompts.views.SpatioTemporalView;
-import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
+import bdv.util.BdvStackSource;
 import bdv.util.BdvOverlaySource;
 import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
@@ -23,6 +23,7 @@ import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
+import org.scijava.ui.behaviour.util.TriggerBehaviourBindings;
 
 import java.awt.*;
 import java.util.Map;
@@ -39,26 +40,27 @@ public class BdvPrompts<T extends RealType<T>> {
 	/** Opens a new BDV over the provided image, and enables this addon in it. */
 	public BdvPrompts(final Img<T> operateOnThisImage, final String imageName, final String overlayName) {
 		this.image = operateOnThisImage;
-		this.bdv = BdvFunctions.show( operateOnThisImage, imageName );
+		final BdvStackSource<T> bdv = BdvFunctions.show(operateOnThisImage, imageName);
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 
 		this.addAndSwitchToAnotherOverlay(overlayName);
-		installBehaviours();
+		installBehaviours( bdv.getBdvHandle().getTriggerbindings() );
 	}
 
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
-	public BdvPrompts(final Bdv openedBdv, SourceAndConverter<T> operateOnThisSource, final String overlayName) {
-		this.bdv = openedBdv;
-		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
+	public BdvPrompts(final ViewerPanel bdvViewerPanel,
+	                  SourceAndConverter<T> operateOnThisSource,
+	                  final TriggerBehaviourBindings bindBehavioursHere,
+	                  final String overlayName) {
 		//TODO: dangerous casting!
-		this.image = (Img<T>)operateOnThisSource.getSpimSource().getSource(viewerPanel.state().getCurrentTimepoint(), 0);
+		this.image = (Img<T>)operateOnThisSource.getSpimSource().getSource(bdvViewerPanel.state().getCurrentTimepoint(), 0);
+		this.viewerPanel = bdvViewerPanel;
 
 		this.addAndSwitchToAnotherOverlay(overlayName);
-		installBehaviours();
+		installBehaviours( bindBehavioursHere );
 	}
 
 	private Img<T> image;
-	private final Bdv bdv;
 	private final ViewerPanel viewerPanel;
 
 	/** The class registers itself as a polygon consumer,
@@ -232,14 +234,14 @@ public class BdvPrompts<T extends RealType<T>> {
 	}
 
 	// ======================== actions - behaviours ========================
-	void installBehaviours() {
+	protected void installBehaviours(final TriggerBehaviourBindings bindThemHere) {
 		//"loose" the annotation site as soon as the BDV's viewport is changed
-		bdv.getBdvHandle().getViewerPanel().transformListeners().add( someNewIgnoredTransform -> {
+		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> {
 				lostViewOfAnnotationSite();
 			} );
 
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
-		behaviours.install( bdv.getBdvHandle().getTriggerbindings(), "bdvprompts" );
+		behaviours.install( bindThemHere, "bdvprompts" );
 
 		//install behaviour for moving a line in the BDV view, with shortcut "L"
 		behaviours.behaviour( new DragBehaviour() {

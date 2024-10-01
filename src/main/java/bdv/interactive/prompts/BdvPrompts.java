@@ -368,7 +368,7 @@ public class BdvPrompts<T extends RealType<T>> {
 	private void installNewAnnotationSite() {
 		//register the new site's data
 		final int newIdx = annotationSites.size()+1;
-		annotationSites.put(newIdx, new SpatioTemporalView(bdv.getBdvHandle()));
+		annotationSites.put(newIdx, new SpatioTemporalView(this.viewerPanel));
 		lastVisitedAnnotationSiteId = newIdx;
 
 		annotationSiteViewImg = collectViewPixelData(this.image);
@@ -386,7 +386,7 @@ public class BdvPrompts<T extends RealType<T>> {
 		//    of the rendering will call this.lostViewOfAnnotationSite(), but
 		//    if the switch has no visible effect, we could continue with the
 		//    current annotation site data (esp. with this.annotationSiteViewImg)
-		annotationSites.get(id).applyOnThis(bdv.getBdvHandle());
+		annotationSites.get(id).applyOnThis(this.viewerPanel);
 		lastVisitedAnnotationSiteId = id;
 		return true;
 	}

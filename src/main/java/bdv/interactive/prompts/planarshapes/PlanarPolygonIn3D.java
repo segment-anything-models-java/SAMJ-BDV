@@ -1,4 +1,4 @@
-package ai.nets.samj.bdv.planarshapes;
+package bdv.interactive.prompts.planarshapes;
 
 import net.imglib2.realtransform.AffineTransform3D;
 

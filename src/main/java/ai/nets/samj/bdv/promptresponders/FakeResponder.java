@@ -1,16 +1,17 @@
-package ai.nets.samj.bdv.prompts;
+package ai.nets.samj.bdv.promptresponders;
 
-import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
-import ai.nets.samj.bdv.planarshapes.PlanarRectangleIn3D;
+import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
+import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
+import bdv.interactive.prompts.BdvPrompts;
 import net.imglib2.Interval;
 import net.imglib2.type.numeric.RealType;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-public class FakeResponder {
-	public static <T extends RealType<T>>
-	List<PlanarPolygonIn3D> polygons(final PlanarRectangleIn3D<T> prompt) {
+public class FakeResponder <T extends RealType<T>> implements BdvPrompts.PromptsProcessor<T> {
+	@Override
+	public List<PlanarPolygonIn3D> process(PlanarRectangleIn3D<T> prompt, final boolean hasViewChangedSinceBefore) {
 		final PlanarPolygonIn3D polygon = new PlanarPolygonIn3D(1000, prompt.getTransformTo3d());
 		final Interval insideThisBox = prompt.getBbox2D();
 
@@ -39,7 +40,7 @@ public class FakeResponder {
 		return Arrays.asList(polygon);
 	}
 
-	public static void addPointsAlongLine(final PlanarPolygonIn3D polygon, int sx, int sy, int ex, int ey) {
+	private void addPointsAlongLine(final PlanarPolygonIn3D polygon, int sx, int sy, int ex, int ey) {
 		float steps = Math.max(Math.abs(ex-sx), Math.abs(ey-sy));
 		for (int i = 0; i < steps; ++i) {
 			int x = (int)( (float)i * (float)(ex-sx)/steps );

@@ -1,10 +1,9 @@
-package ai.nets.samj.bdv.planarshapes.consumers;
+package ai.nets.samj.bdv.polygonconsumers;
 
-import ai.nets.samj.bdv.planarshapes.PlanarPolygonIn3D;
-
+import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import java.util.function.Consumer;
 
-public class PlanarPolygonsExampleConsumer implements Consumer<PlanarPolygonIn3D> {
+public class PolygonsPrinterConsumer implements Consumer<PlanarPolygonIn3D> {
 	final double[] c = new double[3];
 	@Override
 	public void accept(PlanarPolygonIn3D polygon) {

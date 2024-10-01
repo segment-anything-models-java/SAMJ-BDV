@@ -1,4 +1,4 @@
-package ai.nets.samj.bdv.planarshapes;
+package bdv.interactive.prompts.planarshapes;
 
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
@@ -16,4 +16,8 @@ public abstract class AbstractPlanarShapeWithImgIn3D <T extends RealType<T>> ext
 	}
 
 	protected final Img<T> supportingViewImage2D;
+
+	public Img<T> getViewImage2D() {
+		return supportingViewImage2D;
+	}
 }

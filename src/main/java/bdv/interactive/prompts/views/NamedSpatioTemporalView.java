@@ -1,4 +1,4 @@
-package ai.nets.samj.bdv.views;
+package bdv.interactive.prompts.views;
 
 import bdv.util.BdvHandle;
 

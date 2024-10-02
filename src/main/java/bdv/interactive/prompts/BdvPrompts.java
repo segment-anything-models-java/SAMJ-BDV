@@ -44,16 +44,20 @@ import java.util.function.Consumer;
  * @param <OT> pixel type of the image submitted to the prompts processors
  */
 public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & NativeType<OT>> {
-	public BdvPrompts(final Img<IT> operateOnThisImage, final OT promptsPixelType) {
-		this(operateOnThisImage, "Input image", "Prompts", promptsPixelType);
+	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final OT promptsPixelType) {
+		this(operateOnThisImage, "Input image", "SAMJ prompts", promptsPixelType);
 	}
 
 	/** Opens a new BDV over the provided image, and enables this addon in it. */
-	public BdvPrompts(final Img<IT> operateOnThisImage, final String imageName, final String overlayName, final OT promptsPixelType) {
+	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final String imageName, final String overlayName, final OT promptsPixelType) {
 		this.annotationSiteImgType = promptsPixelType;
 		this.image = operateOnThisImage;
-		final BdvStackSource<IT> bdv = BdvFunctions.show(operateOnThisImage, imageName);
+		final BdvStackSource<IT> bdv = operateOnThisImage.numDimensions() >= 3
+				  ? BdvFunctions.show(operateOnThisImage, imageName)
+				  : BdvFunctions.show(Views.addDimension(operateOnThisImage,0,0), imageName, BdvOptions.options().is2D());
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
+
+		if (viewerPanel.getOptionValues().is2D()) System.out.println("Detected 2D image, switched BDV to the 2D mode.");
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
 		BdvFunctions.showOverlay(samjOverlay, overlayName, BdvOptions.options().addTo(bdv))

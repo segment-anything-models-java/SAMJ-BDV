@@ -242,11 +242,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		@Override
 		protected void draw(Graphics2D g) {
+			//final double uiScale = UIUtils.getUIScaleFactor( this );
+			//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
+			g.setStroke(stroke);
+
 			if (shouldDrawLine && isLineReadyForDrawing) {
 				//draws the line
-				//final double uiScale = UIUtils.getUIScaleFactor( this );
-				//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
-				g.setStroke(stroke);
 				g.setPaint(colorPrompt);
 				g.drawLine(sx,sy, ex,sy);
 				g.drawLine(ex,sy, ex,ey);

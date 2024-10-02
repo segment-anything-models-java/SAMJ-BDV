@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Stack;
 import java.util.function.Consumer;
 
 /**
@@ -157,8 +158,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		samjOverlay.shouldDrawPolygons = true;
 	}
 
-	public void forgetPolygons() {
-		samjOverlay.polygonList.clear();
+	public void forgetAllPolygons() {
+		samjOverlay.tpToCurrPolysList.clear();
+		samjOverlay.tpToRedoPolysList.clear();
+		viewerPanel.getDisplayComponent().repaint();
 	}
 
 	class PromptsAndPolygonsDrawingOverlay extends BdvOverlay implements Consumer<PlanarPolygonIn3D> {
@@ -186,12 +189,34 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			if (sy > ey) { tmp = sy; sy = ey; ey = tmp; }
 		}
 
-		private List<PlanarPolygonIn3D> polygonList = new ArrayList<>(500);
+		private Map<Integer, Stack<PlanarPolygonIn3D>> tpToCurrPolysList = new HashMap<>(2000);
+		private Map<Integer, Stack<PlanarPolygonIn3D>> tpToRedoPolysList = new HashMap<>(2000);
+		//
+		private Stack<PlanarPolygonIn3D> getCurrentPolygons() {
+			final int tp = viewerPanel.state().getCurrentTimepoint();
+			Stack<PlanarPolygonIn3D> retVal = tpToCurrPolysList.get(tp);
+			if (retVal == null) {
+				retVal = new Stack<>();
+				tpToCurrPolysList.put(tp,retVal);
+			}
+			return retVal;
+		}
+		private Stack<PlanarPolygonIn3D> getCurrentPolysRedo() {
+			final int tp = viewerPanel.state().getCurrentTimepoint();
+			Stack<PlanarPolygonIn3D> retVal = tpToRedoPolysList.get(tp);
+			if (retVal == null) {
+				retVal = new Stack<>();
+				tpToRedoPolysList.put(tp,retVal);
+			}
+			return retVal;
+		}
+		//
 		protected boolean shouldDrawPolygons = true;
 
 		@Override
 		public void accept(PlanarPolygonIn3D polygon) {
-			polygonList.add(polygon);
+			getCurrentPolygons().add(polygon);
+			getCurrentPolysRedo().clear();
 		}
 
 		protected final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
@@ -224,9 +249,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				}
 
 				//draws the currently recognized polygons
-				viewerPanel.state().getViewerTransform(imgToScreenTransform);
 				g.setPaint(colorPolygons);
+				viewerPanel.state().getViewerTransform(imgToScreenTransform);
 				boolean isCloseToViewingPlane = true, isCloseToViewingPlaneB = true;
+				final List<PlanarPolygonIn3D> polygonList = getCurrentPolygons();
 				for (PlanarPolygonIn3D p : polygonList) {
 					p.getTransformTo3d(polyToImgTransform);
 					polyToImgTransform.preConcatenate(imgToScreenTransform);

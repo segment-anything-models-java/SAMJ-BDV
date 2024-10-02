@@ -11,6 +11,7 @@ import net.imagej.ImgPlus;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.view.Views;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -18,8 +19,8 @@ import sc.fiji.simplifiedio.SimplifiedIO;
 
 import java.io.IOException;
 
-@Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>SAMJ>BDV demo")
-public class PluginFrontEnd implements Command {
+@Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>SAMJ>BDV on opened image")
+public class PluginBdvOnOpenedImage implements Command {
 	@Parameter
 	Dataset inputImage;
 
@@ -28,21 +29,19 @@ public class PluginFrontEnd implements Command {
 			  //TODO use initializator to readout which networks are installed
 	String selectedNetwork = "fake";
 
-	@Parameter(label = "Show encoded images: ")
+	@Parameter(label = "Show images submitted for encoding: ")
 	boolean showImagesSubmittedToNetwork = false;
 
 	@Override
 	public void run() {
 		Img<? extends RealType<?>> origImage = inputImage.getImgPlus().getImg();
-
-		if (origImage.numDimensions() < 3)
-			throw new IllegalArgumentException("Sorry, can't handle pure 2D images.");
-
-		annotateWithBDV((Img)origImage);
+		annotateWithBDV( (Img)origImage );
 	}
 
 	public <T extends RealType<T>> void annotateWithBDV(final Img<T> img) {
-		final BdvPrompts<T, FloatType> annotator = new BdvPrompts<>(img, new FloatType()).enableShowingPolygons();
+		final BdvPrompts<T, FloatType> annotator
+				  = new BdvPrompts<>(img, new FloatType()).enableShowingPolygons();
+
 		if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
 		try {
@@ -63,7 +62,7 @@ public class PluginFrontEnd implements Command {
 	}
 
 	public static void main(String[] args) {
-		ImgPlus image = SimplifiedIO.openImage("/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif");
-		new PluginFrontEnd().annotateWithBDV(image.getImg());
+		ImgPlus<?> image = SimplifiedIO.openImage("/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif");
+		new PluginBdvOnOpenedImage().annotateWithBDV( (Img)image.getImg() );
 	}
 }

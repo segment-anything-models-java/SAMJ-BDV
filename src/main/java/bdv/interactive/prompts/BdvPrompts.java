@@ -62,14 +62,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 
-		installBehaviours( bdv.getBdvHandle().getTriggerbindings() );
+		installBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
 	}
 
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
 	public BdvPrompts(final ViewerPanel bdvViewerPanel,
 	                  SourceAndConverter<IT> operateOnThisSource,
 	                  final TriggerBehaviourBindings bindBehavioursHere,
-	                  final String overlayName, final OT promptsPixelType) {
+	                  final String overlayName, final OT promptsPixelType,
+	                  final boolean installAlsoUndoRedoKeys) {
 		this.annotationSiteImgType = promptsPixelType;
 		this.image = operateOnThisSource.getSpimSource().getSource(bdvViewerPanel.state().getCurrentTimepoint(), 0);
 		this.viewerPanel = bdvViewerPanel;
@@ -96,7 +97,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			lostViewOfAnnotationSite();
 		} );
 
-		installBehaviours( bindBehavioursHere );
+		installBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
 	}
 
 	private RandomAccessibleInterval<IT> image;
@@ -211,6 +212,19 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			return retVal;
 		}
 		//
+		private void currentPolysUndoOne() {
+			Stack<PlanarPolygonIn3D> currPs = getCurrentPolygons();
+			if (currPs.isEmpty()) return;
+			getCurrentPolysRedo().push( currPs.pop() );
+			viewerPanel.getDisplayComponent().repaint();
+		}
+		private void currentPolysRedoOne() {
+			Stack<PlanarPolygonIn3D> redoPs = getCurrentPolysRedo();
+			if (redoPs.isEmpty()) return;
+			getCurrentPolygons().push( redoPs.pop() );
+			viewerPanel.getDisplayComponent().repaint();
+		}
+		//
 		protected boolean shouldDrawPolygons = true;
 
 		@Override
@@ -286,7 +300,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	// ======================== actions - behaviours ========================
-	protected void installBehaviours(final TriggerBehaviourBindings bindThemHere) {
+	protected void installBehaviours(final TriggerBehaviourBindings bindThemHere,
+	                                 final boolean installAlsoUndoRedoKeys) {
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 		behaviours.install( bindThemHere, "bdvprompts" );
 
@@ -344,6 +359,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			System.out.println("Switching to last visited annotation site: "+lastVisitedAnnotationSiteId);
 			displayAnnotationSite(lastVisitedAnnotationSiteId);
 		}, "bdvprompts_last_view", "shift|W");
+
+		if (installAlsoUndoRedoKeys) {
+			behaviours.behaviour((ClickBehaviour) (x, y) -> samjOverlay.currentPolysUndoOne(),
+			"bdvprompts_undo", "U");
+			behaviours.behaviour((ClickBehaviour) (x, y) -> samjOverlay.currentPolysRedoOne(),
+			"bdvprompts_redo", "shift|U");
+		}
 	}
 
 	// ======================== prompts - execution ========================

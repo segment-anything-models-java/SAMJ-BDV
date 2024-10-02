@@ -7,6 +7,9 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
 import bdv.util.BdvStackSource;
+import bdv.util.PlaceHolderConverterSetup;
+import bdv.util.PlaceHolderOverlayInfo;
+import bdv.util.PlaceHolderSource;
 import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
@@ -71,7 +74,19 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		this.viewerPanel = bdvViewerPanel;
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
-		bdvViewerPanel.getDisplay().overlays().add(this.samjOverlay);
+		PlaceHolderSource source = new PlaceHolderSource(overlayName);
+		SourceAndConverter<Void> sac = new SourceAndConverter<>(source, null);
+		//
+		PlaceHolderConverterSetup converterSetup = new PlaceHolderConverterSetup(9999,
+				  0, 1, this.samjOverlay.colorPolygons.getRGB());
+		System.out.println("converter setup supports color: "+converterSetup.supportsColor());
+
+		PlaceHolderOverlayInfo overlayInfo = new PlaceHolderOverlayInfo(bdvViewerPanel, sac, converterSetup);
+		this.samjOverlay.setOverlayInfo( overlayInfo );
+		bdvViewerPanel.getDisplay().overlays().add( this.samjOverlay );
+		//
+		bdvViewerPanel.state().addSource(sac);
+		bdvViewerPanel.state().setSourceActive(sac, true);
 
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );

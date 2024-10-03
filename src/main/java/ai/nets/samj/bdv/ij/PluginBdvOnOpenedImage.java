@@ -1,17 +1,16 @@
 package ai.nets.samj.bdv.ij;
 
 import ai.nets.samj.bdv.promptresponders.FakeResponder;
+import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.EfficientSAM;
 import ai.nets.samj.communication.model.SAM2Tiny;
 import bdv.interactive.prompts.BdvPrompts;
 import net.imagej.Dataset;
-import net.imagej.ImgPlus;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.view.Views;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
@@ -38,7 +37,7 @@ public class PluginBdvOnOpenedImage implements Command {
 		annotateWithBDV( (Img)origImage );
 	}
 
-	public <T extends RealType<T>> void annotateWithBDV(final Img<T> img) {
+	public <T extends RealType<T>> BdvPrompts<T,FloatType> annotateWithBDV(final Img<T> img) {
 		final BdvPrompts<T, FloatType> annotator
 				  = new BdvPrompts<>(img, new FloatType()).enableShowingPolygons();
 
@@ -58,11 +57,19 @@ public class PluginBdvOnOpenedImage implements Command {
 			}
 		} catch (IOException|InterruptedException e) {
 			System.out.println("Exception occurred during EfficientSAM initialization: "+e.getMessage());
+			return null;
 		}
+
+		return annotator;
 	}
 
+
 	public static void main(String[] args) {
-		ImgPlus<?> image = SimplifiedIO.openImage("/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif");
-		new PluginBdvOnOpenedImage().annotateWithBDV( (Img)image.getImg() );
+		final BdvPrompts<?,?> annotator = new PluginBdvOnOpenedImage()
+			.annotateWithBDV( SimplifiedIO.openImage(
+				"/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif"
+			).getImg() );
+		annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
+		annotator.addPromptsProcessor( new ReportImageOnConsoleResponder<>() );
 	}
 }

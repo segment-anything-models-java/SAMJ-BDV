@@ -1,6 +1,7 @@
 package ai.nets.samj.bdv.ij;
 
 import ai.nets.samj.bdv.promptresponders.FakeResponder;
+import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.EfficientSAM;
@@ -35,16 +36,21 @@ public class PluginBdvOnXmlDataset implements Command {
 
 	@Override
 	public void run() {
+		annotateWithBDV(inputXml);
+	}
+
+	public BdvPrompts<?,FloatType> annotateWithBDV(final File pathToXmlFile) {
+		final BdvPrompts<?, FloatType> annotator;
 		try {
 			//start BDV on the file
 			final BigDataViewer bdv = BigDataViewer.open(
-					  inputXml.getAbsolutePath(),
-					  inputXml.getAbsolutePath(),
+					  pathToXmlFile.getAbsolutePath(),
+					  pathToXmlFile.getAbsolutePath(),
 					  new ProgressWriterConsole(),
 					  new ViewerOptions());
 
 			//add the SAMJ annotator to it
-			final BdvPrompts<?, FloatType> annotator = new BdvPrompts<>(
+			annotator = new BdvPrompts<>(
 					  bdv.getViewer(),
 					  (SourceAndConverter)bdv.getViewer().state().getSources().get(0),
 					  bdv.getViewerFrame().getTriggerbindings(),
@@ -64,9 +70,21 @@ public class PluginBdvOnXmlDataset implements Command {
 				annotator.addPromptsProcessor( new FakeResponder<>() );
 			}
 		} catch (SpimDataException e) {
-			throw new RuntimeException(e);
+			System.out.println("Exception occurred during loading of the XML dataset: "+e.getMessage());
+			return null;
 		} catch (IOException|InterruptedException e) {
 			System.out.println("Exception occurred during EfficientSAM initialization: "+e.getMessage());
+			return null;
 		}
+
+		return annotator;
+	}
+
+
+	public static void main(String[] args) {
+		final BdvPrompts<?,?> annotator = new PluginBdvOnXmlDataset()
+				  .annotateWithBDV( new File("/home/ulman/data/Mette_E1_hdf5/dataset_hdf5.xml") );
+		annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
+		annotator.addPromptsProcessor( new ReportImageOnConsoleResponder<>() );
 	}
 }

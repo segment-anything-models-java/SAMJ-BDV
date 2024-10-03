@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Stack;
 import java.util.function.Consumer;
 
 /**
@@ -61,14 +62,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 
-		installBehaviours( bdv.getBdvHandle().getTriggerbindings() );
+		installBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
 	}
 
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
 	public BdvPrompts(final ViewerPanel bdvViewerPanel,
 	                  SourceAndConverter<IT> operateOnThisSource,
 	                  final TriggerBehaviourBindings bindBehavioursHere,
-	                  final String overlayName, final OT promptsPixelType) {
+	                  final String overlayName, final OT promptsPixelType,
+	                  final boolean installAlsoUndoRedoKeys) {
 		this.annotationSiteImgType = promptsPixelType;
 		this.image = operateOnThisSource.getSpimSource().getSource(bdvViewerPanel.state().getCurrentTimepoint(), 0);
 		this.viewerPanel = bdvViewerPanel;
@@ -95,7 +97,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			lostViewOfAnnotationSite();
 		} );
 
-		installBehaviours( bindBehavioursHere );
+		installBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
 	}
 
 	private RandomAccessibleInterval<IT> image;
@@ -157,8 +159,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		samjOverlay.shouldDrawPolygons = true;
 	}
 
-	public void forgetPolygons() {
-		samjOverlay.polygonList.clear();
+	public void forgetAllPolygons() {
+		samjOverlay.tpToCurrPolysList.clear();
+		samjOverlay.tpToRedoPolysList.clear();
+		viewerPanel.getDisplayComponent().repaint();
 	}
 
 	class PromptsAndPolygonsDrawingOverlay extends BdvOverlay implements Consumer<PlanarPolygonIn3D> {
@@ -186,12 +190,47 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			if (sy > ey) { tmp = sy; sy = ey; ey = tmp; }
 		}
 
-		private List<PlanarPolygonIn3D> polygonList = new ArrayList<>(500);
+		private Map<Integer, Stack<PlanarPolygonIn3D>> tpToCurrPolysList = new HashMap<>(2000);
+		private Map<Integer, Stack<PlanarPolygonIn3D>> tpToRedoPolysList = new HashMap<>(2000);
+		//
+		private Stack<PlanarPolygonIn3D> getCurrentPolygons() {
+			final int tp = viewerPanel.state().getCurrentTimepoint();
+			Stack<PlanarPolygonIn3D> retVal = tpToCurrPolysList.get(tp);
+			if (retVal == null) {
+				retVal = new Stack<>();
+				tpToCurrPolysList.put(tp,retVal);
+			}
+			return retVal;
+		}
+		private Stack<PlanarPolygonIn3D> getCurrentPolysRedo() {
+			final int tp = viewerPanel.state().getCurrentTimepoint();
+			Stack<PlanarPolygonIn3D> retVal = tpToRedoPolysList.get(tp);
+			if (retVal == null) {
+				retVal = new Stack<>();
+				tpToRedoPolysList.put(tp,retVal);
+			}
+			return retVal;
+		}
+		//
+		private void currentPolysUndoOne() {
+			Stack<PlanarPolygonIn3D> currPs = getCurrentPolygons();
+			if (currPs.isEmpty()) return;
+			getCurrentPolysRedo().push( currPs.pop() );
+			viewerPanel.getDisplayComponent().repaint();
+		}
+		private void currentPolysRedoOne() {
+			Stack<PlanarPolygonIn3D> redoPs = getCurrentPolysRedo();
+			if (redoPs.isEmpty()) return;
+			getCurrentPolygons().push( redoPs.pop() );
+			viewerPanel.getDisplayComponent().repaint();
+		}
+		//
 		protected boolean shouldDrawPolygons = true;
 
 		@Override
 		public void accept(PlanarPolygonIn3D polygon) {
-			polygonList.add(polygon);
+			getCurrentPolygons().add(polygon);
+			getCurrentPolysRedo().clear();
 		}
 
 		protected final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
@@ -203,11 +242,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		@Override
 		protected void draw(Graphics2D g) {
+			//final double uiScale = UIUtils.getUIScaleFactor( this );
+			//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
+			g.setStroke(stroke);
+
 			if (shouldDrawLine && isLineReadyForDrawing) {
 				//draws the line
-				//final double uiScale = UIUtils.getUIScaleFactor( this );
-				//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
-				g.setStroke(stroke);
 				g.setPaint(colorPrompt);
 				g.drawLine(sx,sy, ex,sy);
 				g.drawLine(ex,sy, ex,ey);
@@ -224,9 +264,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				}
 
 				//draws the currently recognized polygons
-				viewerPanel.state().getViewerTransform(imgToScreenTransform);
 				g.setPaint(colorPolygons);
+				viewerPanel.state().getViewerTransform(imgToScreenTransform);
 				boolean isCloseToViewingPlane = true, isCloseToViewingPlaneB = true;
+				final List<PlanarPolygonIn3D> polygonList = getCurrentPolygons();
 				for (PlanarPolygonIn3D p : polygonList) {
 					p.getTransformTo3d(polyToImgTransform);
 					polyToImgTransform.preConcatenate(imgToScreenTransform);
@@ -260,7 +301,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	// ======================== actions - behaviours ========================
-	protected void installBehaviours(final TriggerBehaviourBindings bindThemHere) {
+	protected void installBehaviours(final TriggerBehaviourBindings bindThemHere,
+	                                 final boolean installAlsoUndoRedoKeys) {
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 		behaviours.install( bindThemHere, "bdvprompts" );
 
@@ -318,6 +360,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			System.out.println("Switching to last visited annotation site: "+lastVisitedAnnotationSiteId);
 			displayAnnotationSite(lastVisitedAnnotationSiteId);
 		}, "bdvprompts_last_view", "shift|W");
+
+		if (installAlsoUndoRedoKeys) {
+			behaviours.behaviour((ClickBehaviour) (x, y) -> samjOverlay.currentPolysUndoOne(),
+			"bdvprompts_undo", "U");
+			behaviours.behaviour((ClickBehaviour) (x, y) -> samjOverlay.currentPolysRedoOne(),
+			"bdvprompts_redo", "shift|U");
+		}
 	}
 
 	// ======================== prompts - execution ========================

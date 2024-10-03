@@ -1,5 +1,6 @@
 package bdv.interactive.prompts.planarshapes;
 
+import bdv.viewer.ViewerState;
 import net.imglib2.Interval;
 import net.imglib2.FinalInterval;
 import net.imglib2.realtransform.AffineTransform3D;
@@ -12,8 +13,18 @@ public abstract class AbstractPlanarShapeIn3D {
 		this(100, viewTo3dTransform);
 	}
 
+	/**
+	 * Constructs one planar, closed shape made of connected-segments, and defined
+	 * as a sequence of 2D points-vertices (which are the end-points of the segments).
+	 * The relation-ship to the original 3D space is provided in the transform.
+	 *
+	 * The constructor *IS NOT* making a copy of the provided transform. The caller has
+	 * to make sure an immutable, at least for the duration of the validity of this object,
+	 * transform is provided. Users of BigDataViewer's {@link ViewerState#getViewerTransform()}
+	 * are safe as this method returns a copy of the transform.
+	 */
 	public AbstractPlanarShapeIn3D(final int expectedNoOfVertices, final AffineTransform3D viewTo3dTransform) {
-		transformTo3d = viewTo3dTransform; //TODO external code: make sure that copy() here is not necessary
+		transformTo3d = viewTo3dTransform;
 		coords2D = new ArrayList<>(expectedNoOfVertices);
 	}
 

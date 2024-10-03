@@ -14,11 +14,11 @@ import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.RealPoint;
+import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
-import net.imglib2.img.planar.PlanarImg;
-import net.imglib2.img.planar.PlanarImgFactory;
+import net.imglib2.img.array.ArrayImg;
+import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
@@ -400,21 +400,29 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	// ======================== prompts - image data ========================
 	private final OT annotationSiteImgType;
 	private Img<OT> annotationSiteViewImg;
-	private final RealPoint srcPos = new RealPoint(3);  //orig underlying 3D image
-	private final double[] viewPos = new double[2];     //the current view 2D image
+
+	//aux (and to avoid repetitive new() calls) for the collectViewPixelData() below:
+	private final double[] srcImgPos = new double[3];  //orig underlying 3D image
+	private final double[] screenPos = new double[3];  //the current view 2D image, as a 3D coord though
+	private final AffineTransform3D imgToScreenTransform = new AffineTransform3D();
 
 	protected Img<OT> collectViewPixelData(final RandomAccessibleInterval<IT> srcImg) {
 		final RealRandomAccessible<IT> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
+		final RealRandomAccess<IT> srcRealImgPtr = srcRealImg.realRandomAccess();
 
 		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
-		PlanarImg<OT, ?> viewImg = new PlanarImgFactory<>(annotationSiteImgType).create(displaySize.width, displaySize.height);
-
+		ArrayImg<OT, ?> viewImg = new ArrayImgFactory<>(annotationSiteImgType).create(displaySize.width, displaySize.height);
+		//NB: 2D (not 3D!) image and of the size of the screen -> ArrayImg backend should be enough...
 		Cursor<OT> viewCursor = viewImg.localizingCursor();
+
+		viewerPanel.state().getViewerTransform(imgToScreenTransform);
+		screenPos[2] = 0.0; //to be on the safe side
+
 		while (viewCursor.hasNext()) {
 			OT px = viewCursor.next();
-			viewCursor.localize(viewPos);
-			viewerPanel.displayToGlobalCoordinates(viewPos[0],viewPos[1], srcPos); //TODO optimize (inside is a RealPoint created over and over again)
-			px.setReal( srcRealImg.getAt(srcPos).getRealDouble() ); //TODO optimize (avoid using getAt())
+			viewCursor.localize(screenPos);
+			imgToScreenTransform.applyInverse(srcImgPos, screenPos); //NB: Inverse has also "reversed" order of arguments!
+			px.setReal( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() );
 		}
 
 		return viewImg;

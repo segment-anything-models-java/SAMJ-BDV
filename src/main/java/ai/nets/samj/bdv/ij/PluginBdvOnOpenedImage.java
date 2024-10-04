@@ -1,5 +1,6 @@
 package ai.nets.samj.bdv.ij;
 
+import ai.nets.samj.bdv.polygonconsumers.PolygonsRasterizerInto3dImgConsumer;
 import ai.nets.samj.bdv.promptresponders.FakeResponder;
 import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
@@ -7,9 +8,12 @@ import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.EfficientSAM;
 import ai.nets.samj.communication.model.SAM2Tiny;
 import bdv.interactive.prompts.BdvPrompts;
+import bdv.util.BdvFunctions;
 import net.imagej.Dataset;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.integer.GenericByteType;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import org.scijava.command.Command;
 import org.scijava.plugin.Parameter;
@@ -26,7 +30,7 @@ public class PluginBdvOnOpenedImage implements Command {
 	@Parameter(label = "Select network to use: ",
 			  choices = {"Efficient SAM", "SAM2 Tiny", "fake responses"})
 			  //TODO use initializator to readout which networks are installed
-	String selectedNetwork = "fake";
+	String selectedNetwork = "Efficient";
 
 	@Parameter(label = "Show images submitted for encoding: ")
 	boolean showImagesSubmittedToNetwork = false;
@@ -65,11 +69,20 @@ public class PluginBdvOnOpenedImage implements Command {
 
 
 	public static void main(String[] args) {
-		final BdvPrompts<?,?> annotator = new PluginBdvOnOpenedImage()
-			.annotateWithBDV( SimplifiedIO.openImage(
-				"/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif"
-			).getImg() );
-		annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
+		Img<UnsignedByteType> rawImg = SimplifiedIO.openImage(
+				"/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif",
+				new UnsignedByteType() ).getImg();
+		rawImg.forEach(p -> p.setReal(p.getRealFloat()+5)); //make the background visible in BDV
+
+		final BdvPrompts<?,?> annotator = new PluginBdvOnOpenedImage().annotateWithBDV( rawImg );
+		//annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 		annotator.addPromptsProcessor( new ReportImageOnConsoleResponder<>() );
+
+		Img<UnsignedByteType> maskImg = rawImg.copy();
+		maskImg.forEach(GenericByteType::setZero);
+		BdvFunctions.show(maskImg, "polygons as masks");
+
+		annotator.addPolygonsConsumer( new PolygonsRasterizerInto3dImgConsumer<>(maskImg) );
+		annotator.setExportImage(maskImg); //...to tell 'P' behaviour what image to save on a hard drive
 	}
 }

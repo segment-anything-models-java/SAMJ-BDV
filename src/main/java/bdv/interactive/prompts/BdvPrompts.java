@@ -30,6 +30,7 @@ import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 import org.scijava.ui.behaviour.util.TriggerBehaviourBindings;
+import sc.fiji.simplifiedio.SimplifiedIO;
 
 import java.awt.*;
 import java.util.Map;
@@ -119,6 +120,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		this.image = operateOnThisImage;
 		this.isNextPromptOnNewAnnotationSite = true;
 	}
+
+	/** Set image to 'null' to disable this functionality... */
+	public void setExportImage(final RandomAccessibleInterval<?> exportToThisImage) {
+		this.mask_image = exportToThisImage;
+	}
+
+	private RandomAccessibleInterval<?> mask_image;
 
 	public void addPolygonsConsumer(final Consumer<PlanarPolygonIn3D> consumer) {
 		polygonsConsumers.add(consumer);
@@ -371,6 +379,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			behaviours.behaviour((ClickBehaviour) (x, y) -> samjOverlay.currentPolysRedoOne(),
 			"bdvprompts_redo", "shift|U");
 		}
+
+		behaviours.behaviour((ClickBehaviour) (x, y) -> {
+				if (this.mask_image != null) {
+					SimplifiedIO.saveImage(this.mask_image,"/temp/bdv_masks.tif");
+					System.out.println("Saving mask image...");
+				}
+			}, "bdvprompts_save", "P");
 	}
 
 	// ======================== prompts - execution ========================

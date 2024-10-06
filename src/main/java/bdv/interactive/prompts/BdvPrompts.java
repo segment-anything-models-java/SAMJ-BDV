@@ -52,7 +52,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	/** Opens a new BDV over the provided image, and enables this addon in it. */
 	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final String imageName, final String overlayName, final OT promptsPixelType) {
 		this.annotationSiteImgType = promptsPixelType;
-		this.image = operateOnThisImage;
+		switchToThisImage(operateOnThisImage);
 		final BdvStackSource<IT> bdv = operateOnThisImage.numDimensions() >= 3
 				  ? BdvFunctions.show(operateOnThisImage, imageName)
 				  : BdvFunctions.show(Views.addDimension(operateOnThisImage,0,0), imageName, BdvOptions.options().is2D());
@@ -76,9 +76,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	                  final TriggerBehaviourBindings bindBehavioursHere,
 	                  final String overlayName, final OT promptsPixelType,
 	                  final boolean installAlsoUndoRedoKeys) {
-		this.annotationSiteImgType = promptsPixelType;
-		this.image = operateOnThisSource.getSpimSource().getSource(bdvViewerPanel.state().getCurrentTimepoint(), 0);
 		this.viewerPanel = bdvViewerPanel;
+		this.annotationSiteImgType = promptsPixelType;
+		switchToThisSource(operateOnThisSource);
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
 		PlaceHolderSource source = new PlaceHolderSource(overlayName);
@@ -104,14 +104,14 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 		this.viewerPanel.timePointListeners().add( currentTP -> {
-			this.image = operateOnThisSource.getSpimSource().getSource(currentTP, 0);
-			lostViewOfAnnotationSite();
+			switchToThisSource(operateOnThisSource, currentTP);
 		} );
 
 		installBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
 	}
 
 	private RandomAccessibleInterval<IT> image;
+	private final AffineTransform3D imageToGlobalTransform = new AffineTransform3D();
 	private final ViewerPanel viewerPanel;
 
 	/** The class registers itself as a polygon consumer,
@@ -124,7 +124,18 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 	public void switchToThisImage(final RandomAccessibleInterval<IT> operateOnThisImage) {
 		this.image = operateOnThisImage;
-		this.isNextPromptOnNewAnnotationSite = true;
+		this.imageToGlobalTransform.identity();
+		lostViewOfAnnotationSite();
+	}
+
+	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource) {
+		switchToThisSource(operateOnThisSource, viewerPanel.state().getCurrentTimepoint());
+	}
+
+	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource, final int atThisTimepoint) {
+		this.image = operateOnThisSource.getSpimSource().getSource(atThisTimepoint, 0);
+		operateOnThisSource.getSpimSource().getSourceTransform(atThisTimepoint, 0, this.imageToGlobalTransform);
+		lostViewOfAnnotationSite();
 	}
 
 	public void addPolygonsConsumer(final Consumer<PlanarPolygonIn3D> consumer) {
@@ -429,6 +440,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			OT px = viewCursor.next();
 			viewCursor.localize(screenPos);
 			imgToScreenTransform.applyInverse(srcImgPos, screenPos); //NB: Inverse has also "reversed" order of arguments!
+			imageToGlobalTransform.applyInverse(srcImgPos, srcImgPos);
 			px.setReal( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() );
 		}
 

@@ -286,12 +286,16 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 					colorPolygons = new Color( currentColor );
 				}
 
+				long renderingStart = System.currentTimeMillis();
+				int renderingPolys = 0;
+
 				//draws the currently recognized polygons
 				g.setPaint(colorPolygons);
 				viewerPanel.state().getViewerTransform(imgToScreenTransform);
 				boolean isCloseToViewingPlane = true, isCloseToViewingPlaneB = true;
 				final List<PlanarPolygonIn3D> polygonList = getCurrentPolygons();
 				for (PlanarPolygonIn3D p : polygonList) {
+					++renderingPolys;
 					p.getTransformTo3d(polyToImgTransform);
 					polyToImgTransform.preConcatenate(imgToScreenTransform);
 					//TODO: don't loop if bbox is already far away
@@ -310,6 +314,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 							g.drawLine((int)screenCoord[0],(int)screenCoord[1], (int)screenCoordB[0],(int)screenCoordB[1]);
 					}
 				}
+
+				long renderingStop = System.currentTimeMillis();
+				System.out.println(renderingPolys+" polys rendering took "+(renderingStop-renderingStart)+" millis");
 			}
 		}
 

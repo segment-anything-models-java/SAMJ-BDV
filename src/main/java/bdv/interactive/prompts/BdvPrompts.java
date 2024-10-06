@@ -299,11 +299,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 						p.coordinate2D(i % p.size(), auxCoord3D);
 						if (i % 2 == 0) {
 							polyToImgTransform.apply(auxCoord3D, screenCoord);
-							//TODO: scale in BDV
 							isCloseToViewingPlane = Math.abs(screenCoord[2]) < toleratedOffViewPlaneDistance;
 						} else {
 							polyToImgTransform.apply(auxCoord3D, screenCoordB);
-							//TODO: scale in BDV
 							isCloseToViewingPlaneB = Math.abs(screenCoordB[2]) < toleratedOffViewPlaneDistance;
 						}
 						if (i > 0 && isCloseToViewingPlane && isCloseToViewingPlaneB)

@@ -10,6 +10,7 @@ import bdv.util.BdvStackSource;
 import bdv.util.PlaceHolderConverterSetup;
 import bdv.util.PlaceHolderOverlayInfo;
 import bdv.util.PlaceHolderSource;
+import bdv.viewer.DisplayMode;
 import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
@@ -93,6 +94,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//
 		bdvViewerPanel.state().addSource(sac);
 		bdvViewerPanel.state().setSourceActive(sac, true);
+		//
+		DisplayMode currentMode = bdvViewerPanel.state().getDisplayMode();
+		if (!currentMode.equals(DisplayMode.FUSED) && !currentMode.equals(DisplayMode.FUSEDGROUP)) {
+			bdvViewerPanel.showMessage("Enabling fused mode to display SAMJ overlay.");
+			bdvViewerPanel.state().setDisplayMode(DisplayMode.FUSED);
+		}
 
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );

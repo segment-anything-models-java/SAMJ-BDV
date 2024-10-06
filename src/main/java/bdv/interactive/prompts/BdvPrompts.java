@@ -14,6 +14,7 @@ import bdv.viewer.DisplayMode;
 import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
+import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
@@ -425,6 +426,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	protected Img<OT> collectViewPixelData(final RandomAccessibleInterval<IT> srcImg) {
 		final RealRandomAccessible<IT> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
 		final RealRandomAccess<IT> srcRealImgPtr = srcRealImg.realRandomAccess();
+
+		System.out.println("New annotation site, collecting pixels from "+((Interval)srcImg).toString());
 
 		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
 		ArrayImg<OT, ?> viewImg = new ArrayImgFactory<>(annotationSiteImgType).create(displaySize.width, displaySize.height);

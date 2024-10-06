@@ -55,6 +55,7 @@ public class PluginBdvOnXmlDataset implements Command {
 					  (SourceAndConverter)bdv.getViewer().state().getSources().get(0),
 					  bdv.getViewerFrame().getTriggerbindings(),
 					  "SAMJ prompts", new FloatType(), true);
+			annotator.enableShowingPolygons();
 
 			if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 

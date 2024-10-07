@@ -1,5 +1,6 @@
 package bdv.interactive.prompts;
 
+import ai.nets.samj.util.PlanarShapesRasterizer;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import bdv.interactive.prompts.views.SpatioTemporalView;
@@ -21,11 +22,14 @@ import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.img.planar.PlanarImgs;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
@@ -39,6 +43,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Stack;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
@@ -394,6 +399,20 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			behaviours.behaviour((ClickBehaviour) (x, y) -> samjOverlay.currentPolysRedoOne(),
 			"bdvprompts_redo", "shift|U");
 		}
+
+		behaviours.behaviour((ClickBehaviour) (x, y) -> {
+			Img<UnsignedShortType> maskImage = PlanarImgs.unsignedShorts(this.image.dimensionsAsLongArray());
+			PlanarShapesRasterizer rasterizer = new PlanarShapesRasterizer();
+			AtomicInteger value = new AtomicInteger(0);
+			samjOverlay.getCurrentPolygons()
+				//.parallelStream() -- rasterizer is not re-entrant-safe, pool of them would be needed
+				.forEach(polygon -> {
+					int drawValue = value.addAndGet(1);
+					System.out.println("Rendering polygon no. "+drawValue);
+					rasterizer.rasterizeIntoImg(polygon, Views.extendValue(maskImage,0), drawValue);
+				});
+			ImageJFunctions.show(maskImage, "SAMJ BDV masks");
+		}, "bdvprompts_export", "R");
 	}
 
 	// ======================== prompts - execution ========================

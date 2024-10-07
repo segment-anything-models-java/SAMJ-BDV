@@ -1,6 +1,6 @@
-package ai.nets.samj.bdv.util;
+package bdv.interactive.prompts.views;
 
-import bdv.util.BdvHandle;
+import bdv.viewer.ViewerPanel;
 
 /**
  * Exactly the same class and same purpose as {@link SpatioTemporalView},
@@ -11,8 +11,8 @@ import bdv.util.BdvHandle;
  * @param <D> Type for user data that would be attached per every view.
  */
 public class SpatioTemporalViewWithData<D> extends SpatioTemporalView {
-	public SpatioTemporalViewWithData(BdvHandle bdv, D userData) {
-		super(bdv);
+	public SpatioTemporalViewWithData(ViewerPanel bdvViewerPanel, D userData) {
+		super(bdvViewerPanel);
 		this.userData = userData;
 	}
 

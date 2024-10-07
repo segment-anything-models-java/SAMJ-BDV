@@ -295,6 +295,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 					p.getTransformTo3d(polyToImgTransform);
 					polyToImgTransform.preConcatenate(imgToScreenTransform);
 					//TODO: don't loop if bbox is already far away
+					//... when measuring the rendering times, it turned out that walking through polygons'
+					//    vertices even to realize that the vertices are off-screen (either laterally or
+					//    axially/depth) takes close to no-time; the expensive part is only the actual
+					//    drawing of line segments on the screen; so doing additional tests if polygon is
+					//    laterally within the screen (the TODO below) or within the "focus depth" (this TODO)
+					//    gains no benefit
 					for (int i = 0; i <= p.size(); i++) {
 						//NB: the first (i=0) point is repeated to close the loop
 						p.coordinate2D(i % p.size(), auxCoord3D);

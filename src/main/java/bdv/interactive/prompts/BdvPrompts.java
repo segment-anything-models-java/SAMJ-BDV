@@ -10,15 +10,17 @@ import bdv.util.BdvStackSource;
 import bdv.util.PlaceHolderConverterSetup;
 import bdv.util.PlaceHolderOverlayInfo;
 import bdv.util.PlaceHolderSource;
+import bdv.viewer.DisplayMode;
 import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
+import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.RealPoint;
+import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
-import net.imglib2.img.planar.PlanarImg;
-import net.imglib2.img.planar.PlanarImgFactory;
+import net.imglib2.img.array.ArrayImg;
+import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
@@ -51,7 +53,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	/** Opens a new BDV over the provided image, and enables this addon in it. */
 	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final String imageName, final String overlayName, final OT promptsPixelType) {
 		this.annotationSiteImgType = promptsPixelType;
-		this.image = operateOnThisImage;
+		switchToThisImage(operateOnThisImage);
 		final BdvStackSource<IT> bdv = operateOnThisImage.numDimensions() >= 3
 				  ? BdvFunctions.show(operateOnThisImage, imageName)
 				  : BdvFunctions.show(Views.addDimension(operateOnThisImage,0,0), imageName, BdvOptions.options().is2D());
@@ -75,9 +77,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	                  final TriggerBehaviourBindings bindBehavioursHere,
 	                  final String overlayName, final OT promptsPixelType,
 	                  final boolean installAlsoUndoRedoKeys) {
-		this.annotationSiteImgType = promptsPixelType;
-		this.image = operateOnThisSource.getSpimSource().getSource(bdvViewerPanel.state().getCurrentTimepoint(), 0);
 		this.viewerPanel = bdvViewerPanel;
+		this.annotationSiteImgType = promptsPixelType;
+		switchToThisSource(operateOnThisSource);
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
 		PlaceHolderSource source = new PlaceHolderSource(overlayName);
@@ -93,18 +95,24 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//
 		bdvViewerPanel.state().addSource(sac);
 		bdvViewerPanel.state().setSourceActive(sac, true);
+		//
+		DisplayMode currentMode = bdvViewerPanel.state().getDisplayMode();
+		if (!currentMode.equals(DisplayMode.FUSED) && !currentMode.equals(DisplayMode.FUSEDGROUP)) {
+			bdvViewerPanel.showMessage("Enabling fused mode to display SAMJ overlay.");
+			bdvViewerPanel.state().setDisplayMode(DisplayMode.FUSED);
+		}
 
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 		this.viewerPanel.timePointListeners().add( currentTP -> {
-			this.image = operateOnThisSource.getSpimSource().getSource(currentTP, 0);
-			lostViewOfAnnotationSite();
+			switchToThisSource(operateOnThisSource, currentTP);
 		} );
 
 		installBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
 	}
 
 	private RandomAccessibleInterval<IT> image;
+	private final AffineTransform3D imageToGlobalTransform = new AffineTransform3D();
 	private final ViewerPanel viewerPanel;
 
 	/** The class registers itself as a polygon consumer,
@@ -117,7 +125,18 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 	public void switchToThisImage(final RandomAccessibleInterval<IT> operateOnThisImage) {
 		this.image = operateOnThisImage;
-		this.isNextPromptOnNewAnnotationSite = true;
+		this.imageToGlobalTransform.identity();
+		lostViewOfAnnotationSite();
+	}
+
+	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource) {
+		switchToThisSource(operateOnThisSource, viewerPanel.state().getCurrentTimepoint());
+	}
+
+	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource, final int atThisTimepoint) {
+		this.image = operateOnThisSource.getSpimSource().getSource(atThisTimepoint, 0);
+		operateOnThisSource.getSpimSource().getSourceTransform(atThisTimepoint, 0, this.imageToGlobalTransform);
+		lostViewOfAnnotationSite();
 	}
 
 	public void addPolygonsConsumer(final Consumer<PlanarPolygonIn3D> consumer) {
@@ -276,16 +295,20 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 					p.getTransformTo3d(polyToImgTransform);
 					polyToImgTransform.preConcatenate(imgToScreenTransform);
 					//TODO: don't loop if bbox is already far away
+					//... when measuring the rendering times, it turned out that walking through polygons'
+					//    vertices even to realize that the vertices are off-screen (either laterally or
+					//    axially/depth) takes close to no-time; the expensive part is only the actual
+					//    drawing of line segments on the screen; so doing additional tests if polygon is
+					//    laterally within the screen (the TODO below) or within the "focus depth" (this TODO)
+					//    gains no benefit
 					for (int i = 0; i <= p.size(); i++) {
 						//NB: the first (i=0) point is repeated to close the loop
 						p.coordinate2D(i % p.size(), auxCoord3D);
 						if (i % 2 == 0) {
 							polyToImgTransform.apply(auxCoord3D, screenCoord);
-							//TODO: scale in BDV
 							isCloseToViewingPlane = Math.abs(screenCoord[2]) < toleratedOffViewPlaneDistance;
 						} else {
 							polyToImgTransform.apply(auxCoord3D, screenCoordB);
-							//TODO: scale in BDV
 							isCloseToViewingPlaneB = Math.abs(screenCoordB[2]) < toleratedOffViewPlaneDistance;
 						}
 						if (i > 0 && isCloseToViewingPlane && isCloseToViewingPlaneB)
@@ -400,21 +423,32 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	// ======================== prompts - image data ========================
 	private final OT annotationSiteImgType;
 	private Img<OT> annotationSiteViewImg;
-	private final RealPoint srcPos = new RealPoint(3);  //orig underlying 3D image
-	private final double[] viewPos = new double[2];     //the current view 2D image
+
+	//aux (and to avoid repetitive new() calls) for the collectViewPixelData() below:
+	private final double[] srcImgPos = new double[3];  //orig underlying 3D image
+	private final double[] screenPos = new double[3];  //the current view 2D image, as a 3D coord though
+	private final AffineTransform3D imgToScreenTransform = new AffineTransform3D();
 
 	protected Img<OT> collectViewPixelData(final RandomAccessibleInterval<IT> srcImg) {
 		final RealRandomAccessible<IT> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
+		final RealRandomAccess<IT> srcRealImgPtr = srcRealImg.realRandomAccess();
+
+		System.out.println("New annotation site, collecting pixels from "+((Interval)srcImg).toString());
 
 		final Dimension displaySize = viewerPanel.getDisplayComponent().getSize();
-		PlanarImg<OT, ?> viewImg = new PlanarImgFactory<>(annotationSiteImgType).create(displaySize.width, displaySize.height);
-
+		ArrayImg<OT, ?> viewImg = new ArrayImgFactory<>(annotationSiteImgType).create(displaySize.width, displaySize.height);
+		//NB: 2D (not 3D!) image and of the size of the screen -> ArrayImg backend should be enough...
 		Cursor<OT> viewCursor = viewImg.localizingCursor();
+
+		viewerPanel.state().getViewerTransform(imgToScreenTransform);
+		screenPos[2] = 0.0; //to be on the safe side
+
 		while (viewCursor.hasNext()) {
 			OT px = viewCursor.next();
-			viewCursor.localize(viewPos);
-			viewerPanel.displayToGlobalCoordinates(viewPos[0],viewPos[1], srcPos); //TODO optimize (inside is a RealPoint created over and over again)
-			px.setReal( srcRealImg.getAt(srcPos).getRealDouble() ); //TODO optimize (avoid using getAt())
+			viewCursor.localize(screenPos);
+			imgToScreenTransform.applyInverse(srcImgPos, screenPos); //NB: Inverse has also "reversed" order of arguments!
+			imageToGlobalTransform.applyInverse(srcImgPos, srcImgPos);
+			px.setReal( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() );
 		}
 
 		return viewImg;

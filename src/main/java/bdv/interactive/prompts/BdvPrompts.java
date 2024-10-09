@@ -358,6 +358,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				samjOverlay.setEndOfLine(x,y);
 				samjOverlay.isLineReadyForDrawing = false;
 
+				applyContrastSetting_prevValue = applyContrastSetting_currValue;
+				applyContrastSetting_currValue = false;
 				processRectanglePrompt();
 			}
 		}, "bdvprompts_rectangle", "L" );
@@ -417,8 +419,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 	// ======================== prompts - execution ========================
 	private void processRectanglePrompt() {
-		final boolean isNewViewImage = isNextPromptOnNewAnnotationSite;
-		if (isNextPromptOnNewAnnotationSite) installNewAnnotationSite();
+		final boolean isNewViewImage = isNextPromptOnNewAnnotationSite || applyContrastSetting_prevValue != applyContrastSetting_currValue;
+		if (isNewViewImage) installNewAnnotationSite();
 
 		//create prompt with coords w.r.t. the annotation site image
 		PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
@@ -442,6 +444,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	// ======================== prompts - image data ========================
 	private final OT annotationSiteImgType;
 	private Img<OT> annotationSiteViewImg;
+
+	private boolean applyContrastSetting_prevValue = false;
+	private boolean applyContrastSetting_currValue = false;
 
 	//aux (and to avoid repetitive new() calls) for the collectViewPixelData() below:
 	private final double[] srcImgPos = new double[3];  //orig underlying 3D image

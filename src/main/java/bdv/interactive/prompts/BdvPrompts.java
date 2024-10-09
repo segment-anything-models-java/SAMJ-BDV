@@ -4,6 +4,7 @@ import ai.nets.samj.util.PlanarShapesRasterizer;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import bdv.interactive.prompts.views.SpatioTemporalView;
+import bdv.tools.brightness.ConverterSetup;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
@@ -63,6 +64,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				  ? BdvFunctions.show(operateOnThisImage, imageName)
 				  : BdvFunctions.show(Views.addDimension(operateOnThisImage,0,0), imageName, BdvOptions.options().is2D());
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
+		this.viewerConverterSetup = bdv.getConverterSetups().get(0);
 
 		if (viewerPanel.getOptionValues().is2D()) System.out.println("Detected 2D image, switched BDV to the 2D mode.");
 
@@ -119,6 +121,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	private RandomAccessibleInterval<IT> image;
 	private final AffineTransform3D imageToGlobalTransform = new AffineTransform3D();
 	private final ViewerPanel viewerPanel;
+	private ConverterSetup viewerConverterSetup;
 
 	/** The class registers itself as a polygon consumer,
 	 *  and consumes them by showing them in the BDV.
@@ -489,6 +492,16 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		annotationSiteViewImg = collectViewPixelData(this.image);
 		isNextPromptOnNewAnnotationSite = false;
+
+		if (applyContrastSetting_currValue) {
+			final double min = this.viewerConverterSetup.getDisplayRangeMin();
+			double max = this.viewerConverterSetup.getDisplayRangeMax();
+			System.out.println("Massaging annotation view image between min = "+min+" and max = "+max);
+			if (max == min) max += 1.0;
+
+			final double range = max - min;
+			annotationSiteViewImg.forEach( px -> px.setReal(Math.min(Math.max(px.getRealDouble() - min, 0.0) / range, 1.0)) );
+		}
 	}
 
 	/**

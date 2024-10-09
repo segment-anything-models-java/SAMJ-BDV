@@ -346,8 +346,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 		behaviours.install( bindThemHere, "bdvprompts" );
 
-		//install behaviour for moving a line in the BDV view, with shortcut "L"
-		behaviours.behaviour( new DragBehaviour() {
+		class DragBehaviourSkeleton implements DragBehaviour {
+			DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting) {
+				this.methodThatProcessesRectanglePrompt = localPromptMethodRef;
+				this.considerCurrentContrastSetting = shouldApplyContrastSetting;
+			}
+
+			final RectanglePromptProcessor methodThatProcessesRectanglePrompt;
+			final boolean considerCurrentContrastSetting;
+
 			@Override
 			public void init( final int x, final int y )
 			{
@@ -365,12 +372,23 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			{
 				samjOverlay.setEndOfLine(x,y);
 				samjOverlay.isLineReadyForDrawing = false;
-
-				applyContrastSetting_prevValue = applyContrastSetting_currValue;
-				applyContrastSetting_currValue = false;
-				processRectanglePrompt();
+				samjOverlay.normalizeLineEnds();
+				handleRectanglePrompt();
 			}
-		}, "bdvprompts_rectangle", "L" );
+
+			void handleRectanglePrompt() {
+				applyContrastSetting_prevValue = applyContrastSetting_currValue;
+				applyContrastSetting_currValue = this.considerCurrentContrastSetting;
+
+				final boolean isNewViewImage = isNextPromptOnNewAnnotationSite || applyContrastSetting_prevValue != applyContrastSetting_currValue;
+				if (isNewViewImage) installNewAnnotationSite();
+				this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
+			}
+		}
+
+		//install behaviour for moving a line in the BDV view, with shortcut "L"
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false),
+				  "bdvprompts_rectangle_samj_orig", "L" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
@@ -426,20 +444,20 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	// ======================== prompts - execution ========================
-	private void processRectanglePrompt() {
-		final boolean isNewViewImage = isNextPromptOnNewAnnotationSite || applyContrastSetting_prevValue != applyContrastSetting_currValue;
-		if (isNewViewImage) installNewAnnotationSite();
+	interface RectanglePromptProcessor {
+		void apply(boolean isNewAnnotationImageInstalled);
+	}
 
+	private void processRectanglePrompt(boolean isNewAnnotationImageInstalled) {
 		//create prompt with coords w.r.t. the annotation site image
 		PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
 				  this.annotationSiteViewImg,
 				  this.viewerPanel.state().getViewerTransform().inverse());
-		samjOverlay.normalizeLineEnds();
 		prompt.setDiagonal(samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
 
 		//submit the prompt to polygons processors (producers, in fact)
 		final List<PlanarPolygonIn3D> obtainedPolygons = new ArrayList<>(500);
-		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.process(prompt, isNewViewImage) ) );
+		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.process(prompt, isNewAnnotationImageInstalled) ) );
 
 		//submit the created polygons to the polygon consumers
 		obtainedPolygons.forEach( poly -> polygonsConsumers.forEach(c -> c.accept(poly)) );

@@ -500,13 +500,14 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				//Prompts.SHOW_THRESHOLDED_DBGIMAGE
 			);
 
+		final PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
+				this.annotationSiteViewImg,
+				this.viewerPanel.state().getViewerTransform().inverse()
+			);
+
 		boolean isNewImage = isNewAnnotationImageInstalled;
 		for (int[] box : seeds) {
-			PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
-					this.annotationSiteViewImg,
-					this.viewerPanel.state().getViewerTransform().inverse()
-				);
-			prompt.setDiagonal(box[0],box[1], box[2],box[3]);
+			prompt.resetDiagonal(box[0],box[1], box[2],box[3]);
 			doOnePrompt(prompt, isNewImage);
 			isNewImage = false;
 			//NB: consecutive calls here operate on the same image, thus we can do this

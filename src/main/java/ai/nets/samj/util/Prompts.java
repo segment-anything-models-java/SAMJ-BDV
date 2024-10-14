@@ -2,6 +2,7 @@ package ai.nets.samj.util;
 
 import bdv.tools.brightness.ConverterSetup;
 import net.imglib2.Cursor;
+import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.algorithm.labeling.ConnectedComponents;
@@ -36,9 +37,9 @@ public class Prompts {
 	private static final Shape SE_FOR_CLOSING = new RectangleShape(1, false);
 
 	public static <T extends RealType<T>>
-	List<int[]> findSeedsAndReturnAsBoxes(final RandomAccessibleInterval<T> originalRAI,
-	                                      final ConverterSetup contrastAdjustment,
-	                                      final int showDebugImagesFlag) {
+	Img<UnsignedShortType> getSeedComponents(final RandomAccessibleInterval<T> originalRAI,
+	                                         final ConverterSetup contrastAdjustment,
+	                                         final int showDebugImagesFlag) {
 		SHOW_DBGIMAGE_COUNTER++;
 		if ((showDebugImagesFlag & SHOW_ORIGINAL_DBGIMAGE) > 0) {
 			ImageJFunctions.show(originalRAI, SHOW_DBGIMAGE_COUNTER + ": source original image");
@@ -80,6 +81,16 @@ public class Prompts {
 			ImageJFunctions.show(ccaImg, SHOW_DBGIMAGE_COUNTER+": thresholded then closed then labels image");
 		}
 
+		return ccaImg;
+	}
+
+	public static <T extends RealType<T>>
+	List<int[]> findSeedsAndReturnAsBoxes(final RandomAccessibleInterval<T> originalRAI,
+	                                      final ConverterSetup contrastAdjustment,
+	                                      final int showDebugImagesFlag) {
+		final IterableInterval<UnsignedShortType> ccaImg
+				= getSeedComponents(originalRAI, contrastAdjustment, showDebugImagesFlag);
+
 		final Map<Integer, int[]> boxesAndStats = new HashMap<>(100);
 		//NB: minX,minY, maxX,maxY, maxIntensity
 
@@ -102,6 +113,10 @@ public class Prompts {
 			box[4] = Math.max(box[4], (int)origPx.get().getRealDouble());
 		}
 
+		final double min = contrastAdjustment.getDisplayRangeMin();
+		double max = contrastAdjustment.getDisplayRangeMax();
+		if (max == min) max += 1.0;
+		final double range = max - min;
 		final int minimalBrightestIntensityThreshold = (int)(0.8*range + min);
 		System.out.println("Considering only components brighter than "+minimalBrightestIntensityThreshold);
 
@@ -114,6 +129,52 @@ public class Prompts {
 		return seeds;
 	}
 
-	//public static Map<Integer,int[]> findSeedsAndReturnAsCentres() {
-	//}
+	public static <T extends RealType<T>>
+	List<long[]> findSeedsAndReturnAsCentres(final RandomAccessibleInterval<T> originalRAI,
+	                                         final ConverterSetup contrastAdjustment,
+	                                         final int showDebugImagesFlag) {
+		final IterableInterval<UnsignedShortType> ccaImg
+				= getSeedComponents(originalRAI, contrastAdjustment, showDebugImagesFlag);
+
+		final Map<Integer, long[]> ccaStats = new HashMap<>(100);
+		//NB: sumX,sumY,cnt, maxIntensity
+
+		final RandomAccess<T> origPx = originalRAI.randomAccess();
+		final Cursor<UnsignedShortType> ccaPx = ccaImg.localizingCursor();
+		final int[] ccaPxPos = new int[2];
+		while (ccaPx.hasNext()) {
+			final int px = ccaPx.next().get();
+			if (px == 0) continue; //NB: skip background pixel
+			ccaPx.localize(ccaPxPos);
+			if (!ccaStats.containsKey(px)) ccaStats.put(px, new long[] {0,0,0,px});
+			long[] stat = ccaStats.get(px);
+			//NB: not bringing to the coord system now as it would be increasing the numbers (doing summation here!)
+			stat[0] += ccaPxPos[0];
+			stat[1] += ccaPxPos[1];
+			stat[2] += 1;
+			ccaPxPos[0] += originalRAI.min(0); //NB: brings it to the coord system of originalRAI
+			ccaPxPos[1] += originalRAI.min(1);
+			origPx.setPosition(ccaPxPos);
+			stat[3] = Math.max(stat[3], (int)origPx.get().getRealDouble());
+		}
+
+		final double min = contrastAdjustment.getDisplayRangeMin();
+		double max = contrastAdjustment.getDisplayRangeMax();
+		if (max == min) max += 1.0;
+		final double range = max - min;
+		final int minimalBrightestIntensityThreshold = (int)(0.8*range + min);
+		System.out.println("Considering only components brighter than "+minimalBrightestIntensityThreshold);
+
+		List<long[]> seeds = new ArrayList<>(ccaStats.size());
+		for (long[] box : ccaStats.values()) {
+			if ((box[2]-box[0])*(box[3]-box[1]) < 25) continue;         //skip over very small patches
+			if (box[4] < minimalBrightestIntensityThreshold) continue;  //skip over non-bright patches
+			box[0] /= box[2]; //NB: yields geometric centre of the component
+			box[1] /= box[2];
+			box[0] += originalRAI.min(0); //NB: brings it finally to the coord system of originalRAI
+			box[1] += originalRAI.min(1);
+			seeds.add(box);
+		}
+		return seeds;
+	}
 }

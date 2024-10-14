@@ -17,12 +17,19 @@ import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
+import net.imglib2.FinalInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
+import net.imglib2.loops.LoopBuilder;
+import net.imglib2.algorithm.labeling.ConnectedComponents;
+import net.imglib2.algorithm.morphology.Closing;
+import net.imglib2.algorithm.neighborhood.RectangleShape;
+import net.imglib2.algorithm.neighborhood.Shape;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.planar.PlanarImgs;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
@@ -386,6 +393,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				  "bdvprompts_rectangle_samj_orig", "L" );
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true),
 				  "bdvprompts_rectangle_samj_contrast", "K" );
+		behaviours.behaviour( new DragBehaviourSkeleton(this::thresholdAndProcessRectanglePrompt, true),
+				  "bdvprompts_rectangle_thres_contrast", "J" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
@@ -466,6 +475,62 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//request redraw, just in case after all polygons are consumed,
 		//and also to make sure the prompt rectangle disappears
 		viewerPanel.getDisplayComponent().repaint();
+	}
+
+	final private Shape seForClosing = new RectangleShape(3, false);
+	private void thresholdAndProcessRectanglePrompt(boolean isNewAnnotationImageInstalled) {
+		final FinalInterval roi = new FinalInterval(
+				  new long[] {samjOverlay.sx,samjOverlay.sy},
+				  new long[] {samjOverlay.ex,samjOverlay.ey});
+
+		final RandomAccessibleInterval<UnsignedShortType> thresholdedImg = ArrayImgs.unsignedShorts(roi.dimensionsAsLongArray());
+		LoopBuilder.setImages(Views.interval(annotationSiteViewImg,roi), thresholdedImg).forEachPixel(
+				  (i, o) -> { if (i.getRealDouble() > 0) o.setOne(); else o.setZero(); } );
+		ImageJFunctions.show(thresholdedImg,"thresholded image");
+
+		final Img<UnsignedShortType> closedThesholdedImg = ArrayImgs.unsignedShorts(roi.dimensionsAsLongArray());
+		Closing.close(Views.extendValue(thresholdedImg,0), closedThesholdedImg, seForClosing, 4);
+		ImageJFunctions.show(thresholdedImg,"thresholded then closed image");
+
+		final Img<UnsignedShortType> ccaImg = closedThesholdedImg.copy();
+		ccaImg.forEach(UnsignedShortType::setZero);
+		ConnectedComponents.labelAllConnectedComponents(closedThesholdedImg,ccaImg, ConnectedComponents.StructuringElement.EIGHT_CONNECTED);
+		ImageJFunctions.show(ccaImg,"thresholded then closed then labels image");
+
+		final Map<Integer, int[]> boxes = new HashMap<>(100);
+
+		Cursor<UnsignedShortType> ccaPx = ccaImg.localizingCursor();
+		final int[] ccaPxPos = new int[2];
+		while (ccaPx.hasNext()) {
+			final int px = ccaPx.next().get();
+			if (px == 0) continue;
+			if (!boxes.containsKey(px)) boxes.put(px, new int[4]);
+			int[] box = boxes.get(px);
+			ccaPx.localize(ccaPxPos);
+			box[0] = Math.min(box[0], ccaPxPos[0]);
+			box[1] = Math.min(box[1], ccaPxPos[1]);
+			box[2] = Math.max(box[2], ccaPxPos[0]);
+			box[3] = Math.max(box[3], ccaPxPos[1]);
+		}
+
+		final Img<OT> originalImg = collectViewPixelData(this.image);
+		//NB: for sure devoid of the contrast adjustment
+
+		boolean isNewImage = isNewAnnotationImageInstalled;
+		for (int[] box : boxes.values()) {
+			//NB: skip over very small patches
+			if ((box[2]-box[0])*(box[3]-box[1]) < 25) continue;
+			box[0] += samjOverlay.sx; box[2] += samjOverlay.sx;
+			box[1] += samjOverlay.sy; box[3] += samjOverlay.sy;
+			System.out.println("prompting box: ["+box[0]+","+box[1]+"] -> ["+box[2]+","+box[3]+"]");
+			PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
+					  originalImg,
+					  this.viewerPanel.state().getViewerTransform().inverse());
+			prompt.setDiagonal(box[0],box[1], box[2],box[3]);
+			doOnePrompt(prompt, isNewImage);
+			isNewImage = false;
+			//NB: consecutive calls here operate on the same image, thus we can do this
+		}
 	}
 
 	// ======================== prompts - image data ========================

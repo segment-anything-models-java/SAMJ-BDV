@@ -389,6 +389,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//install behaviour for moving a line in the BDV view, with shortcut "L"
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false),
 				  "bdvprompts_rectangle_samj_orig", "L" );
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true),
+				  "bdvprompts_rectangle_samj_contrast", "K" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;

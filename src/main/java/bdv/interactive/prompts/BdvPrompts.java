@@ -1,6 +1,7 @@
 package bdv.interactive.prompts;
 
 import ai.nets.samj.util.PlanarShapesRasterizer;
+import ai.nets.samj.util.Prompts;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import bdv.interactive.prompts.views.SpatioTemporalView;
@@ -17,12 +18,20 @@ import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
+import net.imglib2.FinalInterval;
+import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
+import net.imglib2.loops.LoopBuilder;
+import net.imglib2.algorithm.labeling.ConnectedComponents;
+import net.imglib2.algorithm.morphology.Closing;
+import net.imglib2.algorithm.neighborhood.RectangleShape;
+import net.imglib2.algorithm.neighborhood.Shape;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.planar.PlanarImgs;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
@@ -394,6 +403,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				  "bdvprompts_rectangle_samj_orig", "L" );
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true),
 				  "bdvprompts_rectangle_samj_contrast", "K" );
+		behaviours.behaviour( new DragBehaviourSkeleton(this::thresholdAndProcessRectanglePrompt, false),
+				  "bdvprompts_rectangle_thres_contrast", "J" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
@@ -474,6 +485,32 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//request redraw, just in case after all polygons are consumed,
 		//and also to make sure the prompt rectangle disappears
 		viewerPanel.getDisplayComponent().repaint();
+	}
+
+	private void thresholdAndProcessRectanglePrompt(boolean isNewAnnotationImageInstalled) {
+		final FinalInterval roi = new FinalInterval(
+				new long[] {samjOverlay.sx,samjOverlay.sy},
+				new long[] {samjOverlay.ex,samjOverlay.ey}
+			);
+
+		List<int[]> seeds = Prompts.findSeedsAndReturnAsBoxes(
+				Views.interval(this.annotationSiteViewImg, roi),
+				this.viewerConverterSetup,
+				Prompts.SHOW_NO_DBGIMAGES
+				//Prompts.SHOW_THRESHOLDED_DBGIMAGE
+			);
+
+		boolean isNewImage = isNewAnnotationImageInstalled;
+		for (int[] box : seeds) {
+			PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
+					this.annotationSiteViewImg,
+					this.viewerPanel.state().getViewerTransform().inverse()
+				);
+			prompt.setDiagonal(box[0],box[1], box[2],box[3]);
+			doOnePrompt(prompt, isNewImage);
+			isNewImage = false;
+			//NB: consecutive calls here operate on the same image, thus we can do this
+		}
 	}
 
 	// ======================== prompts - image data ========================

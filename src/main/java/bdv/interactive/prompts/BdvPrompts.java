@@ -74,6 +74,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
+		this.viewerConverterSetup.setupChangeListeners().add( cs -> notifyContrastSettingsChanged() );
 
 		installBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
 	}
@@ -380,7 +381,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				applyContrastSetting_prevValue = applyContrastSetting_currValue;
 				applyContrastSetting_currValue = this.considerCurrentContrastSetting;
 
-				final boolean isNewViewImage = isNextPromptOnNewAnnotationSite || applyContrastSetting_prevValue != applyContrastSetting_currValue;
+				final boolean isNewViewImage = isNextPromptOnNewAnnotationSite
+						  || (applyContrastSetting_currValue && isNextPromptOnChangedContrast)
+						  || (applyContrastSetting_prevValue != applyContrastSetting_currValue);
 				if (isNewViewImage) installNewAnnotationSite();
 				this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
 			}
@@ -508,6 +511,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 	// ======================== prompts - annotation sites ========================
 	/** Basically, flags that the encoding is no longer valid */
+	private boolean isNextPromptOnChangedContrast = true;
+
+	private void notifyContrastSettingsChanged() {
+		isNextPromptOnChangedContrast = true;
+	}
+
 	private boolean isNextPromptOnNewAnnotationSite = true;
 
 	private void lostViewOfAnnotationSite() {
@@ -532,6 +541,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			final double range = max - min;
 			annotationSiteViewImg.forEach( px -> px.setReal(Math.min(Math.max(px.getRealDouble() - min, 0.0) / range, 1.0)) );
 		}
+		isNextPromptOnChangedContrast = false;
 	}
 
 	/**

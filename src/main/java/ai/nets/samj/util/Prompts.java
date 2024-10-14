@@ -2,6 +2,7 @@ package ai.nets.samj.util;
 
 import bdv.tools.brightness.ConverterSetup;
 import net.imglib2.Cursor;
+import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.algorithm.labeling.ConnectedComponents;
@@ -36,9 +37,9 @@ public class Prompts {
 	private static final Shape SE_FOR_CLOSING = new RectangleShape(1, false);
 
 	public static <T extends RealType<T>>
-	List<int[]> findSeedsAndReturnAsBoxes(final RandomAccessibleInterval<T> originalRAI,
-	                                      final ConverterSetup contrastAdjustment,
-	                                      final int showDebugImagesFlag) {
+	Img<UnsignedShortType> getSeedComponents(final RandomAccessibleInterval<T> originalRAI,
+	                                         final ConverterSetup contrastAdjustment,
+	                                         final int showDebugImagesFlag) {
 		SHOW_DBGIMAGE_COUNTER++;
 		if ((showDebugImagesFlag & SHOW_ORIGINAL_DBGIMAGE) > 0) {
 			ImageJFunctions.show(originalRAI, SHOW_DBGIMAGE_COUNTER + ": source original image");
@@ -80,6 +81,16 @@ public class Prompts {
 			ImageJFunctions.show(ccaImg, SHOW_DBGIMAGE_COUNTER+": thresholded then closed then labels image");
 		}
 
+		return ccaImg;
+	}
+
+	public static <T extends RealType<T>>
+	List<int[]> findSeedsAndReturnAsBoxes(final RandomAccessibleInterval<T> originalRAI,
+	                                      final ConverterSetup contrastAdjustment,
+	                                      final int showDebugImagesFlag) {
+		final IterableInterval<UnsignedShortType> ccaImg
+				= getSeedComponents(originalRAI, contrastAdjustment, showDebugImagesFlag);
+
 		final Map<Integer, int[]> boxesAndStats = new HashMap<>(100);
 		//NB: minX,minY, maxX,maxY, maxIntensity
 
@@ -102,6 +113,10 @@ public class Prompts {
 			box[4] = Math.max(box[4], (int)origPx.get().getRealDouble());
 		}
 
+		final double min = contrastAdjustment.getDisplayRangeMin();
+		double max = contrastAdjustment.getDisplayRangeMax();
+		if (max == min) max += 1.0;
+		final double range = max - min;
 		final int minimalBrightestIntensityThreshold = (int)(0.8*range + min);
 		System.out.println("Considering only components brighter than "+minimalBrightestIntensityThreshold);
 

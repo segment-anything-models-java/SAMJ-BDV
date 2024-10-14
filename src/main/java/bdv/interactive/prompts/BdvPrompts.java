@@ -18,6 +18,7 @@ import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.FinalInterval;
+import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
@@ -478,16 +479,17 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
-	final private Shape seForClosing = new RectangleShape(3, false);
+	final private Shape seForClosing = new RectangleShape(1, false);
 	private void thresholdAndProcessRectanglePrompt(boolean isNewAnnotationImageInstalled) {
 		final FinalInterval roi = new FinalInterval(
 				  new long[] {samjOverlay.sx,samjOverlay.sy},
 				  new long[] {samjOverlay.ex,samjOverlay.ey});
+		//ImageJFunctions.show(Views.interval(annotationSiteViewImg,roi),"source image");
 
 		final RandomAccessibleInterval<UnsignedShortType> thresholdedImg = ArrayImgs.unsignedShorts(roi.dimensionsAsLongArray());
 		LoopBuilder.setImages(Views.interval(annotationSiteViewImg,roi), thresholdedImg).forEachPixel(
 				  (i, o) -> { if (i.getRealDouble() > 0) o.setOne(); else o.setZero(); } );
-		ImageJFunctions.show(thresholdedImg,"thresholded image");
+		//ImageJFunctions.show(thresholdedImg,"thresholded image");
 
 		final Img<UnsignedShortType> closedThesholdedImg = ArrayImgs.unsignedShorts(roi.dimensionsAsLongArray());
 		Closing.close(Views.extendValue(thresholdedImg,0), closedThesholdedImg, seForClosing, 4);
@@ -496,34 +498,51 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		final Img<UnsignedShortType> ccaImg = closedThesholdedImg.copy();
 		ccaImg.forEach(UnsignedShortType::setZero);
 		ConnectedComponents.labelAllConnectedComponents(closedThesholdedImg,ccaImg, ConnectedComponents.StructuringElement.EIGHT_CONNECTED);
-		ImageJFunctions.show(ccaImg,"thresholded then closed then labels image");
+		//ImageJFunctions.show(ccaImg,"thresholded then closed then labels image");
 
-		final Map<Integer, int[]> boxes = new HashMap<>(100);
+		final Img<OT> originalImg = collectViewPixelData(this.image);
+		//NB: for sure devoid of the contrast adjustment
+
+		final Map<Integer, int[]> boxesAndStats = new HashMap<>(100);
+		//NB: minX,minY, maxX,maxY, cntNonZero, sumInt, minInt, maxInt
 
 		Cursor<UnsignedShortType> ccaPx = ccaImg.localizingCursor();
+		RandomAccess<OT> origPx = originalImg.randomAccess(roi);
 		final int[] ccaPxPos = new int[2];
 		while (ccaPx.hasNext()) {
 			final int px = ccaPx.next().get();
 			if (px == 0) continue;
 			ccaPx.localize(ccaPxPos);
-			if (!boxes.containsKey(px)) boxes.put(px, new int[] {ccaPxPos[0],ccaPxPos[1],ccaPxPos[0],ccaPxPos[1]});
-			int[] box = boxes.get(px);
+			if (!boxesAndStats.containsKey(px)) boxesAndStats.put(px, new int[] {ccaPxPos[0],ccaPxPos[1],ccaPxPos[0],ccaPxPos[1],0,0,px,px});
+			int[] box = boxesAndStats.get(px);
 			box[0] = Math.min(box[0], ccaPxPos[0]);
 			box[1] = Math.min(box[1], ccaPxPos[1]);
 			box[2] = Math.max(box[2], ccaPxPos[0]);
 			box[3] = Math.max(box[3], ccaPxPos[1]);
+			box[4] += 1;
+
+			ccaPxPos[0] += samjOverlay.sx;
+			ccaPxPos[1] += samjOverlay.sy;
+			origPx.setPosition(ccaPxPos);
+			final int origVal = (int)origPx.get().getRealDouble();
+			box[5] += origVal;
+			box[6] = Math.min(box[6], origVal);
+			box[7] = Math.max(box[7], origVal);
 		}
 
-		final Img<OT> originalImg = collectViewPixelData(this.image);
-		//NB: for sure devoid of the contrast adjustment
-
+		final int minimalBrightestIntensityThreshold = (int)(0.95 * this.viewerConverterSetup.getDisplayRangeMax());
+		System.out.println("Using only brighter than "+minimalBrightestIntensityThreshold);
 		boolean isNewImage = isNewAnnotationImageInstalled;
-		for (int[] box : boxes.values()) {
+		for (int[] box : boxesAndStats.values()) {
 			//NB: skip over very small patches
 			if ((box[2]-box[0])*(box[3]-box[1]) < 25) continue;
+			if (box[7] < minimalBrightestIntensityThreshold) continue;
 			box[0] += samjOverlay.sx; box[2] += samjOverlay.sx;
 			box[1] += samjOverlay.sy; box[3] += samjOverlay.sy;
-			System.out.println("prompting box: ["+box[0]+","+box[1]+"] -> ["+box[2]+","+box[3]+"]");
+			System.out.println("prompting box: ["+box[0]+","+box[1]
+					  +"] -> ["+box[2]+","+box[3]+"] of size "
+					  +box[4]+" and int sum/min/max "+box[5]
+					  +" / "+box[6]+" / "+box[7]+" (avg int "+(box[5]/box[4])+" )");
 			PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
 					  originalImg,
 					  this.viewerPanel.state().getViewerTransform().inverse());

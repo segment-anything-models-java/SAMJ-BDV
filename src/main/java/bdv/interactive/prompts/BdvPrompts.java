@@ -94,6 +94,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		this.viewerPanel = bdvViewerPanel;
 		this.annotationSiteImgType = promptsPixelType;
 		switchToThisSource(operateOnThisSource);
+		//TODO: define a reference to the this.viewerConverterSetup
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
 		PlaceHolderSource source = new PlaceHolderSource(overlayName);
@@ -588,15 +589,11 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		isNextPromptOnNewAnnotationSite = false;
 
 		if (applyContrastSetting_currValue) {
-			//additionally adjust values in collected image
-
-			//"intensity" aspect
 			final double min = this.viewerConverterSetup.getDisplayRangeMin();
 			double max = this.viewerConverterSetup.getDisplayRangeMax();
 			System.out.println("Massaging annotation view image between min = "+min+" and max = "+max);
 			if (max == min) max += 1.0;
 
-			//massage both aspects into an outcome image
 			final double range = max - min;
 			annotationSiteViewImg.forEach( px -> px.setReal(Math.min(Math.max(px.getRealDouble() - min, 0.0) / range, 1.0)) );
 		}

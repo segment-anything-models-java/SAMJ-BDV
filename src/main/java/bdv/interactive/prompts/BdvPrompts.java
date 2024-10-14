@@ -460,6 +460,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				  this.viewerPanel.state().getViewerTransform().inverse());
 		prompt.setDiagonal(samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
 
+		doOnePrompt(prompt, isNewAnnotationImageInstalled);
+	}
+
+	private void doOnePrompt(PlanarRectangleIn3D<OT> prompt, boolean isNewAnnotationImageInstalled) {
 		//submit the prompt to polygons processors (producers, in fact)
 		final List<PlanarPolygonIn3D> obtainedPolygons = new ArrayList<>(500);
 		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.process(prompt, isNewAnnotationImageInstalled) ) );

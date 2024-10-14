@@ -489,8 +489,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		List<int[]> seeds = Prompts.findSeedsAndReturnAsBoxes(
 				Views.interval(this.annotationSiteViewImg, roi),
 				this.viewerConverterSetup,
-				//Prompts.SHOW_NO_DBGIMAGES
-				Prompts.SHOW_THRESHOLDED_DBGIMAGE
+				Prompts.SHOW_NO_DBGIMAGES
+				//Prompts.SHOW_THRESHOLDED_DBGIMAGE
 			);
 
 		boolean isNewImage = isNewAnnotationImageInstalled;

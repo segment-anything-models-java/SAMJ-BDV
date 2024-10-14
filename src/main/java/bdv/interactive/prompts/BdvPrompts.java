@@ -491,7 +491,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		final Img<UnsignedShortType> closedThesholdedImg = ArrayImgs.unsignedShorts(roi.dimensionsAsLongArray());
 		Closing.close(Views.extendValue(thresholdedImg,0), closedThesholdedImg, seForClosing, 4);
-		ImageJFunctions.show(thresholdedImg,"thresholded then closed image");
+		ImageJFunctions.show(closedThesholdedImg,"thresholded then closed image");
 
 		final Img<UnsignedShortType> ccaImg = closedThesholdedImg.copy();
 		ccaImg.forEach(UnsignedShortType::setZero);
@@ -505,9 +505,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		while (ccaPx.hasNext()) {
 			final int px = ccaPx.next().get();
 			if (px == 0) continue;
-			if (!boxes.containsKey(px)) boxes.put(px, new int[4]);
-			int[] box = boxes.get(px);
 			ccaPx.localize(ccaPxPos);
+			if (!boxes.containsKey(px)) boxes.put(px, new int[] {ccaPxPos[0],ccaPxPos[1],ccaPxPos[0],ccaPxPos[1]});
+			int[] box = boxes.get(px);
 			box[0] = Math.min(box[0], ccaPxPos[0]);
 			box[1] = Math.min(box[1], ccaPxPos[1]);
 			box[2] = Math.max(box[2], ccaPxPos[0]);

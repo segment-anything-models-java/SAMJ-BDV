@@ -15,7 +15,11 @@ public class PlanarRectangleIn3D <T extends RealType<T>> extends AbstractPlanarS
 	}
 
 	public void resetDiagonal(double min_x, double min_y, double max_x, double max_y) {
-		this.getAllCorners().clear();
+		bbox2D[0] = Integer.MAX_VALUE;
+		bbox2D[1] = Integer.MAX_VALUE;
+		bbox2D[2] = Integer.MIN_VALUE;
+		bbox2D[3] = Integer.MIN_VALUE;
+		coords2D.clear();
 		this.setDiagonal(min_x,min_y, max_x,max_y);
 	}
 

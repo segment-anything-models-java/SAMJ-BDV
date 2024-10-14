@@ -10,13 +10,22 @@ import java.util.List;
 import java.util.Random;
 
 public class FakeResponder <T extends RealType<T>> implements BdvPrompts.PromptsProcessor<T> {
+	public FakeResponder() {
+		this(8);
+	}
+
+	public FakeResponder(final int variabilityLimit) {
+		this.BOUND = variabilityLimit;
+	}
+
+	final int BOUND;
+
 	@Override
 	public List<PlanarPolygonIn3D> process(PlanarRectangleIn3D<T> prompt, final boolean hasViewChangedSinceBefore) {
 		final PlanarPolygonIn3D polygon = new PlanarPolygonIn3D(1000, prompt.getTransformTo3d());
 		final Interval insideThisBox = prompt.getBbox2D();
 
 		Random rand = new Random();
-		final int BOUND = 8;
 
 		int minx = (int)insideThisBox.min(0), maxx = (int)insideThisBox.max(0);
 		int miny = (int)insideThisBox.min(1), maxy = (int)insideThisBox.max(1);

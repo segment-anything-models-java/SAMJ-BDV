@@ -75,6 +75,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 		this.viewerConverterSetup = bdv.getConverterSetups().get(0);
 
+		if (operateOnThisImage.numDimensions() >= 3) {
+			BdvFunctions.show(operateOnThisImage, "original image", BdvOptions.options().addTo(bdv));
+		} else {
+			BdvFunctions.show(Views.addDimension(operateOnThisImage,0,0), "original image", BdvOptions.options().is2D().addTo(bdv));
+		}
+
 		if (viewerPanel.getOptionValues().is2D()) System.out.println("Detected 2D image, switched BDV to the 2D mode.");
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();

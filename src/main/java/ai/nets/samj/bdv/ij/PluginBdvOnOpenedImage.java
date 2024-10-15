@@ -29,7 +29,7 @@ public class PluginBdvOnOpenedImage implements Command {
 	String selectedNetwork = "fake";
 
 	@Parameter(label = "Use only the largest ROIs: ")
-	boolean useLargestsRois = true;
+	boolean useLargestRois = true;
 
 	@Parameter(label = "Show images submitted for encoding: ")
 	boolean showImagesSubmittedToNetwork = false;
@@ -50,12 +50,12 @@ public class PluginBdvOnOpenedImage implements Command {
 			if (selectedNetwork.startsWith("Efficient")) {
 				System.out.println("...working with Efficient SAM");
 				SamjResponder<FloatType> samj = new SamjResponder<>(new EfficientSAM());
-				samj.returnLargestRoi = useLargestsRois;
+				samj.returnLargestRoi = useLargestRois;
 				annotator.addPromptsProcessor(samj);
 			} else if (selectedNetwork.startsWith("SAM2 Tiny")) {
 				System.out.println("...working with SAM2 Tiny");
 				SamjResponder<FloatType> samj = new SamjResponder<>(new SAM2Tiny());
-				samj.returnLargestRoi = useLargestsRois;
+				samj.returnLargestRoi = useLargestRois;
 				annotator.addPromptsProcessor(samj);
 			} else {
 				//in any other case, just add the fake responder...

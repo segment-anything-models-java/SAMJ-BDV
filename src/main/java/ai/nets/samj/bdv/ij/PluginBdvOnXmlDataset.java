@@ -31,6 +31,9 @@ public class PluginBdvOnXmlDataset implements Command {
 			  //TODO use initializator to readout which networks are installed
 	String selectedNetwork = "fake";
 
+	@Parameter(label = "Use only the largest ROIs: ")
+	boolean useLargestRois = true;
+
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
 
@@ -63,10 +66,14 @@ public class PluginBdvOnXmlDataset implements Command {
 
 			if (selectedNetwork.startsWith("Efficient")) {
 				System.out.println("...working with Efficient SAM");
-				annotator.addPromptsProcessor( new SamjResponder<>( new EfficientSAM() ));
+				SamjResponder<FloatType> samj = new SamjResponder<>(new EfficientSAM());
+				samj.returnLargestRoi = useLargestRois;
+				annotator.addPromptsProcessor(samj);
 			} else if (selectedNetwork.startsWith("SAM2 Tiny")) {
 				System.out.println("...working with SAM2 Tiny");
-				annotator.addPromptsProcessor( new SamjResponder<>( new SAM2Tiny() ));
+				SamjResponder<FloatType> samj = new SamjResponder<>(new SAM2Tiny());
+				samj.returnLargestRoi = useLargestRois;
+				annotator.addPromptsProcessor(samj);
 			} else {
 				//in any other case, just add the fake responder...
 				System.out.println("...working with fake responses");

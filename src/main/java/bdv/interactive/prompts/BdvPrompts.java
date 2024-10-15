@@ -62,11 +62,20 @@ import java.util.function.Consumer;
  */
 public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & NativeType<OT>> {
 	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final OT promptsPixelType) {
-		this(operateOnThisImage, "Input image", "SAMJ prompts", promptsPixelType);
+		this(operateOnThisImage, "Input image", "SAMJ", promptsPixelType);
 	}
 
 	/** Opens a new BDV over the provided image, and enables this addon in it. */
-	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final String imageName, final String overlayName, final OT promptsPixelType) {
+	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final String imageName,
+	                  final String overlayName, final OT promptsPixelType) {
+		this(operateOnThisImage, imageName, null, null, overlayName, promptsPixelType);
+	}
+
+	/** Opens a new BDV over the two provided images using the first one for SAM while the second one
+	    is there really only for the viewing pleasure; and enables this addon in the BDV. */
+	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final String imageName,
+	                  final RandomAccessibleInterval<IT> displayAlsoThisImage, final String imageName2,
+	                  final String overlayName, final OT promptsPixelType) {
 		this.annotationSiteImgType = promptsPixelType;
 		switchToThisImage(operateOnThisImage);
 		final BdvStackSource<IT> bdv = operateOnThisImage.numDimensions() >= 3
@@ -74,6 +83,14 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				  : BdvFunctions.show(Views.addDimension(operateOnThisImage,0,0), imageName, BdvOptions.options().is2D());
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 		this.viewerConverterSetup = bdv.getConverterSetups().get(0);
+
+		if (displayAlsoThisImage != null && imageName2 != null) {
+			if (displayAlsoThisImage.numDimensions() >= 3) {
+				BdvFunctions.show(displayAlsoThisImage, imageName2, BdvOptions.options().addTo(bdv));
+			} else {
+				BdvFunctions.show(Views.addDimension(displayAlsoThisImage,0,0), imageName2, BdvOptions.options().is2D().addTo(bdv));
+			}
+		}
 
 		if (viewerPanel.getOptionValues().is2D()) System.out.println("Detected 2D image, switched BDV to the 2D mode.");
 

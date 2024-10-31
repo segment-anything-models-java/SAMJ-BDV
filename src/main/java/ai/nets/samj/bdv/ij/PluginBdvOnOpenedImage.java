@@ -23,15 +23,15 @@ public class PluginBdvOnOpenedImage implements Command {
 	@Parameter
 	Dataset inputImage;
 
-	@Parameter(label = "Select network to use: ",
+	@Parameter(label = "Select network to use:",
 			  choices = {"Efficient SAM", "SAM2 Tiny", "fake responses"})
 			  //TODO use initializator to readout which networks are installed
 	String selectedNetwork = "fake";
 
-	@Parameter(label = "Use only the largest ROIs: ")
+	@Parameter(label = "Use only the largest ROIs:")
 	boolean useLargestRois = true;
 
-	@Parameter(label = "Show images submitted for encoding: ")
+	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
 
 	@Override

@@ -26,12 +26,12 @@ public class PluginBdvOnXmlDataset implements Command {
 	@Parameter(style = FileWidget.OPEN_STYLE)
 	File inputXml;
 
-	@Parameter(label = "Select network to use: ",
+	@Parameter(label = "Select network to use:",
 			  choices = {"Efficient SAM", "SAM2 Tiny", "fake responses"})
 			  //TODO use initializator to readout which networks are installed
 	String selectedNetwork = "fake";
 
-	@Parameter(label = "Use only the largest ROIs: ")
+	@Parameter(label = "Use only the largest ROIs:")
 	boolean useLargestRois = true;
 
 	@Parameter(label = "Show images submitted for encoding:")

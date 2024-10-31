@@ -532,7 +532,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 	public int multiPromptsDebugBitField = Prompts.SHOW_NO_DBGIMAGES;
 	public void setMultiPromptsNoDebug() { this.multiPromptsDebugBitField = Prompts.SHOW_NO_DBGIMAGES; }
-	public void setMultiPromptsMildDebug() { this.multiPromptsDebugBitField = Prompts.SHOW_ORIGINAL_DBGIMAGE | Prompts.SHOW_THRESHOLDED_DBGIMAGE | Prompts.SHOW_COMPONENTS_DBGIMAGE; }
+	public void setMultiPromptsMildDebug() { this.multiPromptsDebugBitField = Prompts.SHOW_ORIGINAL_DBGIMAGE | Prompts.SHOW_THRESHOLDED_DBGIMAGE | Prompts.SHOW_COMPONENTS_DBGIMAGE | Prompts.SHOW_PROMPTS_DBGIMAGE; }
 	public void setMultiPromptsFullDebug() { this.multiPromptsDebugBitField = 0xffffffff; }
 
 	// ======================== prompts - image data ========================

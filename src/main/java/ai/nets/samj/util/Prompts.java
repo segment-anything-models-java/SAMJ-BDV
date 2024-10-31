@@ -32,6 +32,7 @@ public class Prompts {
 	public static final int SHOW_THRESHOLDED_DBGIMAGE = 4;
 	public static final int SHOW_CLOSED_DBGIMAGE = 8;
 	public static final int SHOW_COMPONENTS_DBGIMAGE = 16;
+	public static final int SHOW_PROMPTS_DBGIMAGE = 32;
 
 	private static int SHOW_DBGIMAGE_COUNTER = 0;
 	private static final Shape SE_FOR_CLOSING = new RectangleShape(1, false);
@@ -88,7 +89,7 @@ public class Prompts {
 	List<int[]> findSeedsAndReturnAsBoxes(final RandomAccessibleInterval<T> originalRAI,
 	                                      final ConverterSetup contrastAdjustment,
 	                                      final int showDebugImagesFlag) {
-		final IterableInterval<UnsignedShortType> ccaImg
+		final Img<UnsignedShortType> ccaImg
 				= getSeedComponents(originalRAI, contrastAdjustment, showDebugImagesFlag);
 
 		final Map<Integer, int[]> boxesAndStats = new HashMap<>(100);
@@ -120,12 +121,23 @@ public class Prompts {
 		final int minimalBrightestIntensityThreshold = (int)(0.8*range + min);
 		System.out.println("Considering only components brighter than "+minimalBrightestIntensityThreshold);
 
+		final boolean doPromptsDebug = (showDebugImagesFlag & SHOW_PROMPTS_DBGIMAGE) > 0;
+		if (doPromptsDebug) ccaImg.forEach(UnsignedShortType::setZero);
+		//
 		List<int[]> seeds = new ArrayList<>(boxesAndStats.size());
 		for (int[] box : boxesAndStats.values()) {
 			if ((box[2]-box[0])*(box[3]-box[1]) < 25) continue;         //skip over very small patches
 			if (box[4] < minimalBrightestIntensityThreshold) continue;  //skip over non-bright patches
 			seeds.add(box);
+			if (doPromptsDebug) {
+				Views.interval(ccaImg,
+						  new long[] {box[0]-originalRAI.min(0), box[1]-originalRAI.min(1)},
+						  new long[] {box[2]-originalRAI.min(0), box[3]-originalRAI.min(1)})
+						  .forEach(UnsignedShortType::setOne);
+			}
 		}
+		//
+		if (doPromptsDebug) ImageJFunctions.show(ccaImg, SHOW_DBGIMAGE_COUNTER+": prompts as boxes image");
 		return seeds;
 	}
 

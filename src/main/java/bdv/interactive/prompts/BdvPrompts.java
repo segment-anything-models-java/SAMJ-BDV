@@ -81,12 +81,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
 	public BdvPrompts(final ViewerPanel bdvViewerPanel,
 	                  SourceAndConverter<IT> operateOnThisSource,
+	                  ConverterSetup associatedConverterSetup,
 	                  final TriggerBehaviourBindings bindBehavioursHere,
 	                  final String overlayName, final OT promptsPixelType,
 	                  final boolean installAlsoUndoRedoKeys) {
 		this.viewerPanel = bdvViewerPanel;
 		this.annotationSiteImgType = promptsPixelType;
-		switchToThisSource(operateOnThisSource);
+		switchToThisSource(operateOnThisSource, associatedConverterSetup);
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
 		PlaceHolderSource source = new PlaceHolderSource(overlayName);
@@ -112,7 +113,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 		this.viewerPanel.timePointListeners().add( currentTP -> {
-			switchToThisSource(operateOnThisSource, currentTP);
+			switchToThisSource(operateOnThisSource, associatedConverterSetup, currentTP);
 		} );
 
 		installBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
@@ -137,13 +138,17 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		lostViewOfAnnotationSite();
 	}
 
-	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource) {
-		switchToThisSource(operateOnThisSource, viewerPanel.state().getCurrentTimepoint());
+	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource,
+	                               ConverterSetup associatedConverterSetup) {
+		switchToThisSource(operateOnThisSource, associatedConverterSetup, viewerPanel.state().getCurrentTimepoint());
 	}
 
-	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource, final int atThisTimepoint) {
+	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource,
+	                               ConverterSetup associatedConverterSetup,
+	                               final int atThisTimepoint) {
 		this.image = operateOnThisSource.getSpimSource().getSource(atThisTimepoint, 0);
 		operateOnThisSource.getSpimSource().getSourceTransform(atThisTimepoint, 0, this.imageToGlobalTransform);
+		this.viewerConverterSetup = associatedConverterSetup;
 		lostViewOfAnnotationSite();
 	}
 

@@ -40,6 +40,10 @@ public class PluginBdvOnOpenedImage implements Command {
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
 
+	@Parameter(label = "Show images for multi-prompter ('J'-mode):",
+			  choices = {"Don't show anything extra", "Three debug images", "All possible debug images"})
+	String multiPrompterVisualDebug = "Don't";
+
 	@Override
 	public void run() {
 		Img<? extends RealType<?>> origImage = inputImage.getImgPlus().getImg();
@@ -74,6 +78,14 @@ public class PluginBdvOnOpenedImage implements Command {
 		annotator.enableShowingPolygons();
 		if (showImagesSubmittedToNetwork) {
 			annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
+		}
+
+		if (multiPrompterVisualDebug.startsWith("Three")) {
+			annotator.setMultiPromptsMildDebug();
+		} else if (multiPrompterVisualDebug.startsWith("All")) {
+			annotator.setMultiPromptsFullDebug();
+		} else {
+			annotator.setMultiPromptsNoDebug();
 		}
 
 		try {

@@ -513,8 +513,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		List<int[]> seeds = Prompts.findSeedsAndReturnAsBoxes(
 				Views.interval(this.annotationSiteViewImg, roi),
 				this.viewerConverterSetup,
-				Prompts.SHOW_NO_DBGIMAGES
-				//Prompts.SHOW_THRESHOLDED_DBGIMAGE
+				this.multiPromptsDebugBitField
 			);
 
 		final PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
@@ -530,6 +529,11 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			//NB: consecutive calls here operate on the same image, thus we can do this
 		}
 	}
+
+	public int multiPromptsDebugBitField = Prompts.SHOW_NO_DBGIMAGES;
+	public void setMultiPromptsNoDebug() { this.multiPromptsDebugBitField = Prompts.SHOW_NO_DBGIMAGES; }
+	public void setMultiPromptsMildDebug() { this.multiPromptsDebugBitField = Prompts.SHOW_ORIGINAL_DBGIMAGE | Prompts.SHOW_THRESHOLDED_DBGIMAGE | Prompts.SHOW_COMPONENTS_DBGIMAGE; }
+	public void setMultiPromptsFullDebug() { this.multiPromptsDebugBitField = 0xffffffff; }
 
 	// ======================== prompts - image data ========================
 	private final OT annotationSiteImgType;

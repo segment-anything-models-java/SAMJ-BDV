@@ -4,6 +4,7 @@ import ai.nets.samj.util.PlanarShapesRasterizer;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import bdv.interactive.prompts.views.SpatioTemporalView;
+import bdv.tools.brightness.ConverterSetup;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
@@ -63,6 +64,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				  ? BdvFunctions.show(operateOnThisImage, imageName)
 				  : BdvFunctions.show(Views.addDimension(operateOnThisImage,0,0), imageName, BdvOptions.options().is2D());
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
+		this.viewerConverterSetup = bdv.getConverterSetups().get(0);
 
 		if (viewerPanel.getOptionValues().is2D()) System.out.println("Detected 2D image, switched BDV to the 2D mode.");
 
@@ -72,6 +74,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
+		this.viewerConverterSetup.setupChangeListeners().add( cs -> notifyContrastSettingsChanged() );
 
 		installBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
 	}
@@ -79,12 +82,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
 	public BdvPrompts(final ViewerPanel bdvViewerPanel,
 	                  SourceAndConverter<IT> operateOnThisSource,
+	                  ConverterSetup associatedConverterSetup,
 	                  final TriggerBehaviourBindings bindBehavioursHere,
 	                  final String overlayName, final OT promptsPixelType,
 	                  final boolean installAlsoUndoRedoKeys) {
 		this.viewerPanel = bdvViewerPanel;
 		this.annotationSiteImgType = promptsPixelType;
-		switchToThisSource(operateOnThisSource);
+		switchToThisSource(operateOnThisSource, associatedConverterSetup);
 
 		this.samjOverlay = new PromptsAndPolygonsDrawingOverlay();
 		PlaceHolderSource source = new PlaceHolderSource(overlayName);
@@ -110,7 +114,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 		this.viewerPanel.timePointListeners().add( currentTP -> {
-			switchToThisSource(operateOnThisSource, currentTP);
+			switchToThisSource(operateOnThisSource, associatedConverterSetup, currentTP);
 		} );
 
 		installBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
@@ -119,6 +123,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	private RandomAccessibleInterval<IT> image;
 	private final AffineTransform3D imageToGlobalTransform = new AffineTransform3D();
 	private final ViewerPanel viewerPanel;
+	private ConverterSetup viewerConverterSetup;
 
 	/** The class registers itself as a polygon consumer,
 	 *  and consumes them by showing them in the BDV.
@@ -134,13 +139,17 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		lostViewOfAnnotationSite();
 	}
 
-	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource) {
-		switchToThisSource(operateOnThisSource, viewerPanel.state().getCurrentTimepoint());
+	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource,
+	                               ConverterSetup associatedConverterSetup) {
+		switchToThisSource(operateOnThisSource, associatedConverterSetup, viewerPanel.state().getCurrentTimepoint());
 	}
 
-	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource, final int atThisTimepoint) {
+	public void switchToThisSource(SourceAndConverter<IT> operateOnThisSource,
+	                               ConverterSetup associatedConverterSetup,
+	                               final int atThisTimepoint) {
 		this.image = operateOnThisSource.getSpimSource().getSource(atThisTimepoint, 0);
 		operateOnThisSource.getSpimSource().getSourceTransform(atThisTimepoint, 0, this.imageToGlobalTransform);
+		this.viewerConverterSetup = associatedConverterSetup;
 		lostViewOfAnnotationSite();
 	}
 
@@ -338,8 +347,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 		behaviours.install( bindThemHere, "bdvprompts" );
 
-		//install behaviour for moving a line in the BDV view, with shortcut "L"
-		behaviours.behaviour( new DragBehaviour() {
+		class DragBehaviourSkeleton implements DragBehaviour {
+			DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting) {
+				this.methodThatProcessesRectanglePrompt = localPromptMethodRef;
+				this.considerCurrentContrastSetting = shouldApplyContrastSetting;
+			}
+
+			final RectanglePromptProcessor methodThatProcessesRectanglePrompt;
+			final boolean considerCurrentContrastSetting;
+
 			@Override
 			public void init( final int x, final int y )
 			{
@@ -357,10 +373,27 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			{
 				samjOverlay.setEndOfLine(x,y);
 				samjOverlay.isLineReadyForDrawing = false;
-
-				processRectanglePrompt();
+				samjOverlay.normalizeLineEnds();
+				handleRectanglePrompt();
 			}
-		}, "bdvprompts_rectangle", "L" );
+
+			void handleRectanglePrompt() {
+				applyContrastSetting_prevValue = applyContrastSetting_currValue;
+				applyContrastSetting_currValue = this.considerCurrentContrastSetting;
+
+				final boolean isNewViewImage = isNextPromptOnNewAnnotationSite
+						  || (applyContrastSetting_currValue && isNextPromptOnChangedContrast)
+						  || (applyContrastSetting_prevValue != applyContrastSetting_currValue);
+				if (isNewViewImage) installNewAnnotationSite();
+				this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
+			}
+		}
+
+		//install behaviour for moving a line in the BDV view, with shortcut "L"
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false),
+				  "bdvprompts_rectangle_samj_orig", "L" );
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true),
+				  "bdvprompts_rectangle_samj_contrast", "K" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
@@ -416,20 +449,20 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	// ======================== prompts - execution ========================
-	private void processRectanglePrompt() {
-		final boolean isNewViewImage = isNextPromptOnNewAnnotationSite;
-		if (isNextPromptOnNewAnnotationSite) installNewAnnotationSite();
+	interface RectanglePromptProcessor {
+		void apply(boolean isNewAnnotationImageInstalled);
+	}
 
+	private void processRectanglePrompt(boolean isNewAnnotationImageInstalled) {
 		//create prompt with coords w.r.t. the annotation site image
 		PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
 				  this.annotationSiteViewImg,
 				  this.viewerPanel.state().getViewerTransform().inverse());
-		samjOverlay.normalizeLineEnds();
 		prompt.setDiagonal(samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
 
 		//submit the prompt to polygons processors (producers, in fact)
 		final List<PlanarPolygonIn3D> obtainedPolygons = new ArrayList<>(500);
-		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.process(prompt, isNewViewImage) ) );
+		promptsProcessors.forEach( p -> obtainedPolygons.addAll( p.process(prompt, isNewAnnotationImageInstalled) ) );
 
 		//submit the created polygons to the polygon consumers
 		obtainedPolygons.forEach( poly -> polygonsConsumers.forEach(c -> c.accept(poly)) );
@@ -442,6 +475,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	// ======================== prompts - image data ========================
 	private final OT annotationSiteImgType;
 	private Img<OT> annotationSiteViewImg;
+
+	private boolean applyContrastSetting_prevValue = false;
+	private boolean applyContrastSetting_currValue = false;
 
 	//aux (and to avoid repetitive new() calls) for the collectViewPixelData() below:
 	private final double[] srcImgPos = new double[3];  //orig underlying 3D image
@@ -475,6 +511,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 	// ======================== prompts - annotation sites ========================
 	/** Basically, flags that the encoding is no longer valid */
+	private boolean isNextPromptOnChangedContrast = true;
+
+	private void notifyContrastSettingsChanged() {
+		isNextPromptOnChangedContrast = true;
+	}
+
 	private boolean isNextPromptOnNewAnnotationSite = true;
 
 	private void lostViewOfAnnotationSite() {
@@ -489,6 +531,17 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		annotationSiteViewImg = collectViewPixelData(this.image);
 		isNextPromptOnNewAnnotationSite = false;
+
+		if (applyContrastSetting_currValue) {
+			final double min = this.viewerConverterSetup.getDisplayRangeMin();
+			double max = this.viewerConverterSetup.getDisplayRangeMax();
+			System.out.println("Massaging annotation view image between min = "+min+" and max = "+max);
+			if (max == min) max += 1.0;
+
+			final double range = max - min;
+			annotationSiteViewImg.forEach( px -> px.setReal(Math.min(Math.max(px.getRealDouble() - min, 0.0) / range, 1.0)) );
+		}
+		isNextPromptOnChangedContrast = false;
 	}
 
 	/**

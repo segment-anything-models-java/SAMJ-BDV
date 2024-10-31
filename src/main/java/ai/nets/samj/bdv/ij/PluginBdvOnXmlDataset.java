@@ -50,9 +50,11 @@ public class PluginBdvOnXmlDataset implements Command {
 					  new ViewerOptions());
 
 			//add the SAMJ annotator to it
+			SourceAndConverter<?> sac = bdv.getViewer().state().getSources().get(0);
 			annotator = new BdvPrompts<>(
 					  bdv.getViewer(),
-					  (SourceAndConverter)bdv.getViewer().state().getSources().get(0),
+					  (SourceAndConverter)sac,
+					  bdv.getConverterSetups().getConverterSetup(sac),
 					  bdv.getViewerFrame().getTriggerbindings(),
 					  "SAMJ prompts", new FloatType(), true);
 			annotator.enableShowingPolygons();

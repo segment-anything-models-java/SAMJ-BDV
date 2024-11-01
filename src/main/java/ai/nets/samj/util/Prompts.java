@@ -43,6 +43,15 @@ public class Prompts {
 		return new ArrayImgFactory<>(type).create(templateImg);
 	}
 
+	public static <I extends RealType<I>> Img<FloatType> createFloatImgOfSameSize(RandomAccessibleInterval<I> in) {
+		return ArrayImgs.floats(in.dimensionsAsLongArray());
+	}
+
+	public static <I extends RealType<I>, O extends RealType<O>> void copyFromTo(RandomAccessibleInterval<I> in, RandomAccessibleInterval<O> out) {
+		LoopBuilder.setImages(in,out).forEachPixel( (i,o) -> o.setReal(i.getRealDouble()) );
+	}
+
+
 	public static <T extends RealType<T> & NativeType<T>>
 	Img<T> getSeedsByContrastThresholdingAndClosing(final RandomAccessibleInterval<T> originalRAI,
 	                                                final ConverterSetup contrastAdjustment,
@@ -138,55 +147,6 @@ public class Prompts {
 		}
 		//
 		if (doPromptsDebug) ImageJFunctions.show(ccaImg, SHOW_DBGIMAGE_COUNTER+": prompts as boxes image");
-		return seeds;
-	}
-
-	public static <T extends RealType<T>>
-	List<long[]> findSeedsAndReturnAsCentres(final RandomAccessibleInterval<T> originalRAI,
-	                                         final ConverterSetup contrastAdjustment,
-	                                         final int showDebugImagesFlag) {
-		final IterableInterval<UnsignedShortType> ccaImg
-				= getSeedComponents(originalRAI, contrastAdjustment, showDebugImagesFlag);
-
-		final Map<Integer, long[]> ccaStats = new HashMap<>(100);
-		//NB: sumX,sumY,cnt, maxIntensity
-
-		final RandomAccess<T> origPx = originalRAI.randomAccess();
-		final Cursor<UnsignedShortType> ccaPx = ccaImg.localizingCursor();
-		final int[] ccaPxPos = new int[2];
-		while (ccaPx.hasNext()) {
-			final int px = ccaPx.next().get();
-			if (px == 0) continue; //NB: skip background pixel
-			ccaPx.localize(ccaPxPos);
-			if (!ccaStats.containsKey(px)) ccaStats.put(px, new long[] {0,0,0,px});
-			long[] stat = ccaStats.get(px);
-			//NB: not bringing to the coord system now as it would be increasing the numbers (doing summation here!)
-			stat[0] += ccaPxPos[0];
-			stat[1] += ccaPxPos[1];
-			stat[2] += 1;
-			ccaPxPos[0] += originalRAI.min(0); //NB: brings it to the coord system of originalRAI
-			ccaPxPos[1] += originalRAI.min(1);
-			origPx.setPosition(ccaPxPos);
-			stat[3] = Math.max(stat[3], (int)origPx.get().getRealDouble());
-		}
-
-		final double min = contrastAdjustment.getDisplayRangeMin();
-		double max = contrastAdjustment.getDisplayRangeMax();
-		if (max == min) max += 1.0;
-		final double range = max - min;
-		final int minimalBrightestIntensityThreshold = (int)(0.8*range + min);
-		System.out.println("Considering only components brighter than "+minimalBrightestIntensityThreshold);
-
-		List<long[]> seeds = new ArrayList<>(ccaStats.size());
-		for (long[] box : ccaStats.values()) {
-			if ((box[2]-box[0])*(box[3]-box[1]) < 25) continue;         //skip over very small patches
-			if (box[4] < minimalBrightestIntensityThreshold) continue;  //skip over non-bright patches
-			box[0] /= box[2]; //NB: yields geometric centre of the component
-			box[1] /= box[2];
-			box[0] += originalRAI.min(0); //NB: brings it finally to the coord system of originalRAI
-			box[1] += originalRAI.min(1);
-			seeds.add(box);
-		}
 		return seeds;
 	}
 }

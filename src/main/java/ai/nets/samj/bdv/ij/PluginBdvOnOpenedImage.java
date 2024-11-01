@@ -75,6 +75,7 @@ public class PluginBdvOnOpenedImage implements Command {
 			annotator = new BdvPrompts<>(originalNormalizedImg, "Input image", "SAMJ", new FloatType());
 		}
 
+		annotator.installDefaultMultiSelectBehaviour();
 		annotator.enableShowingPolygons();
 		if (showImagesSubmittedToNetwork) {
 			annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );

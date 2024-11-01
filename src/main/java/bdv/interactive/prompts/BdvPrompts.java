@@ -421,8 +421,6 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				  "bdvprompts_rectangle_samj_orig", "L" );
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true),
 				  "bdvprompts_rectangle_samj_contrast", "K" );
-		behaviours.behaviour( new DragBehaviourSkeleton(this::thresholdAndProcessRectanglePrompt, false),
-				  "bdvprompts_rectangle_thres_contrast", "J" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
@@ -475,6 +473,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				});
 			ImageJFunctions.show(maskImage, "SAMJ BDV masks");
 		}, "bdvprompts_export", "R");
+	}
+
+	public void installDefaultMultiSelectBehaviour() {
+		installOwnMultiSelectBehaviour(Prompts::getSeedsByContrastThresholdingAndClosing,
+				"bdvprompts_rectangle_thres_seeds",
+				"J");
 	}
 
 	public void installOwnMultiSelectBehaviour(final SeedsFromPromptCreator<OT> seedsCreator,

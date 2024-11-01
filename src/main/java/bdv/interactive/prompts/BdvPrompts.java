@@ -477,6 +477,19 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}, "bdvprompts_export", "R");
 	}
 
+	public void installOwnMultiSelectBehaviour(final SeedsFromPromptCreator<OT> seedsCreator,
+	                                           String actionName, String actionTriggers) {
+		behaviours.behaviour(
+			new DragBehaviourSkeleton(
+				isNewAnnotationImageInstalled -> findSeedsAndProcessAsRectanglePrompts(seedsCreator, isNewAnnotationImageInstalled),
+				false //NB: the seedsCreator will see the current contrast setting, and the prompts
+				      //    shall be applied on the original (unaltered) input image -> thus 'false' here
+			),
+			actionName,
+			actionTriggers
+		);
+	}
+
 	// ======================== prompts - execution ========================
 	/**
 	 * A local iface to be able to plug functions to the {@link DragBehaviourSkeleton}

@@ -102,7 +102,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 		this.viewerConverterSetup.setupChangeListeners().add( cs -> notifyContrastSettingsChanged() );
 
-		installBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
+		installBasicBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
 	}
 
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
@@ -143,13 +143,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			switchToThisSource(operateOnThisSource, associatedConverterSetup, currentTP);
 		} );
 
-		installBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
+		installBasicBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
 	}
 
 	private RandomAccessibleInterval<IT> image;
 	private final AffineTransform3D imageToGlobalTransform = new AffineTransform3D();
 	private final ViewerPanel viewerPanel;
 	private ConverterSetup viewerConverterSetup;
+
+	final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 
 	/** The class registers itself as a polygon consumer,
 	 *  and consumes them by showing them in the BDV.
@@ -368,10 +370,6 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	// ======================== actions - behaviours ========================
-	protected void installBehaviours(final TriggerBehaviourBindings bindThemHere,
-	                                 final boolean installAlsoUndoRedoKeys) {
-		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
-		behaviours.install( bindThemHere, "bdvprompts" );
 
 		class DragBehaviourSkeleton implements DragBehaviour {
 			DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting) {
@@ -414,6 +412,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
 			}
 		}
+	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,
+	                                      final boolean installAlsoUndoRedoKeys) {
+		behaviours.install( bindThemHere, "bdv_samj_prompts" );
 
 		//install behaviour for moving a line in the BDV view, with shortcut "L"
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false),

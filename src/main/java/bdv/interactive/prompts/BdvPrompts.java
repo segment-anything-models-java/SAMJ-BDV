@@ -370,48 +370,48 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	// ======================== actions - behaviours ========================
-
-		class DragBehaviourSkeleton implements DragBehaviour {
-			DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting) {
-				this.methodThatProcessesRectanglePrompt = localPromptMethodRef;
-				this.considerCurrentContrastSetting = shouldApplyContrastSetting;
-			}
-
-			final RectanglePromptProcessor methodThatProcessesRectanglePrompt;
-			final boolean considerCurrentContrastSetting;
-
-			@Override
-			public void init( final int x, final int y )
-			{
-				samjOverlay.setStartOfLine(x,y);
-			}
-
-			@Override
-			public void drag( final int x, final int y )
-			{
-				samjOverlay.setEndOfLine(x,y);
-			}
-
-			@Override
-			public void end( final int x, final int y )
-			{
-				samjOverlay.setEndOfLine(x,y);
-				samjOverlay.isLineReadyForDrawing = false;
-				samjOverlay.normalizeLineEnds();
-				handleRectanglePrompt();
-			}
-
-			void handleRectanglePrompt() {
-				applyContrastSetting_prevValue = applyContrastSetting_currValue;
-				applyContrastSetting_currValue = this.considerCurrentContrastSetting;
-
-				final boolean isNewViewImage = isNextPromptOnNewAnnotationSite
-						  || (applyContrastSetting_currValue && isNextPromptOnChangedContrast)
-						  || (applyContrastSetting_prevValue != applyContrastSetting_currValue);
-				if (isNewViewImage) installNewAnnotationSite();
-				this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
-			}
+	class DragBehaviourSkeleton implements DragBehaviour {
+		DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting) {
+			this.methodThatProcessesRectanglePrompt = localPromptMethodRef;
+			this.considerCurrentContrastSetting = shouldApplyContrastSetting;
 		}
+
+		final RectanglePromptProcessor methodThatProcessesRectanglePrompt;
+		final boolean considerCurrentContrastSetting;
+
+		@Override
+		public void init( final int x, final int y )
+		{
+			samjOverlay.setStartOfLine(x,y);
+		}
+
+		@Override
+		public void drag( final int x, final int y )
+		{
+			samjOverlay.setEndOfLine(x,y);
+		}
+
+		@Override
+		public void end( final int x, final int y )
+		{
+			samjOverlay.setEndOfLine(x,y);
+			samjOverlay.isLineReadyForDrawing = false;
+			samjOverlay.normalizeLineEnds();
+			handleRectanglePrompt();
+		}
+
+		void handleRectanglePrompt() {
+			applyContrastSetting_prevValue = applyContrastSetting_currValue;
+			applyContrastSetting_currValue = this.considerCurrentContrastSetting;
+
+			final boolean isNewViewImage = isNextPromptOnNewAnnotationSite
+					  || (applyContrastSetting_currValue && isNextPromptOnChangedContrast)
+					  || (applyContrastSetting_prevValue != applyContrastSetting_currValue);
+			if (isNewViewImage) installNewAnnotationSite();
+			this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
+		}
+	}
+
 	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,
 	                                      final boolean installAlsoUndoRedoKeys) {
 		behaviours.install( bindThemHere, "bdv_samj_prompts" );

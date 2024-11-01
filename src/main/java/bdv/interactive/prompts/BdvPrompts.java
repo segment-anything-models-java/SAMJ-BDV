@@ -478,8 +478,29 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	// ======================== prompts - execution ========================
+	/**
+	 * A local iface to be able to plug functions to the {@link DragBehaviourSkeleton}
+	 */
 	interface RectanglePromptProcessor {
 		void apply(boolean isNewAnnotationImageInstalled);
+	}
+
+	public interface SeedsFromPromptCreator<OT> {
+		/**
+		 * Reads the input image, while possibly on-the-fly recalculate the image pixel
+		 * values according to the user's current contrast-adjustment. The implementing
+		 * function is expected to {@link ImageJFunctions#show(RandomAccessibleInterval)}
+		 * images at various stage of processing, if they are available.
+		 *
+		 * @param inputImageToEstablishSeedsHere A image that's exactly the user selected rectangle,
+		 *                                       in which she wants to have seeds detected
+		 * @param considerThisIntensityScaling  Optionally to use an information about the current contrast-setting
+		 * @param bitFieldForRequestedDebugImages See {@link Prompts#SHOW_NO_DBGIMAGES} and nearby bit-markers
+		 */
+		RandomAccessibleInterval<OT> establishBinarySeeds(
+				  final RandomAccessibleInterval<OT> inputImageToEstablishSeedsHere,
+				  final ConverterSetup considerThisIntensityScaling,
+				  final int bitFieldForRequestedDebugImages);
 	}
 
 	private void processRectanglePrompt(boolean isNewAnnotationImageInstalled) {

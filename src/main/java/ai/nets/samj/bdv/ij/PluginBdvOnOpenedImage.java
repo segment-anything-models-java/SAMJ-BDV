@@ -30,12 +30,12 @@ public class PluginBdvOnOpenedImage implements Command {
 			  //TODO use initializator to readout which networks are installed
 	String selectedNetwork = "fake";
 
-	@Parameter(label = "Image display mode:",
-			  choices = {"Only original input image", "Original input image & original input image", "Inverted input image & original input image"})
-	String displayMode = "Only";
-
 	@Parameter(label = "Use only the largest ROIs:")
 	boolean useLargestRois = true;
+
+	@Parameter(label = "Image display mode:",
+			  choices = {"Only original input image", "Original input image & Original input image", "Inverted input image & Original input image"})
+	String displayMode = "Only";
 
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;

@@ -9,6 +9,7 @@ import ai.nets.samj.communication.model.SAM2Tiny;
 import ai.nets.samj.util.MultiPromptsWithScript;
 import bdv.interactive.prompts.BdvPrompts;
 import net.imagej.Dataset;
+import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
@@ -113,5 +114,17 @@ public class PluginBdvMultiPromptingOnOpenedImage implements Command {
 		}
 
 		return annotator;
+	}
+
+	public static void main(String[] args) {
+		try {
+			ImageJ ij = new ImageJ();
+			ij.ui().showUI();
+			Object I = ij.io().open("/home/ulman/data/DroneWell/auto-sikmo-silnice/DJI_20240324211017_8125_V-1.tif");
+			ij.ui().show(I);
+			ij.command().run(PluginBdvMultiPromptingOnOpenedImage.class, true);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 }

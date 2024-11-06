@@ -7,6 +7,7 @@ import ai.nets.samj.communication.model.EfficientSAM;
 import ai.nets.samj.communication.model.SAM2Tiny;
 import ai.nets.samj.util.MultiPromptsWithScript;
 import bdv.interactive.prompts.BdvPrompts;
+import ij.io.Opener;
 import net.imagej.Dataset;
 import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
@@ -39,6 +40,14 @@ public class PluginBdvMultiPromptingOnOpenedImage implements Command {
 
 	@Parameter(label = "Jython script that detects seeds:", style = FileWidget.OPEN_STYLE)
 	File scriptFile;
+
+	@Parameter(label = "CLICK ME NOW to open template script:",
+			  persist = false, callback = "buttonClicked")
+	boolean toggleAsButton = false;
+
+	void buttonClicked() {
+		MultiPromptsWithScript.showTemplateScriptInIJ1Editor(scriptService.context());
+	}
 
 	@Parameter
 	ScriptService scriptService;

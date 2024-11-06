@@ -4,8 +4,8 @@ import ai.nets.samj.bdv.promptresponders.FakeResponder;
 import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
-import ai.nets.samj.communication.model.EfficientSAM;
-import ai.nets.samj.communication.model.SAM2Tiny;
+import ai.nets.samj.communication.model.SAMModel;
+import ai.nets.samj.util.AvailableNetworksFactory;
 import bdv.interactive.prompts.BdvPrompts;
 import net.imagej.Dataset;
 import net.imglib2.RandomAccessibleInterval;
@@ -14,21 +14,31 @@ import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import org.scijava.command.Command;
+import org.scijava.command.DynamicCommand;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.simplifiedio.SimplifiedIO;
-
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>SAMJ>BDV on opened image")
-public class PluginBdvOnOpenedImage implements Command {
+public class PluginBdvOnOpenedImage extends DynamicCommand {
 	@Parameter
 	Dataset inputImage;
 
-	@Parameter(label = "Select network to use:",
-			  choices = {"Efficient SAM", "SAM2 Tiny", "fake responses"})
-			  //TODO use initializator to readout which networks are installed
+	@Parameter(label = "Select network to use:", initializer = "listAvailableNetworks")
 	String selectedNetwork = "fake";
+
+	void listAvailableNetworks() {
+		final List<String> choicesList = new ArrayList<>(10);
+		choicesList.addAll( availableNetworks.availableModels() );
+		choicesList.add( "fake responses" );
+		this.getInfo()
+				  .getMutableInput("selectedNetwork", String.class)
+				  .setChoices( choicesList );
+	}
+	//
+	private final AvailableNetworksFactory availableNetworks = new AvailableNetworksFactory();
 
 	@Parameter(label = "Use only the largest ROIs:")
 	boolean useLargestRois = true;
@@ -88,25 +98,14 @@ public class PluginBdvOnOpenedImage implements Command {
 			annotator.setMultiPromptsNoDebug();
 		}
 
-		try {
-			if (selectedNetwork.startsWith("Efficient")) {
-				System.out.println("...working with Efficient SAM");
-				SamjResponder<FloatType> samj = new SamjResponder<>(new EfficientSAM());
-				samj.returnLargestRoi = useLargestRois;
-				annotator.addPromptsProcessor(samj);
-			} else if (selectedNetwork.startsWith("SAM2 Tiny")) {
-				System.out.println("...working with SAM2 Tiny");
-				SamjResponder<FloatType> samj = new SamjResponder<>(new SAM2Tiny());
-				samj.returnLargestRoi = useLargestRois;
-				annotator.addPromptsProcessor(samj);
-			} else {
-				//in any other case, just add the fake responder...
-				System.out.println("...working with fake responses");
-				annotator.addPromptsProcessor( new FakeResponder<>() );
-			}
-		} catch (IOException|InterruptedException e) {
-			System.out.println("Exception occurred during EfficientSAM initialization: "+e.getMessage());
-			return null;
+		System.out.println("...working with "+selectedNetwork);
+		SAMModel model = availableNetworks.getModel(selectedNetwork);
+		if (model != null) {
+			SamjResponder<FloatType> samj = new SamjResponder<>(model);
+			samj.returnLargestRoi = useLargestRois;
+			annotator.addPromptsProcessor(samj);
+		} else {
+			annotator.addPromptsProcessor( new FakeResponder<>() );
 		}
 
 		return annotator;

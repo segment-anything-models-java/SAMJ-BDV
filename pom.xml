@@ -109,6 +109,11 @@
 		</dependency>
 
 		<dependency>
+			<groupId>sc.fiji</groupId>
+			<artifactId>fiji</artifactId>
+		</dependency>
+
+		<dependency>
 			<groupId>ai.nets</groupId>
 			<artifactId>samj</artifactId>
 			<version>${samj.version}</version>

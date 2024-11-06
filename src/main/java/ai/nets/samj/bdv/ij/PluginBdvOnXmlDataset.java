@@ -26,10 +26,13 @@ public class PluginBdvOnXmlDataset implements Command {
 	@Parameter(style = FileWidget.OPEN_STYLE)
 	File inputXml;
 
-	@Parameter(label = "Select network to use: ",
+	@Parameter(label = "Select network to use:",
 			  choices = {"Efficient SAM", "SAM2 Tiny", "fake responses"})
 			  //TODO use initializator to readout which networks are installed
 	String selectedNetwork = "fake";
+
+	@Parameter(label = "Use only the largest ROIs:")
+	boolean useLargestRois = true;
 
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
@@ -50,9 +53,11 @@ public class PluginBdvOnXmlDataset implements Command {
 					  new ViewerOptions());
 
 			//add the SAMJ annotator to it
+			SourceAndConverter<?> sac = bdv.getViewer().state().getSources().get(0);
 			annotator = new BdvPrompts<>(
 					  bdv.getViewer(),
-					  (SourceAndConverter)bdv.getViewer().state().getSources().get(0),
+					  (SourceAndConverter)sac,
+					  bdv.getConverterSetups().getConverterSetup(sac),
 					  bdv.getViewerFrame().getTriggerbindings(),
 					  "SAMJ prompts", new FloatType(), true);
 			annotator.enableShowingPolygons();
@@ -61,10 +66,14 @@ public class PluginBdvOnXmlDataset implements Command {
 
 			if (selectedNetwork.startsWith("Efficient")) {
 				System.out.println("...working with Efficient SAM");
-				annotator.addPromptsProcessor( new SamjResponder<>( new EfficientSAM() ));
+				SamjResponder<FloatType> samj = new SamjResponder<>(new EfficientSAM());
+				samj.returnLargestRoi = useLargestRois;
+				annotator.addPromptsProcessor(samj);
 			} else if (selectedNetwork.startsWith("SAM2 Tiny")) {
 				System.out.println("...working with SAM2 Tiny");
-				annotator.addPromptsProcessor( new SamjResponder<>( new SAM2Tiny() ));
+				SamjResponder<FloatType> samj = new SamjResponder<>(new SAM2Tiny());
+				samj.returnLargestRoi = useLargestRois;
+				annotator.addPromptsProcessor(samj);
 			} else {
 				//in any other case, just add the fake responder...
 				System.out.println("...working with fake responses");

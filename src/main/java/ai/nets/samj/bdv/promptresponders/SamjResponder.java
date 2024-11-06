@@ -47,6 +47,18 @@ public class SamjResponder <T extends RealType<T>> implements BdvPrompts.Prompts
 			}
 
 			final List<Polygon> awtPolys = network.fetch2dSegmentation(prompt.getBbox2D());
+			if (returnLargestRoi) {
+				int maxPerimeter = 0;
+				Polygon longestPolygon = null;
+				for (Polygon p : awtPolys) {
+					if (p.npoints > maxPerimeter) {
+						maxPerimeter = p.npoints;
+						longestPolygon = p;
+					}
+				}
+				awtPolys.clear();
+				awtPolys.add(longestPolygon);
+			}
 
 			final AffineTransform3D sharedTo3dTransform = prompt.getTransformTo3d();
 			final List<PlanarPolygonIn3D> planarPolys = new ArrayList<>(awtPolys.size());
@@ -62,6 +74,8 @@ public class SamjResponder <T extends RealType<T>> implements BdvPrompts.Prompts
 			return Collections.emptyList();
 		}
 	}
+
+	public boolean returnLargestRoi = true;
 
 	public static final SAMJLogger LOCAL_CONSOLE_LOGGER = new SAMJLogger() {
 		@Override

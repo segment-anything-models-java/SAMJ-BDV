@@ -14,6 +14,15 @@ public class PlanarRectangleIn3D <T extends RealType<T>> extends AbstractPlanarS
 		addPoint(max_x, max_y);
 	}
 
+	public void resetDiagonal(double min_x, double min_y, double max_x, double max_y) {
+		bbox2D[0] = Integer.MAX_VALUE;
+		bbox2D[1] = Integer.MAX_VALUE;
+		bbox2D[2] = Integer.MIN_VALUE;
+		bbox2D[3] = Integer.MIN_VALUE;
+		coords2D.clear();
+		this.setDiagonal(min_x,min_y, max_x,max_y);
+	}
+
 	@Override
 	public boolean isPointInShape(double x, double y) {
 		return isPointInBbox2D(x,y);

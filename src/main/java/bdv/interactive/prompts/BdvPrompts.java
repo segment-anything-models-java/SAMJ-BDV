@@ -75,20 +75,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		final BdvStackSource<IT> bdv = operateOnThisImage.numDimensions() >= 3
 				  ? BdvFunctions.show(operateOnThisImage, imageName)
 				  : BdvFunctions.show(Views.addDimension(operateOnThisImage,0,0), imageName, BdvOptions.options().is2D());
-		bdv.setDisplayRangeBounds(0.0,1.5);
-		bdv.setDisplayRange(0.0,1.0);
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 		this.viewerConverterSetup = bdv.getConverterSetups().get(0);
 
 		if (displayAlsoThisImage != null && imageName2 != null) {
-			BdvStackSource<IT> bdv2;
 			if (displayAlsoThisImage.numDimensions() >= 3) {
-				bdv2 = BdvFunctions.show(displayAlsoThisImage, imageName2, BdvOptions.options().addTo(bdv));
+				BdvFunctions.show(displayAlsoThisImage, imageName2, BdvOptions.options().addTo(bdv));
 			} else {
-				bdv2 = BdvFunctions.show(Views.addDimension(displayAlsoThisImage,0,0), imageName2, BdvOptions.options().is2D().addTo(bdv));
+				BdvFunctions.show(Views.addDimension(displayAlsoThisImage,0,0), imageName2, BdvOptions.options().is2D().addTo(bdv));
 			}
-			bdv2.setDisplayRangeBounds(0.0,1.5);
-			bdv2.setDisplayRange(0.0,1.0);
 		}
 
 		if (viewerPanel.getOptionValues().is2D()) System.out.println("Detected 2D image, switched BDV to the 2D mode.");

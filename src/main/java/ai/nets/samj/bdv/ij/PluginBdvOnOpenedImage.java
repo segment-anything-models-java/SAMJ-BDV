@@ -34,7 +34,7 @@ public class PluginBdvOnOpenedImage implements Command {
 	boolean useLargestRois = true;
 
 	@Parameter(label = "Image display mode:",
-			  choices = {"Only original input image", "Original input image & Original input image", "Inverted input image & Original input image"})
+			  choices = {"Normally only original input image", "Original input image & Original input image", "Inverted input image & Original input image"})
 	String displayMode = "Only";
 
 	@Parameter(label = "Show images submitted for encoding:")
@@ -51,28 +51,25 @@ public class PluginBdvOnOpenedImage implements Command {
 	}
 
 	public <T extends RealType<T>> BdvPrompts<T,FloatType> annotateWithBDV(final Img<T> img) {
-		//determine the image's min and max pixel value
-		double[] imgMinMaxVals = new double[] { img.firstElement().getRealDouble(), img.firstElement().getRealDouble() };
-		img.forEach(px -> {
-			double val = px.getRealDouble();
-			imgMinMaxVals[0] = Math.min(imgMinMaxVals[0], val);
-			imgMinMaxVals[1] = Math.max(imgMinMaxVals[1], val);
-		});
-		final double imgIntRange = Math.max(1.0, imgMinMaxVals[1]-imgMinMaxVals[0]);
-
-		//prepare normalized and inverted-normalized views of the original image
-		final RandomAccessibleInterval<T> originalNormalizedImg
-				  = Converters.convert((RandomAccessibleInterval<T>)img, (s, t) -> t.setReal((s.getRealDouble()-imgMinMaxVals[0])/imgIntRange), img.firstElement());
-		final RandomAccessibleInterval<T> invertedNormalizedImg
-				  = Converters.convert((RandomAccessibleInterval<T>)img, (s, t) -> t.setReal((imgMinMaxVals[1]-s.getRealDouble())/imgIntRange), img.firstElement());
-
 		final BdvPrompts<T, FloatType> annotator;
-		if (displayMode.startsWith("Original")) {
-			annotator = new BdvPrompts<>(originalNormalizedImg, "Input image", originalNormalizedImg, "Original image", "SAMJ", new FloatType());
-		} else if (displayMode.startsWith("Inverted")) {
-			annotator = new BdvPrompts<>(invertedNormalizedImg, "Input inverted image", originalNormalizedImg, "Original image", "SAMJ", new FloatType());
+		if (displayMode.startsWith("Normally")) {
+			annotator = new BdvPrompts<>(img, "Input image", "SAMJ", new FloatType());
+		} else if (displayMode.startsWith("Original")) {
+			annotator = new BdvPrompts<>(img, "Input image", img, "Original image", "SAMJ", new FloatType());
 		} else {
-			annotator = new BdvPrompts<>(originalNormalizedImg, "Input image", "SAMJ", new FloatType());
+			//determine the image's min and max pixel value
+			double[] imgMinMaxVals = new double[] { img.firstElement().getRealDouble(), img.firstElement().getRealDouble() };
+			img.forEach(px -> {
+				double val = px.getRealDouble();
+				imgMinMaxVals[0] = Math.min(imgMinMaxVals[0], val);
+				imgMinMaxVals[1] = Math.max(imgMinMaxVals[1], val);
+			});
+
+			//prepare normalized and inverted-normalized views of the original image
+			final RandomAccessibleInterval<T> invertedImg
+					  = Converters.convert((RandomAccessibleInterval<T>)img, (s, t) -> t.setReal(imgMinMaxVals[1]-s.getRealDouble()), img.firstElement());
+
+			annotator = new BdvPrompts<>(invertedImg, "Input inverted image", img, "Original image", "SAMJ", new FloatType());
 		}
 
 		annotator.installDefaultMultiPromptBehaviour();

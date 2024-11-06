@@ -67,21 +67,8 @@ public class PluginBdvMultiPromptingOnOpenedImage implements Command {
 	}
 
 	public <T extends RealType<T>> BdvPrompts<T,FloatType> annotateWithBDV(final Img<T> img) {
-		//determine the image's min and max pixel value
-		double[] imgMinMaxVals = new double[] { img.firstElement().getRealDouble(), img.firstElement().getRealDouble() };
-		img.forEach(px -> {
-			double val = px.getRealDouble();
-			imgMinMaxVals[0] = Math.min(imgMinMaxVals[0], val);
-			imgMinMaxVals[1] = Math.max(imgMinMaxVals[1], val);
-		});
-		final double imgIntRange = Math.max(1.0, imgMinMaxVals[1]-imgMinMaxVals[0]);
-
-		//prepare normalized and inverted-normalized views of the original image
-		final RandomAccessibleInterval<T> originalNormalizedImg
-				  = Converters.convert((RandomAccessibleInterval<T>)img, (s, t) -> t.setReal((s.getRealDouble()-imgMinMaxVals[0])/imgIntRange), img.firstElement());
-
 		final BdvPrompts<T, FloatType> annotator
-				  = new BdvPrompts<>(originalNormalizedImg, "Input image", "SAMJ", new FloatType());
+				  = new BdvPrompts<>(img, "Input image", "SAMJ", new FloatType());
 
 		annotator.installOwnMultiPromptBehaviour(
 				  new MultiPromptsWithScript<>(scriptService,moduleService,scriptFile),

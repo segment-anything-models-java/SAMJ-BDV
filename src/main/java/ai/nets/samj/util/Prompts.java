@@ -45,6 +45,10 @@ public class Prompts {
 		return SHOW_DBGIMAGE_COUNTER;
 	}
 
+	public static int giveBigFlagForNoDebug() { return Prompts.SHOW_NO_DBGIMAGES; }
+	public static int giveBigFlagForMildDebug() { return Prompts.SHOW_ORIGINAL_DBGIMAGE | Prompts.SHOW_THRESHOLDED_DBGIMAGE | Prompts.SHOW_COMPONENTS_DBGIMAGE | Prompts.SHOW_PROMPTS_DBGIMAGE; }
+	public static int giveBigFlagForFullDebug() { return 0xffffffff; }
+
 	public static <T extends RealType<T> & NativeType<T>>
 	Img<T> createImgOfSameTypeAndSize(final RandomAccessibleInterval<T> templateImg) {
 		T type = templateImg.getAt( templateImg.minAsLongArray() );

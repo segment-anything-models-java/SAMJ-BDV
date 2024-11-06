@@ -84,7 +84,7 @@ public class PluginBdvMultiPromptingOnOpenedImage implements Command {
 		final BdvPrompts<T, FloatType> annotator
 				  = new BdvPrompts<>(originalNormalizedImg, "Input image", "SAMJ", new FloatType());
 
-		annotator.installOwnMultiSelectBehaviour(
+		annotator.installOwnMultiPromptBehaviour(
 				  new MultiPromptsWithScript<>(scriptService,moduleService,scriptFile),
 				  "bdvprompts_rectangle_user_seeds","J"
 		);

@@ -468,13 +468,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}, "bdvprompts_export", "R");
 	}
 
-	public void installDefaultMultiSelectBehaviour() {
-		installOwnMultiSelectBehaviour(Prompts::getSeedsByContrastThresholdingAndClosing,
+	public void installDefaultMultiPromptBehaviour() {
+		installOwnMultiPromptBehaviour(Prompts::getSeedsByContrastThresholdingAndClosing,
 				"bdvprompts_rectangle_thres_seeds",
 				"J");
 	}
 
-	public void installOwnMultiSelectBehaviour(final SeedsFromPromptCreator<OT> seedsCreator,
+	public void installOwnMultiPromptBehaviour(final SeedsFromPromptCreator<OT> seedsCreator,
 	                                           String actionName, String actionTriggers) {
 		behaviours.behaviour(
 			new DragBehaviourSkeleton(

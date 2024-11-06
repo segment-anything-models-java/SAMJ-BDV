@@ -600,9 +600,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	public int multiPromptsDebugBitField = Prompts.SHOW_NO_DBGIMAGES;
-	public void setMultiPromptsNoDebug() {   this.multiPromptsDebugBitField = Prompts.giveBigFlagForNoDebug(); }
-	public void setMultiPromptsMildDebug() { this.multiPromptsDebugBitField = Prompts.giveBigFlagForMildDebug(); }
-	public void setMultiPromptsFullDebug() { this.multiPromptsDebugBitField = Prompts.giveBigFlagForFullDebug(); }
+	public void setMultiPromptsNoDebug() { this.multiPromptsDebugBitField = Prompts.giveBitFlagForNoDebug(); }
+	public void setMultiPromptsSrcOnlyDebug() { this.multiPromptsDebugBitField = Prompts.giveBitFlagForSrcOnlyDebug(); }
+	public void setMultiPromptsMildDebug() { this.multiPromptsDebugBitField = Prompts.giveBitFlagForMildDebug(); }
+	public void setMultiPromptsFullDebug() { this.multiPromptsDebugBitField = Prompts.giveBitFlagForFullDebug(); }
 
 	// ======================== prompts - image data ========================
 	private final OT annotationSiteImgType;

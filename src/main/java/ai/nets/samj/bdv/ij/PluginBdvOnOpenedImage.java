@@ -41,7 +41,7 @@ public class PluginBdvOnOpenedImage implements Command {
 	boolean showImagesSubmittedToNetwork = false;
 
 	@Parameter(label = "Show images for multi-prompter ('J'-mode):",
-			  choices = {"Don't show anything extra", "Four debug images", "All possible debug images"})
+			  choices = {"Don't show anything extra", "Only cropped-out image", "Four debug images", "All possible debug images"})
 	String multiPrompterVisualDebug = "Don't";
 
 	@Override
@@ -81,7 +81,9 @@ public class PluginBdvOnOpenedImage implements Command {
 			annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 		}
 
-		if (multiPrompterVisualDebug.startsWith("Four")) {
+		if (multiPrompterVisualDebug.startsWith("Only")) {
+			annotator.setMultiPromptsSrcOnlyDebug();
+		} else if (multiPrompterVisualDebug.startsWith("Four")) {
 			annotator.setMultiPromptsMildDebug();
 		} else if (multiPrompterVisualDebug.startsWith("All")) {
 			annotator.setMultiPromptsFullDebug();

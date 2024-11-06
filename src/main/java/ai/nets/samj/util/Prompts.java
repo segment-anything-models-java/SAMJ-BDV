@@ -147,10 +147,14 @@ public class Prompts {
 		final boolean doPromptsDebug = (showDebugImagesFlag & SHOW_PROMPTS_DBGIMAGE) > 0;
 		if (doPromptsDebug) ccaImg.forEach(UnsignedShortType::setZero);
 		//
+		final int maxx = (int)seedsRAI.max(0);
+		final int maxy = (int)seedsRAI.max(1);
+		//
 		List<int[]> seeds = new ArrayList<>(boxes.size());
 		for (int[] box : boxes.values()) {
 			if ((box[2]-box[0])*(box[3]-box[1]) < 25) continue;         //skip over very small patches
 			//if (box[4] < minimalBrightestIntensityThreshold) continue;  //skip over non-bright patches
+			if (box[0] == 0 || box[1] == 0 || box[2] == maxx || box[3] == maxy) continue; //skip patches that touch border
 			seeds.add(box);
 			if (doPromptsDebug) {
 				Views.interval(ccaImg, new long[] {box[0], box[1]}, new long[] {box[2], box[3]})

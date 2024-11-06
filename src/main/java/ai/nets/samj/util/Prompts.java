@@ -41,6 +41,9 @@ public class Prompts {
 		SHOW_DBGIMAGE_COUNTER++;
 		return SHOW_DBGIMAGE_COUNTER;
 	}
+	public static int getDebugImagesCounter() {
+		return SHOW_DBGIMAGE_COUNTER;
+	}
 
 	public static <T extends RealType<T> & NativeType<T>>
 	Img<T> createImgOfSameTypeAndSize(final RandomAccessibleInterval<T> templateImg) {

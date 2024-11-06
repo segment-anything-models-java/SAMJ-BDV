@@ -45,10 +45,10 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 		final ImgPlusOverImgSharedMem extImg = ImgPlusOverImgSharedMem.cloneThis(inputImageToEstablishSeedsHere);
 
 		if ((bitFieldForRequestedDebugImages & Prompts.SHOW_ORIGINAL_DBGIMAGE) > 0) {
-			ImageJFunctions.show(inputImageToEstablishSeedsHere, "X: source original image"); //TODO: counter to image titles
+			ImageJFunctions.show(inputImageToEstablishSeedsHere, Prompts.getDebugImagesCounter() + ": source original image");
 		}
 		if ((bitFieldForRequestedDebugImages & Prompts.SHOW_SOURCE_DBGIMAGE) > 0) {
-			ImageJFunctions.show(extImg.floatTypeImg, "X: source shared image");
+			ImageJFunctions.show(extImg.floatTypeImg, Prompts.getDebugImagesCounter() + ": source shared image");
 		}
 
 		try {
@@ -60,7 +60,7 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 			System.out.println("==> External script finished now.");
 
 			if ((bitFieldForRequestedDebugImages & Prompts.SHOW_THRESHOLDED_DBGIMAGE) > 0) {
-				ImageJFunctions.show(extImg.floatTypeImg, "X: seeds in shared image"); //TODO: counter to image titles
+				ImageJFunctions.show(extImg.floatTypeImg, Prompts.getDebugImagesCounter() + ": seeds in shared image");
 			}
 		} catch (Exception e) {
 			throw new RuntimeException("Failed executing seeds script: "+e.getMessage(), e);

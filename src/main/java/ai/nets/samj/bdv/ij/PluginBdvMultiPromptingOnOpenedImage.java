@@ -1,27 +1,32 @@
 package ai.nets.samj.bdv.ij;
 
 import ai.nets.samj.bdv.promptresponders.FakeResponder;
-import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.EfficientSAM;
 import ai.nets.samj.communication.model.SAM2Tiny;
+import ai.nets.samj.util.MultiPromptsWithScript;
 import bdv.interactive.prompts.BdvPrompts;
+import ij.io.Opener;
 import net.imagej.Dataset;
+import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import org.scijava.command.Command;
+import org.scijava.module.ModuleService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
-import sc.fiji.simplifiedio.SimplifiedIO;
+import org.scijava.script.ScriptService;
+import org.scijava.widget.FileWidget;
 
+import java.io.File;
 import java.io.IOException;
 
-@Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>SAMJ>BDV on opened image")
-public class PluginBdvOnOpenedImage implements Command {
+@Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>SAMJ>BDV on opened image (with seeds script)")
+public class PluginBdvMultiPromptingOnOpenedImage implements Command {
 	@Parameter
 	Dataset inputImage;
 
@@ -33,9 +38,21 @@ public class PluginBdvOnOpenedImage implements Command {
 	@Parameter(label = "Use only the largest ROIs:")
 	boolean useLargestRois = true;
 
-	@Parameter(label = "Image display mode:",
-			  choices = {"Only original input image", "Original input image & Original input image", "Inverted input image & Original input image"})
-	String displayMode = "Only";
+	@Parameter(label = "Jython script that detects seeds:", style = FileWidget.OPEN_STYLE)
+	File scriptFile;
+
+	@Parameter(label = "CLICK ME NOW to open template script:",
+			  persist = false, callback = "buttonClicked")
+	boolean toggleAsButton = false;
+
+	void buttonClicked() {
+		MultiPromptsWithScript.showTemplateScriptInIJ1Editor(scriptService.context());
+	}
+
+	@Parameter
+	ScriptService scriptService;
+	@Parameter
+	ModuleService moduleService;
 
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
@@ -63,19 +80,15 @@ public class PluginBdvOnOpenedImage implements Command {
 		//prepare normalized and inverted-normalized views of the original image
 		final RandomAccessibleInterval<T> originalNormalizedImg
 				  = Converters.convert((RandomAccessibleInterval<T>)img, (s, t) -> t.setReal((s.getRealDouble()-imgMinMaxVals[0])/imgIntRange), img.firstElement());
-		final RandomAccessibleInterval<T> invertedNormalizedImg
-				  = Converters.convert((RandomAccessibleInterval<T>)img, (s, t) -> t.setReal((imgMinMaxVals[1]-s.getRealDouble())/imgIntRange), img.firstElement());
 
-		final BdvPrompts<T, FloatType> annotator;
-		if (displayMode.startsWith("Original")) {
-			annotator = new BdvPrompts<>(originalNormalizedImg, "Input image", originalNormalizedImg, "Original image", "SAMJ", new FloatType());
-		} else if (displayMode.startsWith("Inverted")) {
-			annotator = new BdvPrompts<>(invertedNormalizedImg, "Input inverted image", originalNormalizedImg, "Original image", "SAMJ", new FloatType());
-		} else {
-			annotator = new BdvPrompts<>(originalNormalizedImg, "Input image", "SAMJ", new FloatType());
-		}
+		final BdvPrompts<T, FloatType> annotator
+				  = new BdvPrompts<>(originalNormalizedImg, "Input image", "SAMJ", new FloatType());
 
-		annotator.installDefaultMultiSelectBehaviour();
+		annotator.installOwnMultiSelectBehaviour(
+				  new MultiPromptsWithScript<>(scriptService,moduleService,scriptFile),
+				  "bdvprompts_rectangle_user_seeds","J"
+		);
+
 		annotator.enableShowingPolygons();
 		if (showImagesSubmittedToNetwork) {
 			annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
@@ -113,13 +126,15 @@ public class PluginBdvOnOpenedImage implements Command {
 		return annotator;
 	}
 
-
 	public static void main(String[] args) {
-		final BdvPrompts<?,?> annotator = new PluginBdvOnOpenedImage()
-			.annotateWithBDV( SimplifiedIO.openImage(
-				"/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif"
-			).getImg() );
-		annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
-		annotator.addPromptsProcessor( new ReportImageOnConsoleResponder<>() );
+		try {
+			ImageJ ij = new ImageJ();
+			ij.ui().showUI();
+			Object I = ij.io().open("/home/ulman/data/DroneWell/auto-sikmo-silnice/DJI_20240324211017_8125_V-1.tif");
+			ij.ui().show(I);
+			ij.command().run(PluginBdvMultiPromptingOnOpenedImage.class, true);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 }

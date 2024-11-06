@@ -19,19 +19,12 @@ import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.FinalInterval;
-import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.loops.LoopBuilder;
-import net.imglib2.algorithm.labeling.ConnectedComponents;
-import net.imglib2.algorithm.morphology.Closing;
-import net.imglib2.algorithm.neighborhood.RectangleShape;
-import net.imglib2.algorithm.neighborhood.Shape;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgFactory;
-import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.planar.PlanarImgs;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
@@ -102,7 +95,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 		this.viewerConverterSetup.setupChangeListeners().add( cs -> notifyContrastSettingsChanged() );
 
-		installBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
+		installBasicBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
 	}
 
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
@@ -143,13 +136,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			switchToThisSource(operateOnThisSource, associatedConverterSetup, currentTP);
 		} );
 
-		installBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
+		installBasicBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
 	}
 
 	private RandomAccessibleInterval<IT> image;
 	private final AffineTransform3D imageToGlobalTransform = new AffineTransform3D();
 	private final ViewerPanel viewerPanel;
 	private ConverterSetup viewerConverterSetup;
+
+	final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
 
 	/** The class registers itself as a polygon consumer,
 	 *  and consumes them by showing them in the BDV.
@@ -368,60 +363,57 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	// ======================== actions - behaviours ========================
-	protected void installBehaviours(final TriggerBehaviourBindings bindThemHere,
-	                                 final boolean installAlsoUndoRedoKeys) {
-		final Behaviours behaviours = new Behaviours( new InputTriggerConfig() );
-		behaviours.install( bindThemHere, "bdvprompts" );
-
-		class DragBehaviourSkeleton implements DragBehaviour {
-			DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting) {
-				this.methodThatProcessesRectanglePrompt = localPromptMethodRef;
-				this.considerCurrentContrastSetting = shouldApplyContrastSetting;
-			}
-
-			final RectanglePromptProcessor methodThatProcessesRectanglePrompt;
-			final boolean considerCurrentContrastSetting;
-
-			@Override
-			public void init( final int x, final int y )
-			{
-				samjOverlay.setStartOfLine(x,y);
-			}
-
-			@Override
-			public void drag( final int x, final int y )
-			{
-				samjOverlay.setEndOfLine(x,y);
-			}
-
-			@Override
-			public void end( final int x, final int y )
-			{
-				samjOverlay.setEndOfLine(x,y);
-				samjOverlay.isLineReadyForDrawing = false;
-				samjOverlay.normalizeLineEnds();
-				handleRectanglePrompt();
-			}
-
-			void handleRectanglePrompt() {
-				applyContrastSetting_prevValue = applyContrastSetting_currValue;
-				applyContrastSetting_currValue = this.considerCurrentContrastSetting;
-
-				final boolean isNewViewImage = isNextPromptOnNewAnnotationSite
-						  || (applyContrastSetting_currValue && isNextPromptOnChangedContrast)
-						  || (applyContrastSetting_prevValue != applyContrastSetting_currValue);
-				if (isNewViewImage) installNewAnnotationSite();
-				this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
-			}
+	class DragBehaviourSkeleton implements DragBehaviour {
+		DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting) {
+			this.methodThatProcessesRectanglePrompt = localPromptMethodRef;
+			this.considerCurrentContrastSetting = shouldApplyContrastSetting;
 		}
+
+		final RectanglePromptProcessor methodThatProcessesRectanglePrompt;
+		final boolean considerCurrentContrastSetting;
+
+		@Override
+		public void init( final int x, final int y )
+		{
+			samjOverlay.setStartOfLine(x,y);
+		}
+
+		@Override
+		public void drag( final int x, final int y )
+		{
+			samjOverlay.setEndOfLine(x,y);
+		}
+
+		@Override
+		public void end( final int x, final int y )
+		{
+			samjOverlay.setEndOfLine(x,y);
+			samjOverlay.isLineReadyForDrawing = false;
+			samjOverlay.normalizeLineEnds();
+			handleRectanglePrompt();
+		}
+
+		void handleRectanglePrompt() {
+			applyContrastSetting_prevValue = applyContrastSetting_currValue;
+			applyContrastSetting_currValue = this.considerCurrentContrastSetting;
+
+			final boolean isNewViewImage = isNextPromptOnNewAnnotationSite
+					  || (applyContrastSetting_currValue && isNextPromptOnChangedContrast)
+					  || (applyContrastSetting_prevValue != applyContrastSetting_currValue);
+			if (isNewViewImage) installNewAnnotationSite();
+			this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
+		}
+	}
+
+	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,
+	                                      final boolean installAlsoUndoRedoKeys) {
+		behaviours.install( bindThemHere, "bdv_samj_prompts" );
 
 		//install behaviour for moving a line in the BDV view, with shortcut "L"
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false),
 				  "bdvprompts_rectangle_samj_orig", "L" );
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true),
 				  "bdvprompts_rectangle_samj_contrast", "K" );
-		behaviours.behaviour( new DragBehaviourSkeleton(this::thresholdAndProcessRectanglePrompt, false),
-				  "bdvprompts_rectangle_thres_contrast", "J" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
@@ -476,9 +468,49 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}, "bdvprompts_export", "R");
 	}
 
+	public void installDefaultMultiSelectBehaviour() {
+		installOwnMultiSelectBehaviour(Prompts::getSeedsByContrastThresholdingAndClosing,
+				"bdvprompts_rectangle_thres_seeds",
+				"J");
+	}
+
+	public void installOwnMultiSelectBehaviour(final SeedsFromPromptCreator<OT> seedsCreator,
+	                                           String actionName, String actionTriggers) {
+		behaviours.behaviour(
+			new DragBehaviourSkeleton(
+				isNewAnnotationImageInstalled -> findSeedsAndProcessAsRectanglePrompts(seedsCreator, isNewAnnotationImageInstalled),
+				false //NB: the seedsCreator will see the current contrast setting, and the prompts
+				      //    shall be applied on the original (unaltered) input image -> thus 'false' here
+			),
+			actionName,
+			actionTriggers
+		);
+	}
+
 	// ======================== prompts - execution ========================
+	/**
+	 * A local iface to be able to plug functions to the {@link DragBehaviourSkeleton}
+	 */
 	interface RectanglePromptProcessor {
 		void apply(boolean isNewAnnotationImageInstalled);
+	}
+
+	public interface SeedsFromPromptCreator<OT> {
+		/**
+		 * Reads the input image, while possibly on-the-fly recalculate the image pixel
+		 * values according to the user's current contrast-adjustment. The implementing
+		 * function is expected to {@link ImageJFunctions#show(RandomAccessibleInterval)}
+		 * images at various stage of processing, if they are available.
+		 *
+		 * @param inputImageToEstablishSeedsHere A image that's exactly the user selected rectangle,
+		 *                                       in which she wants to have seeds detected
+		 * @param considerThisIntensityScaling  Optionally to use an information about the current contrast-setting
+		 * @param bitFieldForRequestedDebugImages See {@link Prompts#SHOW_NO_DBGIMAGES} and nearby bit-markers
+		 */
+		RandomAccessibleInterval<OT> establishBinarySeeds(
+				  final RandomAccessibleInterval<OT> inputImageToEstablishSeedsHere,
+				  final ConverterSetup considerThisIntensityScaling,
+				  final int bitFieldForRequestedDebugImages);
 	}
 
 	private void processRectanglePrompt(boolean isNewAnnotationImageInstalled) {
@@ -504,26 +536,34 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
-	private void thresholdAndProcessRectanglePrompt(boolean isNewAnnotationImageInstalled) {
+	private void findSeedsAndProcessAsRectanglePrompts(SeedsFromPromptCreator<OT> seedsCreator,
+	                                                   boolean isNewAnnotationImageInstalled) {
 		final FinalInterval roi = new FinalInterval(
 				new long[] {samjOverlay.sx,samjOverlay.sy},
 				new long[] {samjOverlay.ex,samjOverlay.ey}
 			);
 
-		List<int[]> seeds = Prompts.findSeedsAndReturnAsBoxes(
+		Prompts.increaseDebugImagesCounter();
+		RandomAccessibleInterval<OT> seedsRAI = seedsCreator.establishBinarySeeds(
 				Views.interval(this.annotationSiteViewImg, roi),
 				this.viewerConverterSetup,
 				this.multiPromptsDebugBitField
 			);
+
+		List<int[]> seeds = Prompts.returnSeedsAsBoxes(seedsRAI, this.multiPromptsDebugBitField);
 
 		final PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
 				this.annotationSiteViewImg,
 				this.viewerPanel.state().getViewerTransform().inverse()
 			);
 
+		//NB: boxes are in 'roi' local coords, we need coords of 'annotationSiteViewImg'
+		final int x_offset = (int)roi.min(0);
+		final int y_offset = (int)roi.min(1);
+
 		boolean isNewImage = isNewAnnotationImageInstalled;
 		for (int[] box : seeds) {
-			prompt.resetDiagonal(box[0],box[1], box[2],box[3]);
+			prompt.resetDiagonal(box[0]+x_offset,box[1]+y_offset, box[2]+x_offset,box[3]+y_offset);
 			doOnePrompt(prompt, isNewImage);
 			isNewImage = false;
 			//NB: consecutive calls here operate on the same image, thus we can do this
@@ -531,9 +571,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 	public int multiPromptsDebugBitField = Prompts.SHOW_NO_DBGIMAGES;
-	public void setMultiPromptsNoDebug() { this.multiPromptsDebugBitField = Prompts.SHOW_NO_DBGIMAGES; }
-	public void setMultiPromptsMildDebug() { this.multiPromptsDebugBitField = Prompts.SHOW_ORIGINAL_DBGIMAGE | Prompts.SHOW_THRESHOLDED_DBGIMAGE | Prompts.SHOW_COMPONENTS_DBGIMAGE | Prompts.SHOW_PROMPTS_DBGIMAGE; }
-	public void setMultiPromptsFullDebug() { this.multiPromptsDebugBitField = 0xffffffff; }
+	public void setMultiPromptsNoDebug() {   this.multiPromptsDebugBitField = Prompts.giveBigFlagForNoDebug(); }
+	public void setMultiPromptsMildDebug() { this.multiPromptsDebugBitField = Prompts.giveBigFlagForMildDebug(); }
+	public void setMultiPromptsFullDebug() { this.multiPromptsDebugBitField = Prompts.giveBigFlagForFullDebug(); }
 
 	// ======================== prompts - image data ========================
 	private final OT annotationSiteImgType;

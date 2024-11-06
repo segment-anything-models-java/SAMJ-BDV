@@ -543,6 +543,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				new long[] {samjOverlay.ex,samjOverlay.ey}
 			);
 
+		Prompts.increaseDebugImagesCounter();
 		RandomAccessibleInterval<OT> seedsRAI = seedsCreator.establishBinarySeeds(
 				Views.interval(this.annotationSiteViewImg, roi),
 				this.viewerConverterSetup,

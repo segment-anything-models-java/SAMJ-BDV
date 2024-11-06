@@ -37,6 +37,11 @@ public class Prompts {
 	private static int SHOW_DBGIMAGE_COUNTER = 0;
 	private static final Shape SE_FOR_CLOSING = new RectangleShape(1, false);
 
+	public static int increaseDebugImagesCounter() {
+		SHOW_DBGIMAGE_COUNTER++;
+		return SHOW_DBGIMAGE_COUNTER;
+	}
+
 	public static <T extends RealType<T> & NativeType<T>>
 	Img<T> createImgOfSameTypeAndSize(final RandomAccessibleInterval<T> templateImg) {
 		T type = templateImg.getAt( templateImg.minAsLongArray() );
@@ -56,7 +61,6 @@ public class Prompts {
 	Img<T> getSeedsByContrastThresholdingAndClosing(final RandomAccessibleInterval<T> originalRAI,
 	                                                final ConverterSetup contrastAdjustment,
 	                                                final int showDebugImagesFlag) {
-		SHOW_DBGIMAGE_COUNTER++;
 		if ((showDebugImagesFlag & SHOW_ORIGINAL_DBGIMAGE) > 0) {
 			ImageJFunctions.show(originalRAI, SHOW_DBGIMAGE_COUNTER + ": source original image");
 		}

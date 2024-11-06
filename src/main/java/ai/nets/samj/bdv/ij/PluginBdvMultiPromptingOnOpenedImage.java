@@ -7,7 +7,6 @@ import ai.nets.samj.communication.model.EfficientSAM;
 import ai.nets.samj.communication.model.SAM2Tiny;
 import ai.nets.samj.util.MultiPromptsWithScript;
 import bdv.interactive.prompts.BdvPrompts;
-import ij.io.Opener;
 import net.imagej.Dataset;
 import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;

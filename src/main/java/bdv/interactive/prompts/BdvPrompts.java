@@ -15,6 +15,7 @@ import bdv.util.PlaceHolderOverlayInfo;
 import bdv.util.PlaceHolderSource;
 import bdv.viewer.DisplayMode;
 import bdv.viewer.SourceAndConverter;
+import bdv.viewer.SourceGroup;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
@@ -74,15 +75,20 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		final BdvStackSource<IT> bdv = operateOnThisImage.numDimensions() >= 3
 				  ? BdvFunctions.show(operateOnThisImage, imageName)
 				  : BdvFunctions.show(Views.addDimension(operateOnThisImage,0,0), imageName, BdvOptions.options().is2D());
+		bdv.setDisplayRangeBounds(0.0,1.5);
+		bdv.setDisplayRange(0.0,1.0);
 		this.viewerPanel = bdv.getBdvHandle().getViewerPanel();
 		this.viewerConverterSetup = bdv.getConverterSetups().get(0);
 
 		if (displayAlsoThisImage != null && imageName2 != null) {
+			BdvStackSource<IT> bdv2;
 			if (displayAlsoThisImage.numDimensions() >= 3) {
-				BdvFunctions.show(displayAlsoThisImage, imageName2, BdvOptions.options().addTo(bdv));
+				bdv2 = BdvFunctions.show(displayAlsoThisImage, imageName2, BdvOptions.options().addTo(bdv));
 			} else {
-				BdvFunctions.show(Views.addDimension(displayAlsoThisImage,0,0), imageName2, BdvOptions.options().is2D().addTo(bdv));
+				bdv2 = BdvFunctions.show(Views.addDimension(displayAlsoThisImage,0,0), imageName2, BdvOptions.options().is2D().addTo(bdv));
 			}
+			bdv2.setDisplayRangeBounds(0.0,1.5);
+			bdv2.setDisplayRange(0.0,1.0);
 		}
 
 		if (viewerPanel.getOptionValues().is2D()) System.out.println("Detected 2D image, switched BDV to the 2D mode.");
@@ -91,12 +97,39 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		BdvFunctions.showOverlay(samjOverlay, overlayName, BdvOptions.options().addTo(bdv))
 				  .setColor(new ARGBType( this.samjOverlay.colorPolygons.getRGB() ));
 
+		installGroupsOrFusedMode(this.viewerPanel, false);
+
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );
 		this.viewerConverterSetup.setupChangeListeners().add( cs -> notifyContrastSettingsChanged() );
 
 		installBasicBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
 	}
+
+	protected void installGroupsOrFusedMode(final ViewerPanel viewerPanel, final boolean requestingFusedMode) {
+		final List<SourceAndConverter<?>> srcs = viewerPanel.state().getSources();
+		final int overlaySrcIdx = srcs.size()-1;
+
+		//is the input image given twice?
+		if (overlaySrcIdx == 2 && !requestingFusedMode) {
+			//yes, so we go for groups:
+			//add overlay to the first group
+			final List<SourceGroup> grps = viewerPanel.state().getGroups();
+			viewerPanel.state().addSourceToGroup(srcs.get(overlaySrcIdx), grps.get(0));
+
+			//add 2nd src and overlay to the second group, if 2nd src available
+			viewerPanel.state().addSourceToGroup(srcs.get(1), grps.get(1));
+			viewerPanel.state().addSourceToGroup(srcs.get(overlaySrcIdx), grps.get(1));
+
+			viewerPanel.showMessage("Enabling GROUP MODE to display SAMJ overlay.");
+			viewerPanel.state().setDisplayMode(DisplayMode.GROUP);
+		} else {
+			//no, in which case no need for groups, just enable the sources fused mode
+			viewerPanel.showMessage("Enabling FUSED MODE to display SAMJ overlay.");
+			viewerPanel.state().setDisplayMode(DisplayMode.FUSED);
+		}
+	}
+
 
 	/** Add this addon to an existing BDV instance, and instruct on which source should it operate. */
 	public BdvPrompts(final ViewerPanel bdvViewerPanel,
@@ -124,11 +157,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		bdvViewerPanel.state().addSource(sac);
 		bdvViewerPanel.state().setSourceActive(sac, true);
 		//
-		DisplayMode currentMode = bdvViewerPanel.state().getDisplayMode();
-		if (!currentMode.equals(DisplayMode.FUSED) && !currentMode.equals(DisplayMode.FUSEDGROUP)) {
-			bdvViewerPanel.showMessage("Enabling fused mode to display SAMJ overlay.");
-			bdvViewerPanel.state().setDisplayMode(DisplayMode.FUSED);
-		}
+		installGroupsOrFusedMode(bdvViewerPanel, true);
 
 		//"loose" the annotation site as soon as the BDV's viewport is changed
 		this.viewerPanel.transformListeners().add( someNewIgnoredTransform -> lostViewOfAnnotationSite() );

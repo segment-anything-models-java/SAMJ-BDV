@@ -8,27 +8,25 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
+import org.scijava.module.Module;
+import org.scijava.module.ModuleService;
 import org.scijava.script.ScriptService;
-
 import java.io.File;
-import java.io.FileNotFoundException;
-import javax.script.ScriptException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> implements BdvPrompts.SeedsFromPromptCreator<T> {
 
 	final ScriptService scriptService;
+	final ModuleService moduleService;
 	File scriptFile;
 	int scriptWaitingTimeMins = 1;
 
-	public MultiPromptsWithScript(final ScriptService scriptService, final File scriptFile) {
+	public MultiPromptsWithScript(final ScriptService scriptService, final ModuleService moduleService, final File scriptFile) {
 		if (scriptService == null || scriptFile == null) {
 			throw new IllegalArgumentException("Both service and file path must be non-null!");
 		}
 
 		this.scriptService = scriptService;
+		this.moduleService = moduleService;
 		this.scriptFile = scriptFile;
 	}
 
@@ -52,16 +50,19 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 		if ((bitFieldForRequestedDebugImages & Prompts.SHOW_SOURCE_DBGIMAGE) > 0) {
 			ImageJFunctions.show(extImg.floatTypeImg, "X: source shared image");
 		}
+
 		try {
-			scriptService
-					.run(scriptFile, true, "imp", extImg.floatImagePlus)
-					.get(1, TimeUnit.MINUTES);
-			System.out.println("SCRIPT FINISHED HAPPILY");
+			final Module module = moduleService.createModule( scriptService.getScript(scriptFile) );
+			module.setInput("imp", extImg.floatImagePlus);
+			//TODO pass min,max setting to the script, create example script to the GUI
+			System.out.println("==> Executing external script: "+scriptFile);
+			module.run();
+			System.out.println("==> External script finished now.");
 
 			if ((bitFieldForRequestedDebugImages & Prompts.SHOW_THRESHOLDED_DBGIMAGE) > 0) {
 				ImageJFunctions.show(extImg.floatTypeImg, "X: seeds in shared image"); //TODO: counter to image titles
 			}
-		} catch (FileNotFoundException|ScriptException|TimeoutException|ExecutionException|InterruptedException e) {
+		} catch (Exception e) {
 			throw new RuntimeException("Failed executing seeds script: "+e.getMessage(), e);
 		}
 

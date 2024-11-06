@@ -1,7 +1,6 @@
 package ai.nets.samj.bdv.ij;
 
 import ai.nets.samj.bdv.promptresponders.FakeResponder;
-import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.EfficientSAM;
@@ -16,11 +15,11 @@ import net.imglib2.img.Img;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import org.scijava.command.Command;
+import org.scijava.module.ModuleService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.script.ScriptService;
 import org.scijava.widget.FileWidget;
-import sc.fiji.simplifiedio.SimplifiedIO;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,6 +42,8 @@ public class PluginBdvMultiPromptingOnOpenedImage implements Command {
 
 	@Parameter
 	ScriptService scriptService;
+	@Parameter
+	ModuleService moduleService;
 
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
@@ -75,7 +76,7 @@ public class PluginBdvMultiPromptingOnOpenedImage implements Command {
 				  = new BdvPrompts<>(originalNormalizedImg, "Input image", "SAMJ", new FloatType());
 
 		annotator.installOwnMultiSelectBehaviour(
-				  new MultiPromptsWithScript<>(scriptService,scriptFile),
+				  new MultiPromptsWithScript<>(scriptService,moduleService,scriptFile),
 				  "bdvprompts_rectangle_user_seeds","J"
 		);
 

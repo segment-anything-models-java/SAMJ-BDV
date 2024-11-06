@@ -48,7 +48,7 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 			ImageJFunctions.show(inputImageToEstablishSeedsHere, Prompts.getDebugImagesCounter() + ": source original image");
 		}
 		if ((bitFieldForRequestedDebugImages & Prompts.SHOW_SOURCE_DBGIMAGE) > 0) {
-			ImageJFunctions.show(extImg.floatTypeImg, Prompts.getDebugImagesCounter() + ": source shared image");
+			ImageJFunctions.show(extImg.floatTypeImg, Prompts.getDebugImagesCounter() + ": original image shared with the script");
 		}
 
 		try {
@@ -60,7 +60,7 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 			System.out.println("==> External script finished now.");
 
 			if ((bitFieldForRequestedDebugImages & Prompts.SHOW_THRESHOLDED_DBGIMAGE) > 0) {
-				ImageJFunctions.show(extImg.floatTypeImg, Prompts.getDebugImagesCounter() + ": seeds in shared image");
+				ImageJFunctions.show(extImg.floatTypeImg, Prompts.getDebugImagesCounter() + ": seeds image obtained from the script");
 			}
 		} catch (Exception e) {
 			throw new RuntimeException("Failed executing seeds script: "+e.getMessage(), e);

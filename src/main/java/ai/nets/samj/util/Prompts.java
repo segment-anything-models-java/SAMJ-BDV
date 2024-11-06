@@ -123,7 +123,7 @@ public class Prompts {
 			ConnectedComponents.StructuringElement.EIGHT_CONNECTED);
 
 		if ((showDebugImagesFlag & SHOW_COMPONENTS_DBGIMAGE) > 0) {
-			ImageJFunctions.show(ccaImg, SHOW_DBGIMAGE_COUNTER+": thresholded then closed then labels image");
+			ImageJFunctions.show(ccaImg, SHOW_DBGIMAGE_COUNTER+": labeled seeds image");
 		}
 
 		final Map<Integer, int[]> boxes = new HashMap<>(100);

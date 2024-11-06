@@ -37,6 +37,18 @@ public class Prompts {
 	private static int SHOW_DBGIMAGE_COUNTER = 0;
 	private static final Shape SE_FOR_CLOSING = new RectangleShape(1, false);
 
+	public static int increaseDebugImagesCounter() {
+		SHOW_DBGIMAGE_COUNTER++;
+		return SHOW_DBGIMAGE_COUNTER;
+	}
+	public static int getDebugImagesCounter() {
+		return SHOW_DBGIMAGE_COUNTER;
+	}
+
+	public static int giveBigFlagForNoDebug() { return Prompts.SHOW_NO_DBGIMAGES; }
+	public static int giveBigFlagForMildDebug() { return Prompts.SHOW_ORIGINAL_DBGIMAGE | Prompts.SHOW_THRESHOLDED_DBGIMAGE | Prompts.SHOW_COMPONENTS_DBGIMAGE | Prompts.SHOW_PROMPTS_DBGIMAGE; }
+	public static int giveBigFlagForFullDebug() { return 0xffffffff; }
+
 	public static <T extends RealType<T> & NativeType<T>>
 	Img<T> createImgOfSameTypeAndSize(final RandomAccessibleInterval<T> templateImg) {
 		T type = templateImg.getAt( templateImg.minAsLongArray() );
@@ -56,7 +68,6 @@ public class Prompts {
 	Img<T> getSeedsByContrastThresholdingAndClosing(final RandomAccessibleInterval<T> originalRAI,
 	                                                final ConverterSetup contrastAdjustment,
 	                                                final int showDebugImagesFlag) {
-		SHOW_DBGIMAGE_COUNTER++;
 		if ((showDebugImagesFlag & SHOW_ORIGINAL_DBGIMAGE) > 0) {
 			ImageJFunctions.show(originalRAI, SHOW_DBGIMAGE_COUNTER + ": source original image");
 		}
@@ -112,7 +123,7 @@ public class Prompts {
 			ConnectedComponents.StructuringElement.EIGHT_CONNECTED);
 
 		if ((showDebugImagesFlag & SHOW_COMPONENTS_DBGIMAGE) > 0) {
-			ImageJFunctions.show(ccaImg, SHOW_DBGIMAGE_COUNTER+": thresholded then closed then labels image");
+			ImageJFunctions.show(ccaImg, SHOW_DBGIMAGE_COUNTER+": labeled seeds image");
 		}
 
 		final Map<Integer, int[]> boxes = new HashMap<>(100);

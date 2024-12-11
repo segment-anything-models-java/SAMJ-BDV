@@ -2,9 +2,10 @@ package bdv.interactive.prompts.planarshapes;
 
 import net.imglib2.img.Img;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 
-public class PlanarRectangleIn3D <T extends RealType<T>> extends AbstractPlanarShapeWithImgIn3D<T> {
+public class PlanarRectangleIn3D <T extends RealType<T> & NativeType<T>> extends AbstractPlanarShapeWithImgIn3D<T> {
 	public PlanarRectangleIn3D(final Img<T> viewImage2D, final AffineTransform3D viewTo3dTransform) {
 		super(2, viewImage2D, viewTo3dTransform);
 	}

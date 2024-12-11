@@ -212,7 +212,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		return promptsProcessors.remove(promptToPolygonsGenerator);
 	}
 
-	public interface PromptsProcessor <PT extends RealType<PT>> {
+	public interface PromptsProcessor <PT extends RealType<PT> & NativeType<PT>> {
 		/**
 		 * @param prompt The current rectangular/box prompt created by user in BDV.
 		 * @param hasViewChangedSinceBefore If false, the image in the 'prompt' is exactly the same as it was provider

@@ -1,11 +1,13 @@
 package ai.nets.samj.bdv.promptresponders;
 
+import ai.nets.samj.annotation.Mask;
 import ai.nets.samj.communication.model.SAMModel;
 import ai.nets.samj.ui.SAMJLogger;
 import bdv.interactive.prompts.BdvPrompts;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 
 import java.awt.*;
@@ -13,8 +15,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class SamjResponder <T extends RealType<T>> implements BdvPrompts.PromptsProcessor<T> {
+public class SamjResponder <T extends RealType<T> & NativeType<T>> implements BdvPrompts.PromptsProcessor<T> {
 	public SamjResponder(final SAMModel network) {
 		this(network, LOCAL_CONSOLE_LOGGER);
 	}
@@ -46,7 +49,12 @@ public class SamjResponder <T extends RealType<T>> implements BdvPrompts.Prompts
 				isNetworkReady = true;
 			}
 
-			final List<Polygon> awtPolys = network.fetch2dSegmentation(prompt.getBbox2D());
+			final List<Polygon> awtPolys = new ArrayList<>(
+					network.fetch2dSegmentation(prompt.getBbox2D())
+							.stream()
+							.map(m -> m.getContour())
+							.collect(Collectors.toList())
+				);
 			if (returnLargestRoi) {
 				int maxPerimeter = 0;
 				Polygon longestPolygon = null;

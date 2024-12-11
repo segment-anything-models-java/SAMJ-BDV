@@ -2,7 +2,6 @@ package ai.nets.samj.util;
 
 import ai.nets.samj.communication.model.SAMModel;
 import ai.nets.samj.communication.model.SAMModels;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -19,7 +18,7 @@ public class AvailableNetworksFactory {
 					netObjs.add(m);
 				}
 			});
-		} catch (IOException | InterruptedException e) {
+		} catch (Exception e) {
 			System.out.println("Error querying SAMModels: "+e.getMessage());
 		}
 	}

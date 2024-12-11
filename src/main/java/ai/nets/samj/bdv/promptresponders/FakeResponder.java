@@ -4,12 +4,13 @@ import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import bdv.interactive.prompts.BdvPrompts;
 import net.imglib2.Interval;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-public class FakeResponder <T extends RealType<T>> implements BdvPrompts.PromptsProcessor<T> {
+public class FakeResponder <T extends RealType<T> & NativeType<T>> implements BdvPrompts.PromptsProcessor<T> {
 	public FakeResponder() {
 		this(8);
 	}

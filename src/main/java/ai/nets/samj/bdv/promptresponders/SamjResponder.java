@@ -7,6 +7,7 @@ import bdv.interactive.prompts.BdvPrompts;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 
 import java.awt.*;
@@ -16,7 +17,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SamjResponder <T extends RealType<T>> implements BdvPrompts.PromptsProcessor<T> {
+public class SamjResponder <T extends RealType<T> & NativeType<T>> implements BdvPrompts.PromptsProcessor<T> {
 	public SamjResponder(final SAMModel network) {
 		this(network, LOCAL_CONSOLE_LOGGER);
 	}

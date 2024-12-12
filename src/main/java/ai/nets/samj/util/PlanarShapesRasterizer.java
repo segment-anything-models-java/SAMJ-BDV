@@ -79,9 +79,9 @@ public class PlanarShapesRasterizer {
 		viewToImgT.apply(coord0,coord0);
 		viewToImgT.apply(coordAlongX,coordAlongX);
 		viewToImgT.apply(coordAlongY,coordAlongY);
-		roundToInt(coord0);
-		roundToInt(coordAlongX);
-		roundToInt(coordAlongY);
+		//roundToInt(coord0);
+		//roundToInt(coordAlongX);
+		//roundToInt(coordAlongY);
 
 		//NB: returns (x,y,z) step vector, and number of such steps as the 4th index!
 		normalizedVecFromAtoB(coord0, coordAlongX, dx);

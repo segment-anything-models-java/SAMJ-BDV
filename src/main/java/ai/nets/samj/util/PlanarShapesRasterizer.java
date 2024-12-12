@@ -87,17 +87,18 @@ public class PlanarShapesRasterizer {
 		normalizedVecFromAtoB(coord0, coordAlongX, dx);
 		normalizedVecFromAtoB(coord0, coordAlongY, dy);
 
-		for (int y = 0; y < dy[3]; ++y) {
+		for (int y = 0; y < 2*dy[3]; ++y) {
 			//reusing the memory but the variable's name doesn't match its purpose!
-			coordAlongY[0] = coord0[0] + (double)y * dy[0];
-			coordAlongY[1] = coord0[1] + (double)y * dy[1];
-			coordAlongY[2] = coord0[2] + (double)y * dy[2];
+			coordAlongY[0] = coord0[0] + (double)y * 0.5 * dy[0];
+			coordAlongY[1] = coord0[1] + (double)y * 0.5 * dy[1];
+			coordAlongY[2] = coord0[2] + (double)y * 0.5 * dy[2];
+			final double xShift = (y & 1) > 0 ? 0.5 : 0.0;
 
 			for (int x = 0; x < dx[3]; ++x) {
 				//"sweeping position" in the original 3D image space
-				coordAlongX[0] = coordAlongY[0] + (double)x * dx[0];
-				coordAlongX[1] = coordAlongY[1] + (double)x * dx[1];
-				coordAlongX[2] = coordAlongY[2] + (double)x * dx[2];
+				coordAlongX[0] = coordAlongY[0] + ((double)x+xShift) * dx[0];
+				coordAlongX[1] = coordAlongY[1] + ((double)x+xShift) * dx[1];
+				coordAlongX[2] = coordAlongY[2] + ((double)x+xShift) * dx[2];
 
 				//take back to the 2D view world/coordinates
 				viewToImgT.applyInverse(coord,coordAlongX);

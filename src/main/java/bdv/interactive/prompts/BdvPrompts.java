@@ -489,7 +489,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 					rasterizer.rasterizeIntoImg(polygon, Views.extendValue(maskImage,0), drawValue);
 				});
 			ImageJFunctions.show(maskImage, "SAMJ BDV masks");
-		}, "bdvprompts_export", "R");
+		}, "bdvprompts_export", "Y");
 	}
 
 	public void installDefaultMultiPromptBehaviour() {

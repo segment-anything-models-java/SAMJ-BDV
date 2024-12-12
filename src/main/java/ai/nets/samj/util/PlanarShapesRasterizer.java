@@ -113,7 +113,7 @@ public class PlanarShapesRasterizer {
 		double max = -1.0;
 		for (int d = 0; d < 3; ++d) {
 			diffVec[d] = B[d] - A[d];
-			max = Math.max(diffVec[d],max);
+			max = Math.max(Math.abs(diffVec[d]),max);
 		}
 
 		for (int d = 0; d < 3; ++d) diffVec[d] /= max;

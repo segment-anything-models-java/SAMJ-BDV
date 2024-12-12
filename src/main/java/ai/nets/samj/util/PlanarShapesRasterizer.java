@@ -8,6 +8,7 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
+import java.util.function.Consumer;
 
 /**
  * A utility class (which, however, requires some aux variables for its work and,
@@ -49,7 +50,17 @@ public class PlanarShapesRasterizer {
 	                      final double drawValue) {
 		if (img.numDimensions() < 2)
 			throw new IllegalArgumentException("Provide 2D (or more-dimensional) image to draw the shape into.");
+		final RandomAccess<T> imgRA
+				  = img.numDimensions() > 2 ? img.randomAccess() : Views.addDimension(img).randomAccess();
 
+		rasterize(shape, (pos) -> imgRA.setPositionAndGet((long)pos[0],(long)pos[1],(long)pos[2]).setReal(drawValue) );
+	}
+
+	/**
+	 * See {@link PlanarShapesRasterizer#rasterizeIntoImg(AbstractPlanarShapeIn3D, RandomAccessible, double)}
+	 */
+	public void rasterize(final AbstractPlanarShapeIn3D shape,
+	                      final Consumer<double[]> setterAtTheProvided3dPosition) {
 		final Interval roi2d = shape.getBbox2D();
 		coord0[0] = roi2d.min(0);
 		coord0[1] = roi2d.min(1);
@@ -76,9 +87,6 @@ public class PlanarShapesRasterizer {
 		normalizedVecFromAtoB(coord0, coordAlongX, dx);
 		normalizedVecFromAtoB(coord0, coordAlongY, dy);
 
-		final RandomAccess<T> imgRA
-				  = img.numDimensions() > 2 ? img.randomAccess() : Views.addDimension(img).randomAccess();
-
 		for (int y = 0; y < dy[3]; ++y) {
 			//reusing the memory but the variable's name doesn't match its purpose!
 			coordAlongY[0] = coord0[0] + (double)y * dy[0];
@@ -94,14 +102,7 @@ public class PlanarShapesRasterizer {
 				//take back to the 2D view world/coordinates
 				viewToImgT.applyInverse(coord,coordAlongX);
 				//NB: coord[2] should be close to 0.0
-
-				if (shape.isPointInShape(coord[0], coord[1])) {
-					roundToInt(coordAlongX); //TODO: this could (should?) be moved above just prior the applyInverse() transform,
-					                         //      to query the point that's really fitting to the current 3d image pixel
-					imgRA
-					  .setPositionAndGet((long)coordAlongX[0],(long)coordAlongX[1],(long)coordAlongX[2])
-					  .setReal(drawValue);
-				}
+				if (shape.isPointInShape(coord[0], coord[1])) setterAtTheProvided3dPosition.accept(coordAlongX);
 			}
 		}
 	}

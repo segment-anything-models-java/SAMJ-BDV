@@ -12,14 +12,24 @@ import java.util.Random;
 
 public class FakeResponder <T extends RealType<T> & NativeType<T>> implements BdvPrompts.PromptsProcessor<T> {
 	public FakeResponder() {
-		this(8);
+		this(8, false);
 	}
 
 	public FakeResponder(final int variabilityLimit) {
+		this(variabilityLimit, false);
+	}
+
+	public FakeResponder(final boolean doOnlyCornerPoints) {
+		this(8, doOnlyCornerPoints);
+	}
+
+	public FakeResponder(final int variabilityLimit, final boolean doOnlyCornerPoints) {
 		this.BOUND = variabilityLimit;
+		onlyCorners = doOnlyCornerPoints;
 	}
 
 	final int BOUND;
+	final boolean onlyCorners;
 
 	@Override
 	public List<PlanarPolygonIn3D> process(PlanarRectangleIn3D<T> prompt, final boolean hasViewChangedSinceBefore) {
@@ -32,20 +42,31 @@ public class FakeResponder <T extends RealType<T> & NativeType<T>> implements Bd
 		int miny = (int)insideThisBox.min(1), maxy = (int)insideThisBox.max(1);
 
 		int r = rand.nextInt(BOUND);
-		addPointsAlongLine(polygon, minx, miny, (minx+maxx)/2, miny+r);
-		addPointsAlongLine(polygon, (minx+maxx)/2, miny+r, maxx, miny);
+		if (onlyCorners) {
+			polygon.addPoint(minx, miny);
+			polygon.addPoint((minx + maxx) / 2.0, miny + r);
+			polygon.addPoint(maxx, miny);
+			polygon.addPoint(maxx - r, (miny + maxy) / 2.0);
+			polygon.addPoint(maxx, maxy);
+			polygon.addPoint((minx + maxx) / 2.0, maxy - r);
+			polygon.addPoint(minx, maxy);
+			polygon.addPoint(minx + r, (miny + maxy) / 2.0);
+		} else {
+			addPointsAlongLine(polygon, minx, miny, (minx + maxx) / 2, miny + r);
+			addPointsAlongLine(polygon, (minx + maxx) / 2, miny + r, maxx, miny);
 
-		r = rand.nextInt(BOUND);
-		addPointsAlongLine(polygon, maxx, miny, maxx-r, (miny+maxy)/2);
-		addPointsAlongLine(polygon, maxx-r, (miny+maxy)/2, maxx, maxy);
+			r = rand.nextInt(BOUND);
+			addPointsAlongLine(polygon, maxx, miny, maxx - r, (miny + maxy) / 2);
+			addPointsAlongLine(polygon, maxx - r, (miny + maxy) / 2, maxx, maxy);
 
-		r = rand.nextInt(BOUND);
-		addPointsAlongLine(polygon, maxx, maxy, (minx+maxx)/2, maxy-r);
-		addPointsAlongLine(polygon, (minx+maxx)/2, maxy-r, minx, maxy);
+			r = rand.nextInt(BOUND);
+			addPointsAlongLine(polygon, maxx, maxy, (minx + maxx) / 2, maxy - r);
+			addPointsAlongLine(polygon, (minx + maxx) / 2, maxy - r, minx, maxy);
 
-		r = rand.nextInt(BOUND);
-		addPointsAlongLine(polygon, minx, maxy, minx+r, (miny+maxy)/2);
-		addPointsAlongLine(polygon, minx+r, (miny+maxy)/2, minx, miny);
+			r = rand.nextInt(BOUND);
+			addPointsAlongLine(polygon, minx, maxy, minx + r, (miny + maxy) / 2);
+			addPointsAlongLine(polygon, minx + r, (miny + maxy) / 2, minx, miny);
+		}
 
 		return Arrays.asList(polygon);
 	}

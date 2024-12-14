@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class AbstractPlanarShapeIn3D {
-	public AbstractPlanarShapeIn3D(final AffineTransform3D viewTo3dTransform) {
-		this(100, viewTo3dTransform);
+	public AbstractPlanarShapeIn3D(final AffineTransform3D planeTo3dTransform) {
+		this(100, planeTo3dTransform);
 	}
 
 	/**
@@ -23,8 +23,8 @@ public abstract class AbstractPlanarShapeIn3D {
 	 * transform is provided. Users of BigDataViewer's {@link ViewerState#getViewerTransform()}
 	 * are safe as this method returns a copy of the transform.
 	 */
-	public AbstractPlanarShapeIn3D(final int expectedNoOfVertices, final AffineTransform3D viewTo3dTransform) {
-		transformTo3d = viewTo3dTransform;
+	public AbstractPlanarShapeIn3D(final int expectedNoOfVertices, final AffineTransform3D planeTo3dTransform) {
+		transformTo3d = planeTo3dTransform;
 		coords2D = new ArrayList<>(expectedNoOfVertices);
 	}
 

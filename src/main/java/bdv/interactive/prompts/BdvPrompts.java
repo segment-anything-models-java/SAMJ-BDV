@@ -347,12 +347,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 				//draws the currently recognized polygons
 				g.setPaint(colorPolygons);
-				viewerPanel.state().getViewerTransform(imgToScreenTransform);
+				viewerPanel.state().getViewerTransform(globalToScreenTransform); //this is a global -> view/screen
 				boolean isCloseToViewingPlane = true, isCloseToViewingPlaneB = true;
 				final List<PlanarPolygonIn3D> polygonList = getCurrentPolygons();
 				for (PlanarPolygonIn3D p : polygonList) {
-					p.getTransformTo3d(polyToImgTransform);
-					polyToImgTransform.preConcatenate(imgToScreenTransform);
+					p.getTransformTo3d(polyToGlobalTransform);
+					polyToGlobalTransform.preConcatenate(globalToScreenTransform);
 					//TODO: don't loop if bbox is already far away
 					//... when measuring the rendering times, it turned out that walking through polygons'
 					//    vertices even to realize that the vertices are off-screen (either laterally or
@@ -364,10 +364,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 						//NB: the first (i=0) point is repeated to close the loop
 						p.coordinate2D(i % p.size(), auxCoord3D);
 						if (i % 2 == 0) {
-							polyToImgTransform.apply(auxCoord3D, screenCoord);
+							polyToGlobalTransform.apply(auxCoord3D, screenCoord);
 							isCloseToViewingPlane = Math.abs(screenCoord[2]) < toleratedOffViewPlaneDistance;
 						} else {
-							polyToImgTransform.apply(auxCoord3D, screenCoordB);
+							polyToGlobalTransform.apply(auxCoord3D, screenCoordB);
 							isCloseToViewingPlaneB = Math.abs(screenCoordB[2]) < toleratedOffViewPlaneDistance;
 						}
 						if (i > 0 && isCloseToViewingPlane && isCloseToViewingPlaneB)
@@ -379,8 +379,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}
 
 		//mem placeholders to avoid repeating calls to new()
-		final AffineTransform3D polyToImgTransform = new AffineTransform3D();
-		final AffineTransform3D imgToScreenTransform = new AffineTransform3D();
+		final AffineTransform3D polyToGlobalTransform = new AffineTransform3D();
+		final AffineTransform3D globalToScreenTransform = new AffineTransform3D();
 		final double[] auxCoord3D = new double[3];
 		final double[] screenCoord = new double[3];
 		final double[] screenCoordB = new double[3];
@@ -541,7 +541,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//create prompt with coords w.r.t. the annotation site image
 		PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
 				  this.annotationSiteViewImg,
-				  this.viewerPanel.state().getViewerTransform().inverse());
+				  this.viewerPanel.state().getViewerTransform().inverse()); //view -> global coords
+				  //NB: viewerPanel.state().getViewerTransform() is giving global to view(er)/screen
 		prompt.setDiagonal(samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
 
 		doOnePrompt(prompt, isNewAnnotationImageInstalled);
@@ -578,7 +579,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		final PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
 				this.annotationSiteViewImg,
-				this.viewerPanel.state().getViewerTransform().inverse()
+				this.viewerPanel.state().getViewerTransform().inverse() //view -> global coords
+				//NB: viewerPanel.state().getViewerTransform() is giving global to view(er)/screen
 			);
 
 		//NB: boxes are in 'roi' local coords, we need coords of 'annotationSiteViewImg'
@@ -610,7 +612,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	//aux (and to avoid repetitive new() calls) for the collectViewPixelData() below:
 	private final double[] srcImgPos = new double[3];  //orig underlying 3D image
 	private final double[] screenPos = new double[3];  //the current view 2D image, as a 3D coord though
-	private final AffineTransform3D imgToScreenTransform = new AffineTransform3D();
+	private final AffineTransform3D globalToScreenTransform = new AffineTransform3D();
 
 	protected Img<OT> collectViewPixelData(final RandomAccessibleInterval<IT> srcImg) {
 		final RealRandomAccessible<IT> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
@@ -623,14 +625,16 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//NB: 2D (not 3D!) image and of the size of the screen -> ArrayImg backend should be enough...
 		Cursor<OT> viewCursor = viewImg.localizingCursor();
 
-		viewerPanel.state().getViewerTransform(imgToScreenTransform);
+		//NB: viewerPanel.state().getViewerTransform() is giving global to (current) view(er) == the screen content
+		viewerPanel.state().getViewerTransform(globalToScreenTransform);
 		screenPos[2] = 0.0; //to be on the safe side
 
 		while (viewCursor.hasNext()) {
 			OT px = viewCursor.next();
 			viewCursor.localize(screenPos);
-			imgToScreenTransform.applyInverse(srcImgPos, screenPos); //NB: Inverse has also "reversed" order of arguments!
+			globalToScreenTransform.applyInverse(srcImgPos, screenPos); //NB: Inverse has also "reversed" order of arguments!
 			imageToGlobalTransform.applyInverse(srcImgPos, srcImgPos);
+			//NB: ^^^^ together are basically screen to image (through global coord system)
 			px.setReal( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() );
 		}
 

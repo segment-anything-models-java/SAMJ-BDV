@@ -51,6 +51,31 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
+ *
+ * A note on coordinate systems:
+ * The central (Cartesian) coordinate system (shorthand: "coords") is a 'global' one, which
+ * the BDV uses intrinsically. It is the coords that one can read in the top-right corner of
+ * the BDV display, it is this one where individual sources meet - into which they are mapped.
+ *
+ * Then there is a source coords for each source/original image. This one typically aligns with
+ * the pixel grid of the source/image. So, a transformation between this coords and the global
+ * coords involves pixel size, anisotropy and potential positioning of this source/image.
+ * This is what the source.getSpimSource().getSourceTransform() reports.
+ *
+ * The current slicing through the volume(s) in BDV, the current view (aka viewer), the current
+ * screen content, this is realized/rendered into an 2D image that is "sent" to the screen.
+ * This image's width and height thus matches exactly the pixel width and height of the
+ * BDV's main display window. This is what the bdv.state().getViewerTransform() reports.
+ *
+ * So, these are the three coords: raw image data -to- global -to- some view/slicing.
+ *
+ * The annotation images belong to the "some view" coord, while polygons are defined
+ * using the global coords. These two, in fact, the transformation between these two,
+ * are important for creating prompts and displaying of polygons. When polygons are to
+ * be rendered to the underlying original raw image data, the transformation between this
+ * (source pixel grid) and the global coords becomes important.
+ *
+ *
  * @param <IT> pixel type of the input image on which the prompts operate
  * @param <OT> pixel type of the image submitted to the prompts processors
  */

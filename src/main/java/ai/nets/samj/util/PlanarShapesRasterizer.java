@@ -22,7 +22,7 @@ public class PlanarShapesRasterizer {
 	final double[] coord0 = new double[3];
 	final double[] coordAlongX = new double[3];
 	final double[] coordAlongY = new double[3];
-	final AffineTransform3D viewToImgT = new AffineTransform3D();
+	final AffineTransform3D shapeTo3dSpace = new AffineTransform3D();
 
 	final double[] dx = new double[4];
 	final double[] dy = new double[4];
@@ -46,6 +46,7 @@ public class PlanarShapesRasterizer {
 	 */
 	public <T extends RealType<T>>
 	void rasterizeIntoImg(final AbstractPlanarShapeIn3D shape,
+	                      final AffineTransform3D shape3dToImgTransform,
 	                      final RandomAccessible<T> img,
 	                      final double drawValue) {
 		if (img.numDimensions() < 2)
@@ -53,13 +54,14 @@ public class PlanarShapesRasterizer {
 		final RandomAccess<T> imgRA
 				  = img.numDimensions() > 2 ? img.randomAccess() : Views.addDimension(img).randomAccess();
 
-		rasterize(shape, (pos) -> imgRA.setPositionAndGet((long)pos[0],(long)pos[1],(long)pos[2]).setReal(drawValue) );
+		rasterize(shape,shape3dToImgTransform, (pos) -> imgRA.setPositionAndGet((long)pos[0],(long)pos[1],(long)pos[2]).setReal(drawValue) );
 	}
 
 	/**
-	 * See {@link PlanarShapesRasterizer#rasterizeIntoImg(AbstractPlanarShapeIn3D, RandomAccessible, double)}
+	 * See {@link PlanarShapesRasterizer#rasterizeIntoImg(AbstractPlanarShapeIn3D, AffineTransform3D, RandomAccessible, double)}
 	 */
 	public void rasterize(final AbstractPlanarShapeIn3D shape,
+	                      final AffineTransform3D shape3dToImgTransform,
 	                      final Consumer<double[]> setterAtTheProvided3dPosition) {
 		final Interval roi2d = shape.getBbox2D();
 		coord0[0] = roi2d.min(0);
@@ -75,13 +77,11 @@ public class PlanarShapesRasterizer {
 		coordAlongY[2] = 0.0;
 
 		//project the three corners into the 'img' 3D space
-		shape.getTransformTo3d(viewToImgT);
-		viewToImgT.apply(coord0,coord0);
-		viewToImgT.apply(coordAlongX,coordAlongX);
-		viewToImgT.apply(coordAlongY,coordAlongY);
-		//roundToInt(coord0);
-		//roundToInt(coordAlongX);
-		//roundToInt(coordAlongY);
+		shape.getTransformTo3d(shapeTo3dSpace);
+		shapeTo3dSpace.preConcatenate(shape3dToImgTransform);
+		shapeTo3dSpace.apply(coord0,coord0);
+		shapeTo3dSpace.apply(coordAlongX,coordAlongX);
+		shapeTo3dSpace.apply(coordAlongY,coordAlongY);
 
 		//NB: returns (x,y,z) step vector, and number of such steps as the 4th index!
 		normalizedVecFromAtoB(coord0, coordAlongX, dx);
@@ -101,8 +101,9 @@ public class PlanarShapesRasterizer {
 				coordAlongX[2] = coordAlongY[2] + ((double)x+xShift) * dx[2];
 
 				//take back to the 2D view world/coordinates
-				viewToImgT.applyInverse(coord,coordAlongX);
+				shapeTo3dSpace.applyInverse(coord,coordAlongX);
 				//NB: coord[2] should be close to 0.0
+//				System.out.println("3D ["+coordAlongX[0]+","+coordAlongX[1]+","+coordAlongX[2]+"] -> ["+coord[0]+","+coord[1]+","+coord[2]+"]");
 				if (shape.isPointInShape(coord[0], coord[1])) setterAtTheProvided3dPosition.accept(coordAlongX);
 			}
 		}

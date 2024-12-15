@@ -6,8 +6,8 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 
 public class PlanarRectangleIn3D <T extends RealType<T> & NativeType<T>> extends AbstractPlanarShapeWithImgIn3D<T> {
-	public PlanarRectangleIn3D(final Img<T> viewImage2D, final AffineTransform3D viewTo3dTransform) {
-		super(2, viewImage2D, viewTo3dTransform);
+	public PlanarRectangleIn3D(final Img<T> viewImage2D, final AffineTransform3D planeTo3dTransform) {
+		super(2, viewImage2D, planeTo3dTransform);
 	}
 
 	public void setDiagonal(double min_x, double min_y, double max_x, double max_y) {

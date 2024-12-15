@@ -23,6 +23,7 @@ public class PlanarShapesRasterizer {
 	final double[] coordAlongX = new double[3];
 	final double[] coordAlongY = new double[3];
 	final AffineTransform3D shapeTo3dSpace = new AffineTransform3D();
+	public static final AffineTransform3D IDENTITY_TRANSFORM = new AffineTransform3D();
 
 	final double[] dx = new double[4];
 	final double[] dy = new double[4];
@@ -56,6 +57,14 @@ public class PlanarShapesRasterizer {
 
 		rasterize(shape,shape3dToImgTransform, (pos) -> imgRA.setPositionAndGet((long)pos[0],(long)pos[1],(long)pos[2]).setReal(drawValue) );
 	}
+
+	public <T extends RealType<T>>
+	void rasterizeIntoImg(final AbstractPlanarShapeIn3D shape,
+	                      final RandomAccessible<T> img,
+	                      final double drawValue) {
+		rasterizeIntoImg(shape, IDENTITY_TRANSFORM, img, drawValue);
+	}
+
 
 	/**
 	 * See {@link PlanarShapesRasterizer#rasterizeIntoImg(AbstractPlanarShapeIn3D, AffineTransform3D, RandomAccessible, double)}
@@ -125,13 +134,5 @@ public class PlanarShapesRasterizer {
 
 	void roundToInt(double[] vec) {
 		for (int i = 0; i < vec.length; ++i) vec[i] = Math.round(vec[i]);
-	}
-
-	/** A convenience shortcut: Utility shape drawer/rasterizer into the given RAI. */
-	public static <T extends RealType<T>>
-	void rasterizeIntoImg(final AbstractPlanarShapeIn3D shape,
-	                      final RandomAccessibleInterval<T> img,
-	                      final double drawValue) {
-		new PlanarShapesRasterizer().rasterizeIntoImg(shape, Views.extendValue(img,0.0), drawValue);
 	}
 }

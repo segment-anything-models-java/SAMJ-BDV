@@ -16,6 +16,9 @@ public class PolygonsRasterizerInto3dImgConsumer<T extends RealType<T>> implemen
 	int currentDrawingValue = 1;
 
 	public PolygonsRasterizerInto3dImgConsumer(final RandomAccessibleInterval<T> targetImg) {
+		this(targetImg, PlanarShapesRasterizer.IDENTITY_TRANSFORM);
+	}
+
 	public PolygonsRasterizerInto3dImgConsumer(final RandomAccessibleInterval<T> targetImg, final AffineTransform3D toTargetImgT) {
 		if (targetImg.numDimensions() < 2)
 			throw new IllegalArgumentException("Provide 2D, 3D (or more dimensional) image to draw polygons into.");

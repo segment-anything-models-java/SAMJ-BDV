@@ -34,6 +34,7 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
+import net.imglib2.view.ExtendedRandomAccessibleInterval;
 import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
@@ -504,6 +505,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			Img<UnsignedShortType> maskImage = PlanarImgs.unsignedShorts(this.image.dimensionsAsLongArray());
+			final ExtendedRandomAccessibleInterval<UnsignedShortType, Img<UnsignedShortType>> extMaskImage = Views.extendValue(maskImage, 0);
+			//
 			PlanarShapesRasterizer rasterizer = new PlanarShapesRasterizer();
 			AtomicInteger value = new AtomicInteger(0);
 			samjOverlay.getCurrentPolygons()
@@ -511,7 +514,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				.forEach(polygon -> {
 					int drawValue = value.addAndGet(1);
 					System.out.println("Rendering polygon no. "+drawValue);
-					rasterizer.rasterizeIntoImg(polygon, Views.extendValue(maskImage,0), drawValue);
+					rasterizer.rasterizeIntoImg(polygon,this.imageToGlobalTransform.inverse(), extMaskImage, drawValue);
 				});
 			ImageJFunctions.show(maskImage, "SAMJ BDV masks");
 		}, "bdvprompts_export", "Y");

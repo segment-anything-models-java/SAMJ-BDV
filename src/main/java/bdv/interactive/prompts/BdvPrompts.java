@@ -256,15 +256,19 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	// ======================== overlay content ========================
 	private final PromptsAndPolygonsDrawingOverlay samjOverlay;
 
-	public void stopDrawing() {
-		samjOverlay.shouldDrawLine = false;
-		samjOverlay.shouldDrawPolygons = false;
+	public void startPrompts() {
+		samjOverlay.isLineReadyForDrawing = false;
+		samjOverlay.shouldDoPrompts = true;
+	}
+	public void stopPrompts() {
+		samjOverlay.shouldDoPrompts = false;
 	}
 
 	public void startDrawing() {
-		samjOverlay.isLineReadyForDrawing = false;
-		samjOverlay.shouldDrawLine = true;
 		samjOverlay.shouldDrawPolygons = true;
+	}
+	public void stopDrawing() {
+		samjOverlay.shouldDrawPolygons = false;
 	}
 
 	public void forgetAllPolygons() {
@@ -276,7 +280,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	class PromptsAndPolygonsDrawingOverlay extends BdvOverlay implements Consumer<PlanarPolygonIn3D> {
 		private int sx,sy; //starting coordinate of the line, the "first end"
 		private int ex,ey; //ending coordinate of the line, the "second end"
-		protected boolean shouldDrawLine = true;
+		protected boolean shouldDoPrompts = true;
 		private boolean isLineReadyForDrawing = false;
 
 		public void setStartOfLine(int x, int y) {
@@ -354,7 +358,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
 			g.setStroke(stroke);
 
-			if (shouldDrawLine && isLineReadyForDrawing) {
+			if (shouldDoPrompts && isLineReadyForDrawing) {
 				//draws the line
 				g.setPaint(colorPrompt);
 				g.drawLine(sx,sy, ex,sy);
@@ -440,7 +444,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.isLineReadyForDrawing = false;
 			samjOverlay.normalizeLineEnds();
-			handleRectanglePrompt();
+			if (samjOverlay.shouldDoPrompts) handleRectanglePrompt();
 		}
 
 		void handleRectanglePrompt() {

@@ -16,16 +16,30 @@ import java.util.List;
 public class BDVedMainGUI extends MainGUI {
 	public BDVedMainGUI(final String bdvWindowTitle) {
 		super(emptyFakeConsumer);
+		associatedBdvLabelComponent.setText(" Associated to: "+bdvWindowTitle);
 		touchUpForBdv();
 	}
+
 
 	@Override
 	protected JPanel createFirstComponent() {
 		JPanel origPanel = super.createFirstComponent();
 		origPanel.remove(cmbImages);
 		origPanel.remove(go);
+
+		//copied from MainGUI
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.insets = new Insets(2, 2, 2, 2); // Adjust insets as needed
+		gbc.gridy = 1;
+		gbc.gridx = 0;
+		gbc.weightx = 1.0;
+		gbc.weighty = 10.0;
+		gbc.fill = GridBagConstraints.BOTH;
+		associatedBdvLabelComponent = new JLabel();
+		origPanel.add(associatedBdvLabelComponent, gbc);
 		return origPanel;
 	}
+	protected JLabel associatedBdvLabelComponent;
 
 	@Override
 	protected JPanel createThirdComponent() {
@@ -34,10 +48,11 @@ public class BDVedMainGUI extends MainGUI {
 		return origPanel;
 	}
 
+
 	protected void touchUpForBdv() {
 		retunLargest.setEnabled(true);
 		export.setEnabled(true);
-		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE - 90);
+		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE - 50);
 	}
 
 
@@ -82,6 +97,6 @@ public class BDVedMainGUI extends MainGUI {
 
 
 	public static void main(String[] args) {
-		new BDVedMainGUI(null).setVisible(true);
+		new BDVedMainGUI("some BDV window").setVisible(true);
 	}
 }

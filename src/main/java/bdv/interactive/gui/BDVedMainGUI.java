@@ -94,6 +94,14 @@ public class BDVedMainGUI extends MainGUI {
 		close.addActionListener( (ignore) -> hideWindow() );
 	}
 
+	public void hideWindow() {
+		this.setVisible(false);
+	}
+
+	public void showWindow() {
+		this.setVisible(true);
+	}
+
 	public static final String SAMJ_CONTROLS_HELP_HTML =
 			"<html><b>Hold down L</b> key, <b>Left Click and Drag</b> and <b>Release L</b>" +
 			" on the image to select a region inside which SAMJ will annotate," +

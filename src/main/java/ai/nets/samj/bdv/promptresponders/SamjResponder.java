@@ -32,6 +32,7 @@ public class SamjResponder <T extends RealType<T> & NativeType<T>> implements Bd
 */
 
 		this.network = network;
+		this.networkName = network.getName();
 		this.isNetworkReady = false;
 		this.log = log;
 	}
@@ -84,6 +85,7 @@ public class SamjResponder <T extends RealType<T> & NativeType<T>> implements Bd
 	}
 
 	public boolean returnLargestRoi = true;
+	public final String networkName;
 
 	public static final SAMJLogger LOCAL_CONSOLE_LOGGER = new SAMJLogger() {
 		@Override

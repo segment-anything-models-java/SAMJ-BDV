@@ -43,6 +43,8 @@ import org.scijava.ui.behaviour.util.Behaviours;
 import org.scijava.ui.behaviour.util.TriggerBehaviourBindings;
 
 import java.awt.*;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -230,12 +232,18 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	public boolean removePolygonsConsumer(final Consumer<PlanarPolygonIn3D> consumer) {
 		return polygonsConsumers.remove(consumer);
 	}
+	public Collection<Consumer<PlanarPolygonIn3D>> listPolygonsConsumers() {
+		return Collections.unmodifiableList(polygonsConsumers);
+	}
 
 	public void addPromptsProcessor(final PromptsProcessor<OT> promptToPolygonsGenerator) {
 		promptsProcessors.add(promptToPolygonsGenerator);
 	}
 	public boolean removePromptsProcessor(final PromptsProcessor<OT> promptToPolygonsGenerator) {
 		return promptsProcessors.remove(promptToPolygonsGenerator);
+	}
+	public Collection<PromptsProcessor<OT>> listPromptsProcessors() {
+		return Collections.unmodifiableList(promptsProcessors);
 	}
 
 	public interface PromptsProcessor <PT extends RealType<PT> & NativeType<PT>> {

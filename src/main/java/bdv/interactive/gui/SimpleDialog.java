@@ -59,18 +59,12 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 		doDisplayEncodedImage.addItemListener((ignore) -> {
 			if (doDisplayEncodedImage.isSelected()) {
 				if (findShowImageInIjResponderOrNull() == null) {
-					System.out.println("Registering the displaying of an image in IJ.");
 					annotator.addPromptsProcessor( new ShowImageInIJResponder<OT>() );
-				} else {
-					System.out.println("Displaying of image in IJ already enabled.");
 				}
 			} else {
 				BdvPrompts.PromptsProcessor<OT> p = findShowImageInIjResponderOrNull();
 				if (p != null) {
 					annotator.removePromptsProcessor(p);
-					System.out.println("Unregistering the display of an image in IJ.");
-				} else {
-					System.out.println("Displaying of image in IJ was already turned off.");
 				}
 			}
 		});
@@ -80,8 +74,6 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 	}
 
 	public void updateContent() {
-		System.out.println("updateing from the given samjFill");
-
 		networksModel.clear();
 		enlistAvailableNetworks(networksModel);
 		networksChooser.setModel(new DefaultComboBoxModel<>(networksModel));

@@ -53,6 +53,10 @@ public class BDVedMainGUI extends MainGUI {
 		retunLargest.setEnabled(true);
 		export.setEnabled(true);
 		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE - 50);
+
+		setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+		close.removeActionListener( close.getActionListeners()[0] ); //removes the original action
+		close.addActionListener( (ignore) -> hideWindow() );
 	}
 
 

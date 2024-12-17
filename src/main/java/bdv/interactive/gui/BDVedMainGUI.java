@@ -22,6 +22,13 @@ public class BDVedMainGUI extends MainGUI {
 		touchUpForBdv();
 	}
 
+	@Override
+	protected void makeVisibleOnInstantiation() {
+		//intentionally empty to introduce the behaviour that this GUI
+		//is *not* displayed immediately after the GUI (class) is constructed
+		//(which is BTW the default behaviour of MainGui)
+	}
+
 
 	@Override
 	protected JPanel createFirstComponent() {

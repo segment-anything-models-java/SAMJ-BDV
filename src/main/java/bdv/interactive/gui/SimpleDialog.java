@@ -84,8 +84,7 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 
 		networksModel.clear();
 		enlistAvailableNetworks(networksModel);
-		networksChooser.removeAllItems();
-		for (String net : networksModel) networksChooser.addItem(net);
+		networksChooser.setModel(new DefaultComboBoxModel<>(networksModel));
 
 		BdvPrompts.PromptsProcessor<OT> p = findAnySamNetworkOrNull();
 		if (p != null) {
@@ -108,9 +107,10 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 	final JCheckBox doOnlyLargestRoi;
 	final JCheckBox doDisplayEncodedImage;
 	final BdvPrompts<IT,OT> annotator;
-	final AvailableNetworksFactory availableNetworks = new AvailableNetworksFactory();
+	AvailableNetworksFactory availableNetworks = null;
 
 	private void enlistAvailableNetworks(final Vector<String> list) {
+		availableNetworks = new AvailableNetworksFactory();
 		list.addAll( availableNetworks.availableModels() );
 		list.add( "fake responses" );
 	}
@@ -124,6 +124,7 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 		}
 
 		//now, add the given one
+		if (availableNetworks == null) availableNetworks = new AvailableNetworksFactory();
 		SAMModel model = availableNetworks.getModel(networkName);
 		if (model != null) {
 			SamjResponder<OT> samj = new SamjResponder<>(model);

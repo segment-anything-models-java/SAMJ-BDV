@@ -1,9 +1,11 @@
 package ai.nets.samj.gui;
 
 import ai.nets.samj.annotation.Mask;
+import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.gui.components.ComboBoxItem;
 import ai.nets.samj.ui.ConsumerInterface;
 import bdv.interactive.prompts.BdvPrompts;
+import bdv.interactive.prompts.BdvPromptsUtils;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
@@ -26,6 +28,7 @@ public class BDVedMainGUI extends MainGUI {
 		touchUpForBdv();
 	}
 	private final BdvPrompts<?,?> annotator;
+	private SamjResponder<?> currentSamjResponder = null;
 
 	@Override
 	protected void makeVisibleOnInstantiation() {
@@ -137,13 +140,22 @@ public class BDVedMainGUI extends MainGUI {
 		//NB: the casting is warranted by the fact that the ModelSelection class (cmbModels) extends ComboBox<String>
 		cmbModelsComboBox.addItemListener((i) -> {
 			if (i.getStateChange() == ItemEvent.SELECTED) {
-				if (cmbModels.isModelInstalled( (String)i.getItem() )) {
+				final String selectedModelName = (String)i.getItem();
+				if (cmbModels.isModelInstalled(selectedModelName)) {
 					setLocalControlsEnabled(true);
-					System.out.println("WILL update samj");
+					currentSamjResponder = BdvPromptsUtils.switchToThisNetwork(cmbModels.getModelByName(selectedModelName), annotator);
+					if (currentSamjResponder != null) currentSamjResponder.returnLargestRoi = retunLargest.isSelected();
+					System.out.println("BDV switched to SAMJ model: "+currentSamjResponder.networkName);
+					annotator.startPrompts();
 				} else {
 					setLocalControlsEnabled(false);
+					annotator.stopPrompts();
 				}
 			}
+		});
+
+		retunLargest.addItemListener((ignored) -> {
+			if (currentSamjResponder != null) currentSamjResponder.returnLargestRoi = retunLargest.isSelected();
 		});
 
 		setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);

@@ -60,7 +60,7 @@ public class BDVedMainGUI extends MainGUI {
 		cardPanel.remove(0);
 
 		JPanel card1 = new JPanel(new MigLayout("fill","center","[]push"));
-		JTextPane htmlText = new JTextPane();
+		htmlText = new JTextPane();
 		htmlText.setContentType("text/html");
 		htmlText.setText(SAMJ_CONTROLS_HELP_HTML);
 		card1.add( new JScrollPane(htmlText,
@@ -70,7 +70,8 @@ public class BDVedMainGUI extends MainGUI {
 		card2.add(new JTextField("some script path"), new CC().grow().span());
 		card2.add(new JButton("Template"), new CC().grow(1));
 		card2.add(new JButton("Browse"), new CC().grow(1));
-		card2.add(new JButton("Run..."), new CC().grow(2));
+		runButton = new JButton("Run...");
+		card2.add(runButton, new CC().grow(1).wrap());
 		promptsDebugCombo = new JComboBox<>(PROMPTS_DEBUGGING_OPTIONS);
 		card2.add(promptsDebugCombo, new CC().grow().span());
 
@@ -95,13 +96,18 @@ public class BDVedMainGUI extends MainGUI {
 	}
 
 	protected void setLocalControlsEnabled(boolean newState) {
-		//this is basically instead of setTwoThirdsEnabled()
+		//this is basically instead of setTwoThirdsEnabled(),
+		//but adapted for the current shape of the GUI
 		radioButton1.setEnabled(newState);
 		radioButton2.setEnabled(newState);
 		cardPanel.setEnabled(newState);
+		if (htmlText != null) htmlText.setEnabled(newState);
+		if (runButton != null) runButton.setEnabled(newState);
 		retunLargest.setEnabled(newState);
 		export.setEnabled(newState);
 	}
+	JTextPane htmlText;
+	JButton runButton;
 	JComboBox<String> promptsDebugCombo;
 
 

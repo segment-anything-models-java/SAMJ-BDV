@@ -43,6 +43,7 @@ public class BDVedMainGUI extends MainGUI {
 		JPanel origPanel = super.createFirstComponent();
 		origPanel.remove(cmbImages);
 		origPanel.remove(go);
+		cmbModels.setPreferredSize(new Dimension(0, (int)(0.07*MAIN_VERTICAL_SIZE)));
 
 		//copied from MainGUI
 		GridBagConstraints gbc = new GridBagConstraints();
@@ -54,6 +55,8 @@ public class BDVedMainGUI extends MainGUI {
 		gbc.fill = GridBagConstraints.BOTH;
 		associatedBdvLabelComponent = new JLabel();
 		origPanel.add(associatedBdvLabelComponent, gbc);
+
+		origPanel.setPreferredSize(new Dimension(0, (int)(0.1*MAIN_VERTICAL_SIZE)));
 		return origPanel;
 	}
 	protected JLabel associatedBdvLabelComponent;
@@ -83,7 +86,9 @@ public class BDVedMainGUI extends MainGUI {
 
 		cardPanel.add(card1, MANUAL_STR);
 		cardPanel.add(card2, PRESET_STR);
-		cardPanel.setPreferredSize(new Dimension(MAIN_HORIZONTAL_SIZE-30, (int)(0.5*MAIN_VERTICAL_SIZE)));
+		cardPanel.setPreferredSize(new Dimension(0, (int)(0.5*MAIN_VERTICAL_SIZE)));
+
+		origPanel.setPreferredSize(new Dimension(0, (int)(0.7*MAIN_VERTICAL_SIZE)));
 		return origPanel;
 	}
 
@@ -92,6 +97,8 @@ public class BDVedMainGUI extends MainGUI {
 	protected JPanel createThirdComponent() {
 		JPanel origPanel = super.createThirdComponent();
 		origPanel.remove(chkRoiManager);
+
+		origPanel.setPreferredSize(new Dimension(0, (int)(0.2*MAIN_VERTICAL_SIZE)));
 		return origPanel;
 	}
 
@@ -122,7 +129,7 @@ public class BDVedMainGUI extends MainGUI {
 	protected void touchUpForBdv() {
 		setLocalControlsEnabled(true);
 
-		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE - 20);
+		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE);
 
 		//The original GUI disables some of its controls (including the "Go" button)
 		//when the models choosing panel is touched. When "returning" from this model
@@ -182,9 +189,9 @@ public class BDVedMainGUI extends MainGUI {
 	public static final Vector<String> PROMPTS_DEBUGGING_OPTIONS
 			= new Vector<>( Arrays.asList(
 				"When executing, don't show anything extra.",
-				"When executing, show only (one) cropped-out image.",
-				"When executing, show dour debug images.",
-				"When executing, show all available debug images."
+				"  ..., show only (one) cropped-out image.",
+				"  ..., show dour debug images.",
+				"  ..., show all available debug images."
 			) );
 
 	final static ConsumerInterface emptyFakeConsumer = new ConsumerInterface() {

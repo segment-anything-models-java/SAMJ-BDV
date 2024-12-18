@@ -1,4 +1,4 @@
-package bdv.interactive.gui;
+package ai.nets.samj.gui;
 
 import ai.nets.samj.bdv.promptresponders.FakeResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;

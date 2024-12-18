@@ -12,6 +12,7 @@ import net.miginfocom.swing.MigLayout;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ItemEvent;
 import java.util.Collections;
 import java.util.List;
 
@@ -106,6 +107,31 @@ public class BDVedMainGUI extends MainGUI {
 		setLocalControlsEnabled(true);
 
 		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE - 20);
+
+		//The original GUI disables some of its controls (including the "Go" button)
+		//when the models choosing panel is touched. When "returning" from this model
+		//chooser and if an available model was selected, the "Go" button is enabled.
+		//And only after the "Go" button is pressed (and an image is encoded), the
+		//controls are enabled again (see MainGUI.loadModel()).
+		//
+		//However, here we don't have the "Go" button (as the BDV encodes automatically
+		//on-demand), so we have to monitor when the "Go" button would have turned
+		//enabled again (that is when models choosing is finished), and then run
+		//model's switching routine and re-enabling of controls.
+		//
+		//hook our own listener
+		JComboBox<String> cmbModelsComboBox = (JComboBox<String>)cmbModels.getComponents()[0];
+		//NB: the casting is warranted by the fact that the ModelSelection class (cmbModels) extends ComboBox<String>
+		cmbModelsComboBox.addItemListener((i) -> {
+			if (i.getStateChange() == ItemEvent.SELECTED) {
+				if (cmbModels.isModelInstalled( (String)i.getItem() )) {
+					setLocalControlsEnabled(true);
+					System.out.println("WILL update samj");
+				} else {
+					setLocalControlsEnabled(false);
+				}
+			}
+		});
 
 		setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 		close.removeActionListener( close.getActionListeners()[0] ); //removes the original action

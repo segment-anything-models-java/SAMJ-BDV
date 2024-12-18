@@ -83,7 +83,6 @@ public class BDVedMainGUI extends MainGUI {
 		origPanel.remove(chkRoiManager);
 		return origPanel;
 	}
-	protected static int MAIN_HORIZONTAL_SIZE = 400;
 
 
 	@Override
@@ -100,6 +99,8 @@ public class BDVedMainGUI extends MainGUI {
 		export.setEnabled(newState);
 	}
 
+
+	protected static int MAIN_HORIZONTAL_SIZE = 400;
 
 	protected void touchUpForBdv() {
 		setLocalControlsEnabled(true);

@@ -1,7 +1,6 @@
 package ai.nets.samj.gui;
 
 import ai.nets.samj.annotation.Mask;
-import ai.nets.samj.gui.MainGUI;
 import ai.nets.samj.gui.components.ComboBoxItem;
 import ai.nets.samj.ui.ConsumerInterface;
 import net.imglib2.RandomAccessibleInterval;
@@ -13,8 +12,10 @@ import net.miginfocom.swing.MigLayout;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ItemEvent;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Vector;
 
 public class BDVedMainGUI extends MainGUI {
 	public BDVedMainGUI(final String bdvWindowTitle) {
@@ -70,10 +71,12 @@ public class BDVedMainGUI extends MainGUI {
 		card2.add(new JButton("Template"), new CC().grow(1));
 		card2.add(new JButton("Browse"), new CC().grow(1));
 		card2.add(new JButton("Run..."), new CC().grow(2));
+		promptsDebugCombo = new JComboBox<>(PROMPTS_DEBUGGING_OPTIONS);
+		card2.add(promptsDebugCombo, new CC().grow().span());
 
 		cardPanel.add(card1, MANUAL_STR);
 		cardPanel.add(card2, PRESET_STR);
-		cardPanel.setPreferredSize(new Dimension(MAIN_HORIZONTAL_SIZE-30, (int)(0.3*MAIN_VERTICAL_SIZE)));
+		cardPanel.setPreferredSize(new Dimension(MAIN_HORIZONTAL_SIZE-30, (int)(0.5*MAIN_VERTICAL_SIZE)));
 		return origPanel;
 	}
 
@@ -99,6 +102,7 @@ public class BDVedMainGUI extends MainGUI {
 		retunLargest.setEnabled(newState);
 		export.setEnabled(newState);
 	}
+	JComboBox<String> promptsDebugCombo;
 
 
 	protected static int MAIN_HORIZONTAL_SIZE = 400;
@@ -154,6 +158,14 @@ public class BDVedMainGUI extends MainGUI {
 			" on the image to select a region inside which SAMJ will annotate," +
 			" operating <b>under the current contrast</b> setting.</html>";
 
+	public static final Vector<String> PROMPTS_DEBUGGING_OPTIONS
+			= new Vector<>( Arrays.asList(
+				"When executing, don't show anything extra.",
+				"When executing, show only (one) cropped-out image.",
+				"When executing, show dour debug images.",
+				"When executing, show all available debug images."
+			) );
+
 	final static ConsumerInterface emptyFakeConsumer = new ConsumerInterface() {
 		@Override
 		public List<ComboBoxItem> getListOfOpenImages() { return Collections.emptyList(); }
@@ -195,6 +207,6 @@ public class BDVedMainGUI extends MainGUI {
 
 
 	public static void main(String[] args) {
-		new BDVedMainGUI("some BDV window").setVisible(true);
+		new BDVedMainGUI("some BDV window").showWindow();
 	}
 }

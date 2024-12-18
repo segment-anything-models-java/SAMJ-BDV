@@ -3,6 +3,7 @@ package ai.nets.samj.gui;
 import ai.nets.samj.annotation.Mask;
 import ai.nets.samj.gui.components.ComboBoxItem;
 import ai.nets.samj.ui.ConsumerInterface;
+import bdv.interactive.prompts.BdvPrompts;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
@@ -18,11 +19,13 @@ import java.util.List;
 import java.util.Vector;
 
 public class BDVedMainGUI extends MainGUI {
-	public BDVedMainGUI(final String bdvWindowTitle) {
+	public BDVedMainGUI(final BdvPrompts<?,?> samjBdv, final String bdvWindowTitle) {
 		super(emptyFakeConsumer);
+		annotator = samjBdv;
 		associatedBdvLabelComponent.setText(" Associated to: "+bdvWindowTitle);
 		touchUpForBdv();
 	}
+	private final BdvPrompts<?,?> annotator;
 
 	@Override
 	protected void makeVisibleOnInstantiation() {
@@ -213,6 +216,6 @@ public class BDVedMainGUI extends MainGUI {
 
 
 	public static void main(String[] args) {
-		new BDVedMainGUI("some BDV window").showWindow();
+		new BDVedMainGUI(null, "some BDV window").showWindow();
 	}
 }

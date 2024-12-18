@@ -86,13 +86,23 @@ public class BDVedMainGUI extends MainGUI {
 	protected static int MAIN_HORIZONTAL_SIZE = 400;
 
 
-	protected void touchUpForBdv() {
-		retunLargest.setEnabled(true);
-		export.setEnabled(true);
+	@Override
+	protected void setTwoThirdsEnabled(boolean enabled) {
+		//leave empty not to mess with (enable/disable elements in) this GUI window
+	}
 
-		radioButton1.setEnabled(true);
-		radioButton2.setEnabled(true);
-		cardPanel.setEnabled(true);
+	protected void setLocalControlsEnabled(boolean newState) {
+		//this is basically instead of setTwoThirdsEnabled()
+		radioButton1.setEnabled(newState);
+		radioButton2.setEnabled(newState);
+		cardPanel.setEnabled(newState);
+		retunLargest.setEnabled(newState);
+		export.setEnabled(newState);
+	}
+
+
+	protected void touchUpForBdv() {
+		setLocalControlsEnabled(true);
 
 		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE - 20);
 

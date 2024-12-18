@@ -94,7 +94,7 @@ public class BDVedMainGUI extends MainGUI {
 		radioButton2.setEnabled(true);
 		cardPanel.setEnabled(true);
 
-		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE - 50);
+		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE - 20);
 
 		setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 		close.removeActionListener( close.getActionListeners()[0] ); //removes the original action

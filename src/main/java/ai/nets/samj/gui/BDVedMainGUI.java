@@ -13,6 +13,7 @@ import net.imglib2.type.numeric.RealType;
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.MigLayout;
 import org.scijava.Context;
+import org.scijava.LocalDetachedContext;
 
 import javax.swing.*;
 import java.awt.*;
@@ -86,10 +87,7 @@ public class BDVedMainGUI extends MainGUI {
 		//
 		JButton templateButton = new JButton("Template");
 		templateButton.addActionListener((ignored) -> {
-			//TODO get Context from somewhere.... or show TextArea otherwise...
-			MultiPromptsWithScript.showTemplateScriptInIJ1Editor(new Context(
-				//TODO text field
-			));
+			MultiPromptsWithScript.showTemplateScriptInIJ1Editor(LocalDetachedContext.getContext());
 		});
 		card2.add(templateButton, new CC().grow(1));
 		//

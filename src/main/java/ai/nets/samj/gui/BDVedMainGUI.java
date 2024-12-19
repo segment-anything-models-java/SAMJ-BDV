@@ -26,15 +26,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Vector;
 
-public class BDVedMainGUI extends MainGUI {
-	public BDVedMainGUI(final BdvPrompts<?,?> samjBdv, final String bdvWindowTitle) {
+public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends MainGUI {
+	public BDVedMainGUI(final BdvPrompts<?,OT> samjBdv, final String bdvWindowTitle) {
 		super(emptyFakeConsumer);
 		annotator = samjBdv;
 		associatedBdvLabelComponent.setText(" Associated to: "+bdvWindowTitle);
 		touchUpForBdv();
 	}
-	private final BdvPrompts<?,?> annotator;
-	private SamjResponder<?> currentSamjResponder = null;
+	private final BdvPrompts<?,OT> annotator;
+	private SamjResponder<OT> currentSamjResponder = null;
 
 	@Override
 	protected void makeVisibleOnInstantiation() {

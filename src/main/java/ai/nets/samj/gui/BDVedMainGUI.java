@@ -168,7 +168,9 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 	protected JPanel createThirdComponent() {
 		JPanel origPanel = super.createThirdComponent();
 		origPanel.remove(chkRoiManager);
+		origPanel.remove(export);
 
+		//TODO: add "Show images submitted for encoding:"
 		origPanel.setPreferredSize(new Dimension(0, (int)(0.2*MAIN_VERTICAL_SIZE)));
 		return origPanel;
 	}

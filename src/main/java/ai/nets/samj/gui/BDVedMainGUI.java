@@ -54,11 +54,13 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		if (ss == null || ms == null) {
 			//failing to install the seeding functionality, disable thus the "prompts" card
 			radioButton2.setEnabled(false);
+			radioButton2_isAllowedToBeUsed = false;
 			return;
 		}
 		seedsService = new MultiPromptsWithScript<>(ss,ms, new File(SCRIPT_DEFAULT_WRONG_PATH));
 		annotator.installOwnMultiPromptBehaviour(seedsService);
 	}
+	boolean radioButton2_isAllowedToBeUsed = true;
 	MultiPromptsWithScript<OT> seedsService = null;
 
 	@Override
@@ -168,7 +170,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		//this is basically instead of setTwoThirdsEnabled(),
 		//but adapted for the current shape of the GUI
 		radioButton1.setEnabled(newState);
-		radioButton2.setEnabled(newState);
+		radioButton2.setEnabled(newState & radioButton2_isAllowedToBeUsed);
 		cardPanel.setEnabled(newState);
 		if (htmlText != null) htmlText.setEnabled(newState);
 		if (scriptHowToRunInfo != null) scriptHowToRunInfo.setEnabled(newState);

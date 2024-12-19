@@ -4,6 +4,7 @@ import ai.nets.samj.annotation.Mask;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.gui.components.ComboBoxItem;
 import ai.nets.samj.ui.ConsumerInterface;
+import ai.nets.samj.util.MultiPromptsWithScript;
 import bdv.interactive.prompts.BdvPrompts;
 import bdv.interactive.prompts.BdvPromptsUtils;
 import net.imglib2.RandomAccessibleInterval;
@@ -11,10 +12,14 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.MigLayout;
+import org.scijava.Context;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ItemEvent;
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -76,12 +81,48 @@ public class BDVedMainGUI extends MainGUI {
 				  JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED) );
 
 		JPanel card2 = new JPanel(new MigLayout("fill","[c][c][c]"));
-		card2.add(new JTextField("some script path"), new CC().grow().span());
-		card2.add(new JButton("Template"), new CC().grow(1));
-		card2.add(new JButton("Browse"), new CC().grow(1));
-		runButton = new JButton("Run...");
-		card2.add(runButton, new CC().grow(1).wrap());
+		scriptPathElem = new JTextField("point on Fiji script that calculates seeds");
+		card2.add(scriptPathElem, new CC().grow().span());
+		//
+		JButton templateButton = new JButton("Template");
+		templateButton.addActionListener((ignored) -> {
+			//TODO get Context from somewhere.... or show TextArea otherwise...
+			MultiPromptsWithScript.showTemplateScriptInIJ1Editor(new Context(
+				//TODO text field
+			));
+		});
+		card2.add(templateButton, new CC().grow(1));
+		//
+		JButton browseButton = new JButton("Browse");
+		browseButton.addActionListener((ignored) -> {
+			//try to extract basedir from the current script path
+			Path scriptPath = Paths.get(scriptPathElem.getText());
+			Path scriptPathParent = scriptPath != null ? scriptPath.getParent() : null;
+			File scriptDir = scriptPathParent != null ? scriptPathParent.toFile() : null;
+			JFileChooser chooser = scriptDir != null ? new JFileChooser(scriptDir) : new JFileChooser();
+			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+			int res = chooser.showOpenDialog(this);
+			if (res == JFileChooser.APPROVE_OPTION) {
+				scriptPathElem.setText( chooser.getSelectedFile().getAbsolutePath() );
+			}
+		});
+		card2.add(browseButton, new CC().grow(1));
+		//
+		scriptHowToRunInfo = new JLabel("<html><font size=\"3\">Activate seeds script<br/>with <b>J</b> key and <b>Prompt</b></font></html>");
+		card2.add(scriptHowToRunInfo, new CC().grow(1).wrap());
+		//
 		promptsDebugCombo = new JComboBox<>(PROMPTS_DEBUGGING_OPTIONS);
+		promptsDebugCombo.addItemListener((i) -> {
+			if (i.getStateChange() == ItemEvent.SELECTED) {
+				final int debugModeId = PROMPTS_DEBUGGING_OPTIONS.indexOf(i.getItem());
+				switch (debugModeId) {
+					case 1: annotator.setMultiPromptsSrcOnlyDebug(); break;
+					case 2: annotator.setMultiPromptsMildDebug(); break;
+					case 3: annotator.setMultiPromptsFullDebug(); break;
+					default: annotator.setMultiPromptsNoDebug();
+				}
+			}
+		});
 		card2.add(promptsDebugCombo, new CC().grow().span());
 
 		cardPanel.add(card1, MANUAL_STR);
@@ -115,12 +156,13 @@ public class BDVedMainGUI extends MainGUI {
 		radioButton2.setEnabled(newState);
 		cardPanel.setEnabled(newState);
 		if (htmlText != null) htmlText.setEnabled(newState);
-		if (runButton != null) runButton.setEnabled(newState);
+		if (scriptHowToRunInfo != null) scriptHowToRunInfo.setEnabled(newState);
 		retunLargest.setEnabled(newState);
 		export.setEnabled(newState);
 	}
 	JTextPane htmlText;
-	JButton runButton;
+	JTextField scriptPathElem;
+	JLabel scriptHowToRunInfo;
 	JComboBox<String> promptsDebugCombo;
 
 

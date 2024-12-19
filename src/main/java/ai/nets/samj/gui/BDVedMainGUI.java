@@ -63,6 +63,13 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 	boolean radioButton2_isAllowedToBeUsed = true;
 	MultiPromptsWithScript<OT> seedsService = null;
 
+	private void passScriptPathToSeedService() {
+		Path scriptPath = Paths.get(scriptPathElem.getText());
+		File scriptFile = scriptPath != null ? scriptPath.toFile() : null;
+		seedsService.setScriptPath(scriptFile);
+	}
+
+
 	@Override
 	protected JPanel createFirstComponent() {
 		JPanel origPanel = super.createFirstComponent();
@@ -102,6 +109,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 
 		JPanel card2 = new JPanel(new MigLayout("fill","[c][c][c]"));
 		scriptPathElem = new JTextField("point on Fiji script that calculates seeds");
+		scriptPathElem.addActionListener((ignore) -> passScriptPathToSeedService());
 		card2.add(scriptPathElem, new CC().grow().span());
 		//
 		JButton templateButton = new JButton("Template");
@@ -121,6 +129,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 			int res = chooser.showOpenDialog(this);
 			if (res == JFileChooser.APPROVE_OPTION) {
 				scriptPathElem.setText( chooser.getSelectedFile().getAbsolutePath() );
+				passScriptPathToSeedService();
 			}
 		});
 		card2.add(browseButton, new CC().grow(1));

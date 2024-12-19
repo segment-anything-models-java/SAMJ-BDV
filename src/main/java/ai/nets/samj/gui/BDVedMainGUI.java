@@ -1,28 +1,45 @@
 package ai.nets.samj.gui;
 
 import ai.nets.samj.annotation.Mask;
+import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.gui.components.ComboBoxItem;
 import ai.nets.samj.ui.ConsumerInterface;
+import ai.nets.samj.util.MultiPromptsWithScript;
+import bdv.interactive.prompts.BdvPrompts;
+import bdv.interactive.prompts.BdvPromptsUtils;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.MigLayout;
 
+import org.scijava.Context;
+import org.scijava.LocalDetachedContext;
+import org.scijava.module.ModuleService;
+import org.scijava.script.ScriptService;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ItemEvent;
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Vector;
 
-public class BDVedMainGUI extends MainGUI {
-	public BDVedMainGUI(final String bdvWindowTitle) {
+public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends MainGUI {
+	public BDVedMainGUI(final BdvPrompts<?,OT> samjBdv, final String bdvWindowTitle) {
 		super(emptyFakeConsumer);
+		annotator = samjBdv;
+		installOwnMultiPromptBehaviour();
 		associatedBdvLabelComponent.setText(" Associated to: "+bdvWindowTitle);
 		touchUpForBdv();
+		defaultBgColor = scriptPathElem.getBackground();
 	}
+	private final BdvPrompts<?,OT> annotator;
+	private SamjResponder<OT> currentSamjResponder = null;
 
 	@Override
 	protected void makeVisibleOnInstantiation() {
@@ -31,12 +48,37 @@ public class BDVedMainGUI extends MainGUI {
 		//(which is BTW the default behaviour of MainGui)
 	}
 
+	private void installOwnMultiPromptBehaviour() {
+		Context ctx = LocalDetachedContext.getContext();
+		ScriptService ss = ctx.getService(ScriptService.class);
+		ModuleService ms = ctx.getService(ModuleService.class);
+		if (ss == null || ms == null) {
+			//failing to install the seeding functionality, disable thus the "prompts" card
+			radioButton2.setEnabled(false);
+			radioButton2_isAllowedToBeUsed = false;
+			return;
+		}
+		seedsService = new MultiPromptsWithScript<>(ss,ms, new File(SCRIPT_DEFAULT_WRONG_PATH));
+		scriptPathElem.setBackground(alertBgColor);
+		annotator.installOwnMultiPromptBehaviour(seedsService);
+	}
+	boolean radioButton2_isAllowedToBeUsed = true;
+	MultiPromptsWithScript<OT> seedsService = null;
+
+	private void passScriptPathToSeedService() {
+		Path scriptPath = Paths.get(scriptPathElem.getText());
+		File scriptFile = scriptPath != null ? scriptPath.toFile() : null;
+		seedsService.setScriptPath(scriptFile);
+		scriptPathElem.setBackground(scriptFile != null && scriptFile.exists() ? defaultBgColor : alertBgColor);
+	}
+
 
 	@Override
 	protected JPanel createFirstComponent() {
 		JPanel origPanel = super.createFirstComponent();
 		origPanel.remove(cmbImages);
 		origPanel.remove(go);
+		cmbModels.setPreferredSize(new Dimension(0, (int)(0.07*MAIN_VERTICAL_SIZE)));
 
 		//copied from MainGUI
 		GridBagConstraints gbc = new GridBagConstraints();
@@ -48,6 +90,8 @@ public class BDVedMainGUI extends MainGUI {
 		gbc.fill = GridBagConstraints.BOTH;
 		associatedBdvLabelComponent = new JLabel();
 		origPanel.add(associatedBdvLabelComponent, gbc);
+
+		origPanel.setPreferredSize(new Dimension(0, (int)(0.1*MAIN_VERTICAL_SIZE)));
 		return origPanel;
 	}
 	protected JLabel associatedBdvLabelComponent;
@@ -67,17 +111,55 @@ public class BDVedMainGUI extends MainGUI {
 				  JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED) );
 
 		JPanel card2 = new JPanel(new MigLayout("fill","[c][c][c]"));
-		card2.add(new JTextField("some script path"), new CC().grow().span());
-		card2.add(new JButton("Template"), new CC().grow(1));
-		card2.add(new JButton("Browse"), new CC().grow(1));
-		runButton = new JButton("Run...");
-		card2.add(runButton, new CC().grow(1).wrap());
+		scriptPathElem = new JTextField(SCRIPT_DEFAULT_WRONG_PATH);
+		scriptPathElem.addActionListener((ignore) -> passScriptPathToSeedService());
+		card2.add(scriptPathElem, new CC().grow().span());
+		//
+		JButton templateButton = new JButton("Template");
+		templateButton.addActionListener((ignored) -> {
+			MultiPromptsWithScript.showTemplateScriptInIJ1Editor(LocalDetachedContext.getContext());
+		});
+		card2.add(templateButton, new CC().grow(1));
+		//
+		JButton browseButton = new JButton("Browse");
+		browseButton.addActionListener((ignored) -> {
+			//try to extract basedir from the current script path
+			Path scriptPath = Paths.get(scriptPathElem.getText());
+			Path scriptPathParent = scriptPath != null ? scriptPath.getParent() : null;
+			File scriptDir = scriptPathParent != null ? scriptPathParent.toFile() : null;
+			JFileChooser chooser = scriptDir != null ? new JFileChooser(scriptDir) : new JFileChooser();
+			chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+			int res = chooser.showOpenDialog(this);
+			if (res == JFileChooser.APPROVE_OPTION) {
+				scriptPathElem.setText( chooser.getSelectedFile().getAbsolutePath() );
+				passScriptPathToSeedService();
+			}
+		});
+		card2.add(browseButton, new CC().grow(1));
+		//
+		scriptHowToRunInfo = new JLabel("<html><font size=\"3\">Activate seeds script<br/>with <b>J</b> key and <b>Prompt</b></font></html>");
+		card2.add(scriptHowToRunInfo, new CC().grow(1).wrap());
+		//
 		promptsDebugCombo = new JComboBox<>(PROMPTS_DEBUGGING_OPTIONS);
+		promptsDebugCombo.addItemListener((i) -> {
+			if (i.getStateChange() == ItemEvent.SELECTED) {
+				final int debugModeId = PROMPTS_DEBUGGING_OPTIONS.indexOf(i.getItem());
+				switch (debugModeId) {
+					case 1: annotator.setMultiPromptsSrcOnlyDebug(); break;
+					case 2: annotator.setMultiPromptsMildDebug(); break;
+					case 3: annotator.setMultiPromptsFullDebug(); break;
+					default: annotator.setMultiPromptsNoDebug();
+				}
+			}
+		});
 		card2.add(promptsDebugCombo, new CC().grow().span());
 
+		radioButton2.setText("Seeded prompts");
 		cardPanel.add(card1, MANUAL_STR);
 		cardPanel.add(card2, PRESET_STR);
-		cardPanel.setPreferredSize(new Dimension(MAIN_HORIZONTAL_SIZE-30, (int)(0.5*MAIN_VERTICAL_SIZE)));
+		cardPanel.setPreferredSize(new Dimension(0, (int)(0.5*MAIN_VERTICAL_SIZE)));
+
+		origPanel.setPreferredSize(new Dimension(0, (int)(0.7*MAIN_VERTICAL_SIZE)));
 		return origPanel;
 	}
 
@@ -86,6 +168,8 @@ public class BDVedMainGUI extends MainGUI {
 	protected JPanel createThirdComponent() {
 		JPanel origPanel = super.createThirdComponent();
 		origPanel.remove(chkRoiManager);
+
+		origPanel.setPreferredSize(new Dimension(0, (int)(0.2*MAIN_VERTICAL_SIZE)));
 		return origPanel;
 	}
 
@@ -99,15 +183,19 @@ public class BDVedMainGUI extends MainGUI {
 		//this is basically instead of setTwoThirdsEnabled(),
 		//but adapted for the current shape of the GUI
 		radioButton1.setEnabled(newState);
-		radioButton2.setEnabled(newState);
+		radioButton2.setEnabled(newState & radioButton2_isAllowedToBeUsed);
 		cardPanel.setEnabled(newState);
 		if (htmlText != null) htmlText.setEnabled(newState);
-		if (runButton != null) runButton.setEnabled(newState);
+		if (scriptHowToRunInfo != null) scriptHowToRunInfo.setEnabled(newState);
 		retunLargest.setEnabled(newState);
 		export.setEnabled(newState);
 	}
 	JTextPane htmlText;
-	JButton runButton;
+	private final String SCRIPT_DEFAULT_WRONG_PATH = "Please, point on a Fiji script that calculates seeds.";
+	JTextField scriptPathElem;
+	final Color defaultBgColor; //  = scriptPathElem.getBackground();
+	final Color alertBgColor = Color.RED;
+	JLabel scriptHowToRunInfo;
 	JComboBox<String> promptsDebugCombo;
 
 
@@ -116,7 +204,7 @@ public class BDVedMainGUI extends MainGUI {
 	protected void touchUpForBdv() {
 		setLocalControlsEnabled(true);
 
-		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE - 20);
+		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE);
 
 		//The original GUI disables some of its controls (including the "Go" button)
 		//when the models choosing panel is touched. When "returning" from this model
@@ -134,13 +222,22 @@ public class BDVedMainGUI extends MainGUI {
 		//NB: the casting is warranted by the fact that the ModelSelection class (cmbModels) extends ComboBox<String>
 		cmbModelsComboBox.addItemListener((i) -> {
 			if (i.getStateChange() == ItemEvent.SELECTED) {
-				if (cmbModels.isModelInstalled( (String)i.getItem() )) {
+				final String selectedModelName = (String)i.getItem();
+				if (cmbModels.isModelInstalled(selectedModelName)) {
 					setLocalControlsEnabled(true);
-					System.out.println("WILL update samj");
+					currentSamjResponder = BdvPromptsUtils.switchToThisNetwork(cmbModels.getModelByName(selectedModelName), annotator);
+					if (currentSamjResponder != null) currentSamjResponder.returnLargestRoi = retunLargest.isSelected();
+					System.out.println("BDV switched to SAMJ model: "+currentSamjResponder.networkName);
+					annotator.startPrompts();
 				} else {
 					setLocalControlsEnabled(false);
+					annotator.stopPrompts();
 				}
 			}
+		});
+
+		retunLargest.addItemListener((ignored) -> {
+			if (currentSamjResponder != null) currentSamjResponder.returnLargestRoi = retunLargest.isSelected();
 		});
 
 		setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
@@ -167,9 +264,9 @@ public class BDVedMainGUI extends MainGUI {
 	public static final Vector<String> PROMPTS_DEBUGGING_OPTIONS
 			= new Vector<>( Arrays.asList(
 				"When executing, don't show anything extra.",
-				"When executing, show only (one) cropped-out image.",
-				"When executing, show dour debug images.",
-				"When executing, show all available debug images."
+				"  ..., show only (one) cropped-out image.",
+				"  ..., show dour debug images.",
+				"  ..., show all available debug images."
 			) );
 
 	final static ConsumerInterface emptyFakeConsumer = new ConsumerInterface() {
@@ -213,6 +310,6 @@ public class BDVedMainGUI extends MainGUI {
 
 
 	public static void main(String[] args) {
-		new BDVedMainGUI("some BDV window").showWindow();
+		new BDVedMainGUI(null, "some BDV window").showWindow();
 	}
 }

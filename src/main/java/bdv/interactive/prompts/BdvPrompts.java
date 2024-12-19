@@ -538,6 +538,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				"J");
 	}
 
+	public void installOwnMultiPromptBehaviour(final SeedsFromPromptCreator<OT> seedsCreator) {
+		installOwnMultiPromptBehaviour(seedsCreator,
+				"bdvprompts_rectangle_thres_seeds",
+				"J");
+	}
+
 	public void installOwnMultiPromptBehaviour(final SeedsFromPromptCreator<OT> seedsCreator,
 	                                           String actionName, String actionTriggers) {
 		behaviours.behaviour(

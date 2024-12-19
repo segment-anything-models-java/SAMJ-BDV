@@ -1,6 +1,5 @@
 package ai.nets.samj.gui;
 
-import ai.nets.samj.bdv.promptresponders.FakeResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.SAMModel;
@@ -17,6 +16,10 @@ import javax.swing.*;
 import java.awt.event.ItemEvent;
 import java.util.Vector;
 
+import static bdv.interactive.prompts.BdvPromptsUtils.findAnySamNetworkOrNull;
+import static bdv.interactive.prompts.BdvPromptsUtils.findShowImageInIjResponderOrNull;
+import static bdv.interactive.prompts.BdvPromptsUtils.switchToThisNetwork;
+
 // The generics IT,OT are needed only for the commanded 'annotator'.
 public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & NativeType<OT>> extends JPanel {
 	public SimpleDialog(final BdvPrompts<IT,OT> annotator, final String windowTitle) {
@@ -30,12 +33,18 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 		title.setIcon( new ImageIcon(this.getClass().getResource("SAMJ_logo.png")) );
 		add(title, new CC().alignX("center").span().wrap("15"));
 
+		//pre-created before its block only because this variable is used in the next block
+		doOnlyLargestRoi = new JCheckBox();
+
 		add( new JLabel("Select network to use:") );
 		networksModel = new Vector<>(10);
 		networksChooser = new JComboBox<>(networksModel);
 		networksChooser.addItemListener((i) -> {
-			if (i.getStateChange() == ItemEvent.SELECTED)
-				switchToThisNetwork((String)i.getItem());
+			if (i.getStateChange() == ItemEvent.SELECTED) {
+				SAMModel model = findNetWorkModel((String) i.getItem());
+				SamjResponder<OT> samj = switchToThisNetwork(model, annotator);
+				if (samj != null) samj.returnLargestRoi = doOnlyLargestRoi.isSelected();
+			}
 		});
 		add(networksChooser);
 
@@ -44,9 +53,9 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 				  new CC().alignX("center").span().wrap("15") );
 
 		add( new JLabel("Use only the largest ROIs:") );
-		doOnlyLargestRoi = new JCheckBox();
+		//doOnlyLargestRoi = new JCheckBox(); -- created already above
 		doOnlyLargestRoi.addItemListener((ignore) -> {
-			BdvPrompts.PromptsProcessor<OT> p = findAnySamNetworkOrNull();
+			BdvPrompts.PromptsProcessor<OT> p = findAnySamNetworkOrNull(annotator);
 			if (p != null) {
 				SamjResponder<OT> sam = (SamjResponder<OT>) p;
 				sam.returnLargestRoi = doOnlyLargestRoi.isSelected();
@@ -58,11 +67,11 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 		doDisplayEncodedImage = new JCheckBox();
 		doDisplayEncodedImage.addItemListener((ignore) -> {
 			if (doDisplayEncodedImage.isSelected()) {
-				if (findShowImageInIjResponderOrNull() == null) {
+				if (findShowImageInIjResponderOrNull(annotator) == null) {
 					annotator.addPromptsProcessor( new ShowImageInIJResponder<OT>() );
 				}
 			} else {
-				BdvPrompts.PromptsProcessor<OT> p = findShowImageInIjResponderOrNull();
+				BdvPrompts.PromptsProcessor<OT> p = findShowImageInIjResponderOrNull(annotator);
 				if (p != null) {
 					annotator.removePromptsProcessor(p);
 				}
@@ -78,7 +87,7 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 		enlistAvailableNetworks(networksModel);
 		networksChooser.setModel(new DefaultComboBoxModel<>(networksModel));
 
-		BdvPrompts.PromptsProcessor<OT> p = findAnySamNetworkOrNull();
+		BdvPrompts.PromptsProcessor<OT> p = findAnySamNetworkOrNull(annotator);
 		if (p != null) {
 			SamjResponder<OT> sam = (SamjResponder<OT>) p;
 			for (int i = 0; i < networksModel.size(); ++i) {
@@ -91,7 +100,7 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 			doOnlyLargestRoi.setSelected( false );
 		}
 
-		doDisplayEncodedImage.setSelected(findShowImageInIjResponderOrNull() != null);
+		doDisplayEncodedImage.setSelected(findShowImageInIjResponderOrNull(annotator) != null);
 	}
 
 	final Vector<String> networksModel;
@@ -107,39 +116,11 @@ public class SimpleDialog<IT extends RealType<IT>, OT extends RealType<OT> & Nat
 		list.add( "fake responses" );
 	}
 
-	private void switchToThisNetwork(final String networkName) {
-		//first, remove any network from the list of prompters
-		BdvPrompts.PromptsProcessor<OT> p = findAnySamNetworkOrNull();
-		while (p != null) {
-			annotator.removePromptsProcessor(p);
-			p = findAnySamNetworkOrNull();
-		}
-
-		//now, add the given one
+	private SAMModel findNetWorkModel(final String networkName) {
 		if (availableNetworks == null) availableNetworks = new AvailableNetworksFactory();
-		SAMModel model = availableNetworks.getModel(networkName);
-		if (model != null) {
-			SamjResponder<OT> samj = new SamjResponder<>(model);
-			samj.returnLargestRoi = doOnlyLargestRoi.isSelected();
-			annotator.addPromptsProcessor(samj);
-		} else {
-			annotator.addPromptsProcessor( new FakeResponder<>() );
-		}
+		return availableNetworks.getModel(networkName);
 	}
 
-	private BdvPrompts.PromptsProcessor<OT> findAnySamNetworkOrNull() {
-		for (BdvPrompts.PromptsProcessor<OT> p : annotator.listPromptsProcessors()) {
-			if (p instanceof SamjResponder) return p;
-		}
-		return null;
-	}
-
-	private BdvPrompts.PromptsProcessor<OT> findShowImageInIjResponderOrNull() {
-		for (BdvPrompts.PromptsProcessor<OT> p : annotator.listPromptsProcessors()) {
-			if (p instanceof ShowImageInIJResponder) return p;
-		}
-		return null;
-	}
 
 	// ---------------------------------------------------------------
 	public void showWindow() {

@@ -154,6 +154,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		});
 		card2.add(promptsDebugCombo, new CC().grow().span());
 
+		radioButton2.setText("Seeded prompts");
 		cardPanel.add(card1, MANUAL_STR);
 		cardPanel.add(card2, PRESET_STR);
 		cardPanel.setPreferredSize(new Dimension(0, (int)(0.5*MAIN_VERTICAL_SIZE)));

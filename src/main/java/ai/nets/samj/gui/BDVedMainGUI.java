@@ -36,6 +36,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		installOwnMultiPromptBehaviour();
 		associatedBdvLabelComponent.setText(" Associated to: "+bdvWindowTitle);
 		touchUpForBdv();
+		defaultBgColor = scriptPathElem.getBackground();
 	}
 	private final BdvPrompts<?,OT> annotator;
 	private SamjResponder<OT> currentSamjResponder = null;
@@ -58,6 +59,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 			return;
 		}
 		seedsService = new MultiPromptsWithScript<>(ss,ms, new File(SCRIPT_DEFAULT_WRONG_PATH));
+		scriptPathElem.setBackground(alertBgColor);
 		annotator.installOwnMultiPromptBehaviour(seedsService);
 	}
 	boolean radioButton2_isAllowedToBeUsed = true;
@@ -67,6 +69,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		Path scriptPath = Paths.get(scriptPathElem.getText());
 		File scriptFile = scriptPath != null ? scriptPath.toFile() : null;
 		seedsService.setScriptPath(scriptFile);
+		scriptPathElem.setBackground(scriptFile != null && scriptFile.exists() ? defaultBgColor : alertBgColor);
 	}
 
 
@@ -108,7 +111,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 				  JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED) );
 
 		JPanel card2 = new JPanel(new MigLayout("fill","[c][c][c]"));
-		scriptPathElem = new JTextField("point on Fiji script that calculates seeds");
+		scriptPathElem = new JTextField(SCRIPT_DEFAULT_WRONG_PATH);
 		scriptPathElem.addActionListener((ignore) -> passScriptPathToSeedService());
 		card2.add(scriptPathElem, new CC().grow().span());
 		//
@@ -189,6 +192,8 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 	JTextPane htmlText;
 	private final String SCRIPT_DEFAULT_WRONG_PATH = "Please, point on a Fiji script that calculates seeds.";
 	JTextField scriptPathElem;
+	final Color defaultBgColor; //  = scriptPathElem.getBackground();
+	final Color alertBgColor = Color.RED;
 	JLabel scriptHowToRunInfo;
 	JComboBox<String> promptsDebugCombo;
 

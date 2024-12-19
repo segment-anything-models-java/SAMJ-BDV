@@ -56,6 +56,16 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 		}
 
 		try {
+			if (scriptFile == null || !scriptFile.exists()) {
+				System.err.println("==> Not accessible external script: "+scriptFile);
+				final T inputTypeExplicitly = inputImageToEstablishSeedsHere.getAt(inputImageToEstablishSeedsHere.minAsLongArray());
+				return Converters.convert(
+						  inputImageToEstablishSeedsHere,
+						  (i,o) -> o.setZero(),
+						  inputTypeExplicitly
+				); //NB: returns a on-the-fly created, zeroed version of the input;
+				   //    that said, returns an image that's without any single seed
+			}
 			final Module module = moduleService.createModule( scriptService.getScript(scriptFile) );
 			module.setInput("imp", extImg.floatImagePlus);
 			module.setInput("contrast_min", considerThisIntensityScaling.getDisplayRangeMin());

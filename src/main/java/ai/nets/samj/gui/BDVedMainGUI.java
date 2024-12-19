@@ -12,8 +12,11 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.MigLayout;
+
 import org.scijava.Context;
 import org.scijava.LocalDetachedContext;
+import org.scijava.module.ModuleService;
+import org.scijava.script.ScriptService;
 
 import javax.swing.*;
 import java.awt.*;
@@ -26,21 +29,47 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Vector;
 
-public class BDVedMainGUI extends MainGUI {
-	public BDVedMainGUI(final BdvPrompts<?,?> samjBdv, final String bdvWindowTitle) {
+public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends MainGUI {
+	public BDVedMainGUI(final BdvPrompts<?,OT> samjBdv, final String bdvWindowTitle) {
 		super(emptyFakeConsumer);
 		annotator = samjBdv;
+		installOwnMultiPromptBehaviour();
 		associatedBdvLabelComponent.setText(" Associated to: "+bdvWindowTitle);
 		touchUpForBdv();
+		defaultBgColor = scriptPathElem.getBackground();
 	}
-	private final BdvPrompts<?,?> annotator;
-	private SamjResponder<?> currentSamjResponder = null;
+	private final BdvPrompts<?,OT> annotator;
+	private SamjResponder<OT> currentSamjResponder = null;
 
 	@Override
 	protected void makeVisibleOnInstantiation() {
 		//intentionally empty to introduce the behaviour that this GUI
 		//is *not* displayed immediately after the GUI (class) is constructed
 		//(which is BTW the default behaviour of MainGui)
+	}
+
+	private void installOwnMultiPromptBehaviour() {
+		Context ctx = LocalDetachedContext.getContext();
+		ScriptService ss = ctx.getService(ScriptService.class);
+		ModuleService ms = ctx.getService(ModuleService.class);
+		if (ss == null || ms == null) {
+			//failing to install the seeding functionality, disable thus the "prompts" card
+			radioButton2.setEnabled(false);
+			radioButton2_isAllowedToBeUsed = false;
+			return;
+		}
+		seedsService = new MultiPromptsWithScript<>(ss,ms, new File(SCRIPT_DEFAULT_WRONG_PATH));
+		scriptPathElem.setBackground(alertBgColor);
+		annotator.installOwnMultiPromptBehaviour(seedsService);
+	}
+	boolean radioButton2_isAllowedToBeUsed = true;
+	MultiPromptsWithScript<OT> seedsService = null;
+
+	private void passScriptPathToSeedService() {
+		Path scriptPath = Paths.get(scriptPathElem.getText());
+		File scriptFile = scriptPath != null ? scriptPath.toFile() : null;
+		seedsService.setScriptPath(scriptFile);
+		scriptPathElem.setBackground(scriptFile != null && scriptFile.exists() ? defaultBgColor : alertBgColor);
 	}
 
 
@@ -82,7 +111,8 @@ public class BDVedMainGUI extends MainGUI {
 				  JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED) );
 
 		JPanel card2 = new JPanel(new MigLayout("fill","[c][c][c]"));
-		scriptPathElem = new JTextField("point on Fiji script that calculates seeds");
+		scriptPathElem = new JTextField(SCRIPT_DEFAULT_WRONG_PATH);
+		scriptPathElem.addActionListener((ignore) -> passScriptPathToSeedService());
 		card2.add(scriptPathElem, new CC().grow().span());
 		//
 		JButton templateButton = new JButton("Template");
@@ -102,6 +132,7 @@ public class BDVedMainGUI extends MainGUI {
 			int res = chooser.showOpenDialog(this);
 			if (res == JFileChooser.APPROVE_OPTION) {
 				scriptPathElem.setText( chooser.getSelectedFile().getAbsolutePath() );
+				passScriptPathToSeedService();
 			}
 		});
 		card2.add(browseButton, new CC().grow(1));
@@ -123,6 +154,7 @@ public class BDVedMainGUI extends MainGUI {
 		});
 		card2.add(promptsDebugCombo, new CC().grow().span());
 
+		radioButton2.setText("Seeded prompts");
 		cardPanel.add(card1, MANUAL_STR);
 		cardPanel.add(card2, PRESET_STR);
 		cardPanel.setPreferredSize(new Dimension(0, (int)(0.5*MAIN_VERTICAL_SIZE)));
@@ -151,7 +183,7 @@ public class BDVedMainGUI extends MainGUI {
 		//this is basically instead of setTwoThirdsEnabled(),
 		//but adapted for the current shape of the GUI
 		radioButton1.setEnabled(newState);
-		radioButton2.setEnabled(newState);
+		radioButton2.setEnabled(newState & radioButton2_isAllowedToBeUsed);
 		cardPanel.setEnabled(newState);
 		if (htmlText != null) htmlText.setEnabled(newState);
 		if (scriptHowToRunInfo != null) scriptHowToRunInfo.setEnabled(newState);
@@ -159,7 +191,10 @@ public class BDVedMainGUI extends MainGUI {
 		export.setEnabled(newState);
 	}
 	JTextPane htmlText;
+	private final String SCRIPT_DEFAULT_WRONG_PATH = "Please, point on a Fiji script that calculates seeds.";
 	JTextField scriptPathElem;
+	final Color defaultBgColor; //  = scriptPathElem.getBackground();
+	final Color alertBgColor = Color.RED;
 	JLabel scriptHowToRunInfo;
 	JComboBox<String> promptsDebugCombo;
 

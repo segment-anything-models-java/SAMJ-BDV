@@ -12,8 +12,11 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.miginfocom.layout.CC;
 import net.miginfocom.swing.MigLayout;
+
 import org.scijava.Context;
 import org.scijava.LocalDetachedContext;
+import org.scijava.module.ModuleService;
+import org.scijava.script.ScriptService;
 
 import javax.swing.*;
 import java.awt.*;
@@ -30,6 +33,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 	public BDVedMainGUI(final BdvPrompts<?,OT> samjBdv, final String bdvWindowTitle) {
 		super(emptyFakeConsumer);
 		annotator = samjBdv;
+		installOwnMultiPromptBehaviour();
 		associatedBdvLabelComponent.setText(" Associated to: "+bdvWindowTitle);
 		touchUpForBdv();
 	}
@@ -43,6 +47,19 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		//(which is BTW the default behaviour of MainGui)
 	}
 
+	private void installOwnMultiPromptBehaviour() {
+		Context ctx = LocalDetachedContext.getContext();
+		ScriptService ss = ctx.getService(ScriptService.class);
+		ModuleService ms = ctx.getService(ModuleService.class);
+		if (ss == null || ms == null) {
+			//failing to install the seeding functionality, disable thus the "prompts" card
+			radioButton2.setEnabled(false);
+			return;
+		}
+		seedsService = new MultiPromptsWithScript<>(ss,ms, new File(SCRIPT_DEFAULT_WRONG_PATH));
+		annotator.installOwnMultiPromptBehaviour(seedsService);
+	}
+	MultiPromptsWithScript<OT> seedsService = null;
 
 	@Override
 	protected JPanel createFirstComponent() {
@@ -159,6 +176,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		export.setEnabled(newState);
 	}
 	JTextPane htmlText;
+	private final String SCRIPT_DEFAULT_WRONG_PATH = "Please, point on a Fiji script that calculates seeds.";
 	JTextField scriptPathElem;
 	JLabel scriptHowToRunInfo;
 	JComboBox<String> promptsDebugCombo;

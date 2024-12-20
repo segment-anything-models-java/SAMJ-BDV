@@ -33,10 +33,10 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 	public BDVedMainGUI(final BdvPrompts<?,OT> samjBdv, final String bdvWindowTitle) {
 		super(emptyFakeConsumer);
 		annotator = samjBdv;
+		defaultBgColor = scriptPathElem.getBackground();
 		installOwnMultiPromptBehaviour();
 		associatedBdvLabelComponent.setText(" Associated to: "+bdvWindowTitle);
 		touchUpForBdv();
-		defaultBgColor = scriptPathElem.getBackground();
 	}
 	private final BdvPrompts<?,OT> annotator;
 	private SamjResponder<OT> currentSamjResponder = null;

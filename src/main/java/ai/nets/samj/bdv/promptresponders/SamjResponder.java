@@ -72,6 +72,7 @@ public class SamjResponder <T extends RealType<T> & NativeType<T>> implements Bd
 			final AffineTransform3D sharedTo3dTransform = prompt.getTransformTo3d();
 			final List<PlanarPolygonIn3D> planarPolys = new ArrayList<>(awtPolys.size());
 			for (Polygon p : awtPolys) {
+				if (p == null) continue; //skip over "empty" polygon
 				PlanarPolygonIn3D pp = new PlanarPolygonIn3D(p.npoints, sharedTo3dTransform);
 				for (int i = 0; i < p.npoints; ++i)
 					pp.addPoint(p.xpoints[i], p.ypoints[i]);

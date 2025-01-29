@@ -267,7 +267,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 			= new Vector<>( Arrays.asList(
 				"When executing, don't show anything extra.",
 				"  ..., show only (one) cropped-out image.",
-				"  ..., show dour debug images.",
+				"  ..., show four debug images.",
 				"  ..., show all available debug images."
 			) );
 

@@ -358,6 +358,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		protected Color colorPolygons = Color.RED;
 		private int colorFromBDV = -1;
 
+		final private Color colorGreen  = Color.GREEN;
+		final private Color colorBlue   = Color.BLUE;
+		final private Color colorOrange = Color.ORANGE;
+		public void promptColorL() { colorPrompt = colorGreen; }
+		public void promptColorK() { colorPrompt = colorBlue; }
+		public void promptColorJ() { colorPrompt = colorOrange; }
+
 		protected double toleratedOffViewPlaneDistance = 6.0;
 
 		@Override
@@ -427,16 +434,33 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	// ======================== actions - behaviours ========================
 	class DragBehaviourSkeleton implements DragBehaviour {
 		DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting) {
+			this(localPromptMethodRef, shouldApplyContrastSetting, 'L');
+		}
+		DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef,
+		                      boolean shouldApplyContrastSetting,
+		                      char promptColorMode) {
 			this.methodThatProcessesRectanglePrompt = localPromptMethodRef;
 			this.considerCurrentContrastSetting = shouldApplyContrastSetting;
+			switch (promptColorMode) {
+				case 'K':
+					promptColorChooser = samjOverlay::promptColorK;
+					break;
+				case 'J':
+					promptColorChooser = samjOverlay::promptColorJ;
+					break;
+				default:
+					promptColorChooser = samjOverlay::promptColorL;
+			}
 		}
 
+		final Runnable promptColorChooser;
 		final RectanglePromptProcessor methodThatProcessesRectanglePrompt;
 		final boolean considerCurrentContrastSetting;
 
 		@Override
 		public void init( final int x, final int y )
 		{
+			promptColorChooser.run();
 			samjOverlay.setStartOfLine(x,y);
 		}
 
@@ -471,10 +495,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	                                      final boolean installAlsoUndoRedoKeys) {
 		behaviours.install( bindThemHere, "bdv_samj_prompts" );
 
-		//install behaviour for moving a line in the BDV view, with shortcut "L"
-		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false),
+		//install behaviour for creating a rectangular prompt in the BDV view, with shortcuts "L" and "K"
+		//NB: the 'L' and 'K' used with the DragBehaviourSkeleton() only flag the regime of the prompting,
+		//    which ATM means only to use a particular color for the prompt rectangle, the "L-color" and "K-color"
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false, 'L'),
 				  "bdvprompts_rectangle_samj_orig", "L" );
-		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true),
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true, 'K'),
 				  "bdvprompts_rectangle_samj_contrast", "K" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
@@ -549,8 +575,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		behaviours.behaviour(
 			new DragBehaviourSkeleton(
 				isNewAnnotationImageInstalled -> findSeedsAndProcessAsRectanglePrompts(seedsCreator, isNewAnnotationImageInstalled),
-				false //NB: the seedsCreator will see the current contrast setting, and the prompts
-				      //    shall be applied on the original (unaltered) input image -> thus 'false' here
+				false, //NB: the seedsCreator will see the current contrast setting, and the prompts
+				       //    shall be applied on the original (unaltered) input image -> thus 'false' here
+				'J'    //flags the prompting regime - ATM only to use a particular color for the rectangle prompt
 			),
 			actionName,
 			actionTriggers

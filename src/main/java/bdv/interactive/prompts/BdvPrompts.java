@@ -7,6 +7,7 @@ import bdv.interactive.prompts.views.SideViews;
 import bdv.interactive.prompts.views.SlicingViews;
 import bdv.interactive.prompts.views.SpatioTemporalView;
 import bdv.tools.brightness.ConverterSetup;
+import bdv.ui.CardPanel;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvOverlay;
@@ -128,7 +129,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		this.viewerConverterSetup.setupChangeListeners().add( cs -> notifyContrastSettingsChanged() );
 
 		installBasicBehaviours( bdv.getBdvHandle().getTriggerbindings(), true );
+
+		this.cardPanel = bdv.getBdvHandle().getCardPanel();
 	}
+
+
+	public CardPanel getCardPanelIfKnown() {
+		return cardPanel;
+	}
+	private final CardPanel cardPanel;
 
 	protected void installGroupsOrFusedMode(final ViewerPanel viewerPanel, final boolean requestingFusedMode) {
 		final List<SourceAndConverter<?>> srcs = viewerPanel.state().getSources();
@@ -190,6 +199,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		} );
 
 		installBasicBehaviours( bindBehavioursHere, installAlsoUndoRedoKeys );
+
+		this.cardPanel = null;
 	}
 
 	private RandomAccessibleInterval<IT> image;

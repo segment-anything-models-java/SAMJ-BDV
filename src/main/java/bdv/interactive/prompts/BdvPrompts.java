@@ -492,11 +492,17 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}
 	}
 
+
 	class DragBehaviourSkeletonFor3D extends DragBehaviourSkeleton {
-		DragBehaviourSkeletonFor3D(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting, char promptColorMode) {
+		DragBehaviourSkeletonFor3D(RectanglePromptProcessor localPromptMethodRef,
+		                           boolean shouldApplyContrastSetting,
+		                           char promptColorMode,
+		                           final BdvPrompts3D.LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord) {
 			super(localPromptMethodRef, shouldApplyContrastSetting, promptColorMode);
+			this.labelPresenceIndicatorAtGlobalCoord = labelPresenceIndicatorAtGlobalCoord;
 		}
 
+		final BdvPrompts3D.LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord;
 		BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, this::handleSlice);
 
 		@Override
@@ -505,7 +511,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.normalizeLineEnds();
 			if (samjOverlay.shouldDoPrompts) {
-				slicing.setupSlicing(null,null, samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
+				slicing.setupSlicing(labelPresenceIndicatorAtGlobalCoord,
+						samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
 				new Thread(slicing).start();
 				//samjOverlay.isLineReadyForDrawing = false; this is taken care of at the end of the run() above
 			}
@@ -517,6 +524,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			lostViewOfAnnotationSite();  //NB: only makes sure that the handler() below will take a new view input image
 			this.handleRectanglePrompt();
 		}
+	}
+
+	public void installPerSlicesTrackingPromptBehaviour(final BdvPrompts3D.LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord) {
+		DragBehaviourSkeletonFor3D slicesTrackingBehaviour = new DragBehaviourSkeletonFor3D(
+				  this::processRectanglePrompt, false, 'K', labelPresenceIndicatorAtGlobalCoord);
+		behaviours.behaviour(slicesTrackingBehaviour, "bdvprompts_rectangle_samj_3D", "K");
 	}
 
 
@@ -538,8 +551,6 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true, 'K'),
 				  "bdvprompts_rectangle_samj_contrast", "K" );
 */
-		behaviours.behaviour( new DragBehaviourSkeletonFor3D(this::processRectanglePrompt, false, 'K'),
-				  "bdvprompts_rectangle_samj_threedii", "K" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;

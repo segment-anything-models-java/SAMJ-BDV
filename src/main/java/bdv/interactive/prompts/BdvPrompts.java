@@ -4,6 +4,7 @@ import ai.nets.samj.util.PlanarShapesRasterizer;
 import ai.nets.samj.util.Prompts;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
+import bdv.interactive.prompts.views.SlicingViews;
 import bdv.interactive.prompts.views.SpatioTemporalView;
 import bdv.tools.brightness.ConverterSetup;
 import bdv.util.BdvFunctions;
@@ -494,6 +495,11 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,
 	                                      final boolean installAlsoUndoRedoKeys) {
 		behaviours.install( bindThemHere, "bdv_samj_prompts" );
+
+		final SlicingViews localView = new SlicingViews(viewerPanel);
+		behaviours.behaviour((ClickBehaviour)(x,y) -> localView.resetView(viewerPanel), "bdvprompts_slicing_reset", "shift|V");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> viewerPanel.state().setViewerTransform(localView.nextCloserSameView()), "bdvprompts_slicing_toward", "shift|N");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> viewerPanel.state().setViewerTransform(localView.nextFurtherSameView()), "bdvprompts_slicing_away", "shift|M");
 
 		//install behaviour for creating a rectangular prompt in the BDV view, with shortcuts "L" and "K"
 		//NB: the 'L' and 'K' used with the DragBehaviourSkeleton() only flag the regime of the prompting,

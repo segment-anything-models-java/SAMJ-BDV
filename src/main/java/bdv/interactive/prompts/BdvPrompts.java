@@ -492,6 +492,31 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}
 	}
 
+	class DragBehaviourSkeletonFor3D extends DragBehaviourSkeleton {
+		DragBehaviourSkeletonFor3D(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting, char promptColorMode) {
+			super(localPromptMethodRef, shouldApplyContrastSetting, promptColorMode);
+		}
+
+		@Override
+		public void end( final int x, final int y )
+		{
+			samjOverlay.setEndOfLine(x,y);
+			samjOverlay.normalizeLineEnds();
+			if (samjOverlay.shouldDoPrompts) {
+				handleRectanglePrompt();
+				SlicingViews views = new SlicingViews(viewerPanel);
+				for (int it = 1; it <= 10; ++it) {
+					System.out.println("-----=-=-=--=-=---------- done slice shifted after "+it);
+					viewerPanel.state().setViewerTransform( views.sameViewShiftedBy(it) );
+					handleRectanglePrompt();
+					viewerPanel.requestRepaint();
+				}
+			}
+			samjOverlay.isLineReadyForDrawing = false;
+		}
+	}
+
+
 	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,
 	                                      final boolean installAlsoUndoRedoKeys) {
 		behaviours.install( bindThemHere, "bdv_samj_prompts" );
@@ -506,8 +531,12 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//    which ATM means only to use a particular color for the prompt rectangle, the "L-color" and "K-color"
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false, 'L'),
 				  "bdvprompts_rectangle_samj_orig", "L" );
+/*
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true, 'K'),
 				  "bdvprompts_rectangle_samj_contrast", "K" );
+*/
+		behaviours.behaviour( new DragBehaviourSkeletonFor3D(this::processRectanglePrompt, false, 'K'),
+				  "bdvprompts_rectangle_samj_threedii", "K" );
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;

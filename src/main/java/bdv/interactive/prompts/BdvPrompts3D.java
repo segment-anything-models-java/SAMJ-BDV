@@ -2,8 +2,9 @@ package bdv.interactive.prompts;
 
 import bdv.interactive.prompts.views.SlicingViews;
 import bdv.viewer.ViewerPanel;
-import net.imglib2.RandomAccessible;
-import net.imglib2.type.numeric.RealType;
+import net.imglib2.RealLocalizable;
+import net.imglib2.RealPoint;
+import net.imglib2.realtransform.AffineTransform3D;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -22,6 +23,7 @@ public class BdvPrompts3D implements Runnable {
 	private final ViewerPanel viewerPanel;
 	private final BdvPrompts.PromptsAndPolygonsDrawingOverlay samjOverlay;
 	private final Runnable callbackOnNewPromptPosition;
+
 
 	private final SlicingViews slicer;
 	private final List<SlicingStep> slicingParams = new LinkedList<>();
@@ -54,31 +56,98 @@ public class BdvPrompts3D implements Runnable {
 		samjOverlay.setStartOfLine(0,0);
 	}
 
-	public <LT extends RealType<LT>> void setupSlicing(RandomAccessible<LT> labelImage, LT labelToFollowAndFill,
-	                                                   final int sx, final int sy, final int ex, final int ey) {
-		slicer.resetView(viewerPanel);
-		slicingParams.clear();
-		//TODO:
-		// go forward with the slicer as long as labelToFollow is found in labelImage within the current rectangle
-		// at each step/position/slice: calculate geometric centre of the found labelToFollow and update the prompt
+	public void setupSlicing(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,
+	                         final int sx, final int sy, final int ex, final int ey) {
+		//plan:
+		// iterate forward with the 'slicer' as long as 'labelPresenceIndicatorAtGlobalCoord()' indicates presence
+		// of any tracked pixel in the current slice (at coordinates that we here sweep over and challenge
+		// the indicator) within the current rectangle prompt [sx,sy,ex,ey], and at each step/position/slice:
+		// calculate geometric centre of the found/indicated positions, and update the prompt accordingly
 
-		//for now, hardcoded ten steps:
+		slicer.resetView(viewerPanel);
+		AffineTransform3D globalToScreenT = viewerPanel.state().getViewerTransform();
+
+		labelPresenceIndicatorAtGlobalCoord.prepareForQueryingSession();
+
+		int[] cxcy = new int[2];
+		boolean foundLabel
+			= calculateLabelCentre(labelPresenceIndicatorAtGlobalCoord, globalToScreenT.inverse(), sx,sy, ex,ey, cxcy);
+
+		if (foundLabel) System.out.println("Found label at screen! coords ["+cxcy[0]+","+cxcy[1]+"]");
+		else System.out.println("Found NOT the label!");
+
+		slicingParams.clear();
+		if (!foundLabel) return;
+
+		int offset = 0;
 		SlicingStep currStep = new SlicingStep();
-		currStep.offset = 0.0;
-		currStep.cx = currStep.cy = 0;
+		currStep.offset = offset;
+		currStep.cx = cxcy[0];
+		currStep.cy = cxcy[1];
 		currStep.sx = sx; currStep.sy = sy;
 		currStep.ex = ex; currStep.ey = ey;
 		slicingParams.add(currStep);
 
-		for (int i = 1; i < 10; ++i) {
-			SlicingStep nextStep = new SlicingStep();
-			nextStep.offset = i;             //shortcut for: currStep.offset + 1.0
-			nextStep.cx = nextStep.cy = i*5; //fake shift of the tracking centre
+		while (foundLabel) {
+			globalToScreenT = slicer.sameViewShiftedBy(++offset);
+			foundLabel = calculateLabelCentre(labelPresenceIndicatorAtGlobalCoord, globalToScreenT.inverse(),
+			                                  currStep.sx,currStep.sy, currStep.ex,currStep.ey, cxcy);
 
-			nextStep.sx = currStep.sx + nextStep.cx-currStep.cx; nextStep.sy = currStep.sy + nextStep.cy-currStep.cy;
-			nextStep.ex = currStep.ex + nextStep.cx-currStep.cx; nextStep.ey = currStep.ey + nextStep.cy-currStep.cy;
-			slicingParams.add(nextStep);
-			currStep = nextStep;
+			if (foundLabel) System.out.println("Found label at offset "+offset+" at screen coords ["+cxcy[0]+","+cxcy[1]+"]");
+			else System.out.println("Found NOT the label at offset "+offset+", stopping.");
+
+			if (foundLabel) {
+				SlicingStep nextStep = new SlicingStep();
+				nextStep.offset = offset; //shortcut for: currStep.offset + 1.0
+				nextStep.cx = cxcy[0];
+				nextStep.cy = cxcy[1];
+				nextStep.sx = currStep.sx + nextStep.cx-currStep.cx; nextStep.sy = currStep.sy + nextStep.cy-currStep.cy;
+				nextStep.ex = currStep.ex + nextStep.cx-currStep.cx; nextStep.ey = currStep.ey + nextStep.cy-currStep.cy;
+				slicingParams.add(nextStep);
+				currStep = nextStep;
+			}
 		}
+
+		System.out.println("Tracking slices finished, now re-iterate them with the actual prompting....");
 	}
+
+
+	public interface LabelPresenceIndicatorAtGlobalCoord {
+		void prepareForQueryingSession();
+		boolean isPresent(final RealLocalizable position);
+	}
+
+	boolean calculateLabelCentre(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,
+	                             final AffineTransform3D screenToGlobalT,
+	                             final int sx, final int sy, final int ex, final int ey,
+	                             final int[] out_cxcy) {
+		long sum_cx = 0;
+		long sum_cy = 0;
+		long sum_cnt = 0;
+
+		screenCoord[2] = 0;
+		for (int y = sy; y <= ey; ++y) {
+			screenCoord[1] = y;
+			for (int x = sx; x <= ex; ++x) {
+				screenCoord[0] = x;
+
+				realPtr.setPosition(screenCoord);
+				screenToGlobalT.apply(realPtr, realPtr);
+				if (labelPresenceIndicatorAtGlobalCoord.isPresent(realPtr)) {
+					sum_cx += x;
+					sum_cy += y;
+					sum_cnt++;
+				}
+			}
+		}
+
+		if (sum_cnt == 0) return false;
+
+		out_cxcy[0] = (int)(sum_cx / sum_cnt);
+		out_cxcy[1] = (int)(sum_cy / sum_cnt);
+		return true;
+	}
+
+	final int[] screenCoord = new int[3];
+	final RealPoint realPtr = new RealPoint(3);
 }

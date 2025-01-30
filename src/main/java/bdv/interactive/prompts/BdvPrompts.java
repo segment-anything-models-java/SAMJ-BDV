@@ -497,22 +497,25 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			super(localPromptMethodRef, shouldApplyContrastSetting, promptColorMode);
 		}
 
+		BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, this::handleSlice);
+
 		@Override
 		public void end( final int x, final int y )
 		{
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.normalizeLineEnds();
 			if (samjOverlay.shouldDoPrompts) {
-				handleRectanglePrompt();
-				SlicingViews views = new SlicingViews(viewerPanel);
-				for (int it = 1; it <= 10; ++it) {
-					System.out.println("-----=-=-=--=-=---------- done slice shifted after "+it);
-					viewerPanel.state().setViewerTransform( views.sameViewShiftedBy(it) );
-					handleRectanglePrompt();
-					viewerPanel.requestRepaint();
-				}
+				slicing.setupSlicing(null,null, samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
+				new Thread(slicing).start();
+				//samjOverlay.isLineReadyForDrawing = false; this is taken care of at the end of the run() above
 			}
-			samjOverlay.isLineReadyForDrawing = false;
+		}
+
+		private void handleSlice() {
+			System.out.println("-----=-=-=--=-=---------- doing slice");
+			viewerPanel.requestRepaint();
+			lostViewOfAnnotationSite();  //NB: only makes sure that the handler() below will take a new view input image
+			this.handleRectanglePrompt();
 		}
 	}
 

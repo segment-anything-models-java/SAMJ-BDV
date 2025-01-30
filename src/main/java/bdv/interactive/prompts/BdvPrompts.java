@@ -723,7 +723,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	//aux (and to avoid repetitive new() calls) for the collectViewPixelData() below:
 	private final double[] srcImgPos = new double[3];  //orig underlying 3D image
 	private final double[] screenPos = new double[3];  //the current view 2D image, as a 3D coord though
-	private final AffineTransform3D imgToScreenAuxTransform = new AffineTransform3D();
+	private final AffineTransform3D globalToScreenAuxTransform = new AffineTransform3D();
 
 	protected Img<OT> collectViewPixelData(final RandomAccessibleInterval<IT> srcImg) {
 		final RealRandomAccessible<IT> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
@@ -737,18 +737,18 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		Cursor<OT> viewCursor = viewImg.localizingCursor();
 
 		//NB: viewerPanel.state().getViewerTransform() is giving global to (current) view(er) == the screen content
-		viewerPanel.state().getViewerTransform(imgToScreenAuxTransform); // A
+		viewerPanel.state().getViewerTransform(globalToScreenAuxTransform); // A
 		//                                                                  B = imageToGlobalTransform
 		// taking AB gives orig_image to screen, but inverse is wanted,
 		// taking inverse  (AB)^-1 = B^-1 A^-1  gives the wanted screen to image (through global coord system),
 		// so B needs to come after A (not preConcatenate())
-		imgToScreenAuxTransform.concatenate(imageToGlobalTransform);
+		globalToScreenAuxTransform.concatenate(imageToGlobalTransform);
 		screenPos[2] = 0.0; //to be on the safe side
 
 		while (viewCursor.hasNext()) {
 			OT px = viewCursor.next();
 			viewCursor.localize(screenPos);
-			imgToScreenAuxTransform.applyInverse(srcImgPos, screenPos); //NB: Inverse has also "reversed" order of arguments!
+			globalToScreenAuxTransform.applyInverse(srcImgPos, screenPos); //NB: Inverse has also "reversed" order of arguments!
 			px.setReal( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() );
 		}
 

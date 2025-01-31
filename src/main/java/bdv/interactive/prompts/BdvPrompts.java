@@ -544,6 +544,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		behaviours.install( bindThemHere, "bdv_samj_prompts" );
 
 		final SlicingViews localView = new SlicingViews(viewerPanel);
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			viewerPanel.state().setViewerTransform(localView.nextCloserSameView());
+		}, "bdvprompts_slicing_toward", "ctrl|N");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			viewerPanel.state().setViewerTransform(localView.nextFurtherSameView());
+		}, "bdvprompts_slicing_away", "ctrl|M");
+
 		final BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, () -> {
 			//this is executed at every slice position (after the position is displayed)
 			installNewAnnotationSite();

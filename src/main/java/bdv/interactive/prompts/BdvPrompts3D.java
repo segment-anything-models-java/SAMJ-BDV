@@ -56,6 +56,17 @@ public class BdvPrompts3D implements Runnable {
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
+	public boolean setupSlicing(boolean stepAway, final int sx, final int sy, final int ex, final int ey) {
+		slicingParams.clear();
+		slicer.resetView(viewerPanel);
+		SlicingStep currStep = new SlicingStep();
+		currStep.offset = stepAway ? 1 : -1;
+		currStep.sx = sx; currStep.sy = sy;
+		currStep.ex = ex; currStep.ey = ey;
+		slicingParams.add(currStep);
+		return true;
+	}
+
 	public boolean setupSlicing(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,
 	                            final int sx, final int sy, final int ex, final int ey) {
 		//plan:

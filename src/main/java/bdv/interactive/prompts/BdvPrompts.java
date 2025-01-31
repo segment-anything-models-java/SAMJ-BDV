@@ -558,6 +558,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				  "bdvprompts_rectangle_samj_contrast", "K" );
 */
 
+		/* ==================>> this is irrelevant for Labkit <<==================
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
 			viewerPanel.getDisplayComponent().repaint();
@@ -568,6 +569,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			viewerPanel.getDisplayComponent().repaint();
 			System.out.println("Current tolerated view off-plane distance: "+samjOverlay.toleratedOffViewPlaneDistance);
 		}, "bdvprompts_longer_view_distance", "D");
+		*/
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			if (annotationSites.isEmpty()) {
@@ -589,6 +591,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			displayAnnotationSite(lastVisitedAnnotationSiteId);
 		}, "bdvprompts_last_view", "shift|W");
 
+		/* ==================>> this is irrelevant for Labkit <<==================
 		if (installAlsoUndoRedoKeys) {
 			behaviours.behaviour((ClickBehaviour) (x, y) -> samjOverlay.currentPolysUndoOne(),
 			"bdvprompts_undo", "U");
@@ -611,6 +614,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				});
 			ImageJFunctions.show(maskImage, "SAMJ BDV masks");
 		}, "bdvprompts_export", "Y");
+		*/
 	}
 
 	public void installDefaultMultiPromptBehaviour() {

@@ -544,9 +544,23 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		behaviours.install( bindThemHere, "bdv_samj_prompts" );
 
 		final SlicingViews localView = new SlicingViews(viewerPanel);
-		behaviours.behaviour((ClickBehaviour)(x,y) -> localView.resetView(viewerPanel), "bdvprompts_slicing_reset", "shift|V");
-		behaviours.behaviour((ClickBehaviour)(x,y) -> viewerPanel.state().setViewerTransform(localView.nextCloserSameView()), "bdvprompts_slicing_toward", "shift|N");
-		behaviours.behaviour((ClickBehaviour)(x,y) -> viewerPanel.state().setViewerTransform(localView.nextFurtherSameView()), "bdvprompts_slicing_away", "shift|M");
+		final BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, () -> {
+			//this is executed at every slice position (after the position is displayed)
+			installNewAnnotationSite();
+			processRectanglePrompt(true);
+		});
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			samjOverlay.normalizeLineEnds();                    //makes sure the prompt has correct "TL and BR corners"
+			samjOverlay.isLineReadyForDrawing = true;           //makes the prompt "drawable" again
+			slicing.setupSlicing(false, samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
+			new Thread(slicing).start();
+		}, "bdvprompts_slicing_toward_and_samj", "shift|N");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			samjOverlay.normalizeLineEnds();                    //makes sure the prompt has correct "TL and BR corners"
+			samjOverlay.isLineReadyForDrawing = true;           //makes the prompt "drawable" again
+			slicing.setupSlicing(true, samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
+			new Thread(slicing).start();
+		}, "bdvprompts_slicing_away_and_samj", "shift|M");
 
 		//install behaviour for creating a rectangular prompt in the BDV view, with shortcuts "L" and "K"
 		//NB: the 'L' and 'K' used with the DragBehaviourSkeleton() only flag the regime of the prompting,

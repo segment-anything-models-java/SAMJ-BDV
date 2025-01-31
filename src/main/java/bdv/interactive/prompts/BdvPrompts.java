@@ -538,11 +538,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		behaviours.behaviour(slicesTrackingBehaviour, "bdvprompts_rectangle_samj_3D", "K");
 	}
 
-
-	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,
-	                                      final boolean installAlsoUndoRedoKeys) {
-		behaviours.install( bindThemHere, "bdv_samj_prompts" );
-
+	public void installRepeatPromptOnNextSliceBehaviour() {
 		final SlicingViews localView = new SlicingViews(viewerPanel);
 		behaviours.behaviour((ClickBehaviour)(x,y) -> {
 			localView.resetView(viewerPanel);
@@ -570,6 +566,17 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			slicing.setupSlicing(true, samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
 			new Thread(slicing).start();
 		}, "bdvprompts_slicing_away_and_samj", "shift|M");
+
+		isRepeatPromptOnNextSliceBehaviourInstalled = true;
+	}
+
+	private boolean isRepeatPromptOnNextSliceBehaviourInstalled = false;
+	public boolean isRepeatPromptOnNextSliceBehaviourInstalled() { return isRepeatPromptOnNextSliceBehaviourInstalled; }
+
+
+	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,
+	                                      final boolean installAlsoUndoRedoKeys) {
+		behaviours.install( bindThemHere, "bdv_samj_prompts" );
 
 		//install behaviour for creating a rectangular prompt in the BDV view, with shortcuts "L" and "K"
 		//NB: the 'L' and 'K' used with the DragBehaviourSkeleton() only flag the regime of the prompting,

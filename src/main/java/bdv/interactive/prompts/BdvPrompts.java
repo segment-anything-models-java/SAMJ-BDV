@@ -511,10 +511,16 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.normalizeLineEnds();
 			if (samjOverlay.shouldDoPrompts) {
-				slicing.setupSlicing(labelPresenceIndicatorAtGlobalCoord,
-						samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
-				new Thread(slicing).start();
-				//samjOverlay.isLineReadyForDrawing = false; this is taken care of at the end of the run() above
+				if ( slicing.setupSlicing(labelPresenceIndicatorAtGlobalCoord,
+						samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey) ) {
+					//if we got here, setupSlicing() managed to find slices to process
+					new Thread(slicing).start();
+					//samjOverlay.isLineReadyForDrawing = false; this is taken care of at the end of the run() above
+				} else {
+					//at least stop drawing the prompt rectangle
+					samjOverlay.isLineReadyForDrawing = false;
+					viewerPanel.getDisplayComponent().repaint();
+				}
 			}
 		}
 

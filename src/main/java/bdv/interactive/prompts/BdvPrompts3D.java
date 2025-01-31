@@ -56,8 +56,8 @@ public class BdvPrompts3D implements Runnable {
 		samjOverlay.setStartOfLine(0,0);
 	}
 
-	public void setupSlicing(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,
-	                         final int sx, final int sy, final int ex, final int ey) {
+	public boolean setupSlicing(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,
+	                            final int sx, final int sy, final int ex, final int ey) {
 		//plan:
 		// iterate forward with the 'slicer' as long as 'labelPresenceIndicatorAtGlobalCoord()' indicates presence
 		// of any tracked pixel in the current slice (at coordinates that we here sweep over and challenge
@@ -77,7 +77,7 @@ public class BdvPrompts3D implements Runnable {
 		else System.out.println("Found NOT the label!");
 
 		slicingParams.clear();
-		if (!foundLabel) return;
+		if (!foundLabel) return false;
 
 		int offset = 0;
 		SlicingStep currStep = new SlicingStep();
@@ -109,6 +109,7 @@ public class BdvPrompts3D implements Runnable {
 		}
 
 		System.out.println("Tracking slices finished, now re-iterate them with the actual prompting....");
+		return true;
 	}
 
 
@@ -148,6 +149,6 @@ public class BdvPrompts3D implements Runnable {
 		return true;
 	}
 
-	final int[] screenCoord = new int[3];
-	final RealPoint realPtr = new RealPoint(3);
+	final private int[] screenCoord = new int[3];
+	final private RealPoint realPtr = new RealPoint(3);
 }

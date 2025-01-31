@@ -51,9 +51,9 @@ public class BdvPrompts3D implements Runnable {
 			viewerPanel.state().setViewerTransform( slicer.sameViewShiftedBy(s.offset) );
 			callbackOnNewPromptPosition.run();
 		}
-		//to make prompt-line no longer visible/rendered, we need to set samjOverlay.isLineReadyForDrawing = false;
-		//this calls does =false as a side effect (and the call itself is innocent)
-		samjOverlay.setStartOfLine(0,0);
+		//the slicing is over, hide the prompt again
+		samjOverlay.requestNoDrawingOfPromptLine();
+		viewerPanel.getDisplayComponent().repaint();
 	}
 
 	public boolean setupSlicing(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,

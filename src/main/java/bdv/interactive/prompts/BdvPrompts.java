@@ -291,6 +291,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		private int ex,ey; //ending coordinate of the line, the "second end"
 		protected boolean shouldDoPrompts = true;
 		private boolean isLineReadyForDrawing = false;
+		public void requestNoDrawingOfPromptLine() { isLineReadyForDrawing = false; }
 
 		public void setStartOfLine(int x, int y) {
 			sx = x;
@@ -503,7 +504,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}
 
 		final BdvPrompts3D.LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord;
-		BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, this::handleSlice);
+		final BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, this::handleSlice);
 
 		@Override
 		public void end( final int x, final int y )
@@ -526,7 +527,6 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		private void handleSlice() {
 			System.out.println("-----=-=-=--=-=---------- doing slice");
-			viewerPanel.requestRepaint();
 			lostViewOfAnnotationSite();  //NB: only makes sure that the handler() below will take a new view input image
 			this.handleRectanglePrompt();
 		}

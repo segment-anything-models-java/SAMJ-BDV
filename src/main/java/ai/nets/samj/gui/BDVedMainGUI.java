@@ -227,14 +227,9 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 			if (i.getStateChange() == ItemEvent.SELECTED) {
 				final String selectedModelName = (String)i.getItem();
 				if (cmbModels.isModelInstalled(selectedModelName)) {
-					setLocalControlsEnabled(true);
-					currentSamjResponder = BdvPromptsUtils.switchToThisNetwork(cmbModels.getModelByName(selectedModelName), annotator);
-					if (currentSamjResponder != null) currentSamjResponder.returnLargestRoi = retunLargest.isSelected();
-					System.out.println("BDV switched to SAMJ model: "+currentSamjResponder.networkName);
-					annotator.startPrompts();
+					enableSamJControlsForModel(selectedModelName);
 				} else {
-					setLocalControlsEnabled(false);
-					annotator.stopPrompts();
+					disableSamJControls();
 				}
 			}
 		});
@@ -251,6 +246,20 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 	protected String getCurrentlySelectedModelName() {
 		final JComboBox<String> cmbModelsComboBox = (JComboBox<String>)cmbModels.getComponents()[0];
 		return (String)cmbModelsComboBox.getModel().getSelectedItem();
+	}
+
+	protected void enableSamJControlsForModel(final String modelName) {
+		setLocalControlsEnabled(true);
+		currentSamjResponder = BdvPromptsUtils.switchToThisNetwork(cmbModels.getModelByName(modelName), annotator);
+		if (currentSamjResponder != null) currentSamjResponder.returnLargestRoi = retunLargest.isSelected();
+		annotator.startPrompts();
+		System.out.println("BDV switched to SAMJ model: "+currentSamjResponder.networkName);
+	}
+
+	protected void disableSamJControls() {
+		setLocalControlsEnabled(false);
+		annotator.stopPrompts();
+		System.out.println("BDV disabled access to SAMJ functions");
 	}
 
 	public void hideWindow() {

@@ -4,6 +4,7 @@ import ai.nets.samj.util.PlanarShapesRasterizer;
 import ai.nets.samj.util.Prompts;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
+import bdv.interactive.prompts.views.SideViews;
 import bdv.interactive.prompts.views.SlicingViews;
 import bdv.interactive.prompts.views.SpatioTemporalView;
 import bdv.tools.brightness.ConverterSetup;
@@ -572,6 +573,22 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 	private boolean isRepeatPromptOnNextSliceBehaviourInstalled = false;
 	public boolean isRepeatPromptOnNextSliceBehaviourInstalled() { return isRepeatPromptOnNextSliceBehaviourInstalled; }
+
+
+	public void installSideViewsBehaviour() {
+		final SideViews localView = new SideViews(viewerPanel);
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			localView.animateViewerToFrontView(viewerPanel);
+		}, "bdvprompts_front_view", "ctrl|I");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			localView.animateViewerToSideView(viewerPanel);
+		}, "bdvprompts_side_view", "ctrl|J");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.animateViewerToTopView(viewerPanel);
+		}, "bdvprompts_top_view", "ctrl|K");
+	}
 
 
 	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,

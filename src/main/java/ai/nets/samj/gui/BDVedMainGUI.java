@@ -234,6 +234,15 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 			}
 		});
 
+		drawerPanel.addModelDrawerPanelListener(newGuiState -> {
+				final String selectedModelName = getCurrentlySelectedModelName();
+				if (newGuiState && cmbModels.isModelInstalled(selectedModelName)) {
+					enableSamJControlsForModel(selectedModelName);
+				} else {
+					disableSamJControls();
+				}
+		});
+
 		retunLargest.addItemListener((ignored) -> {
 			if (currentSamjResponder != null) currentSamjResponder.returnLargestRoi = retunLargest.isSelected();
 		});

@@ -204,7 +204,8 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 	protected static int MAIN_HORIZONTAL_SIZE = 400;
 
 	protected void touchUpForBdv() {
-		setLocalControlsEnabled(true);
+		//Enable/disable GUI controls based on the availability status of the selected network
+		setLocalControlsEnabled( cmbModels.isModelInstalled(getCurrentlySelectedModelName()) );
 
 		setSize(MAIN_HORIZONTAL_SIZE, MAIN_VERTICAL_SIZE);
 
@@ -245,6 +246,11 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 		close.removeActionListener( close.getActionListeners()[0] ); //removes the original action
 		close.addActionListener( (ignore) -> hideWindow() );
+	}
+
+	protected String getCurrentlySelectedModelName() {
+		final JComboBox<String> cmbModelsComboBox = (JComboBox<String>)cmbModels.getComponents()[0];
+		return (String)cmbModelsComboBox.getModel().getSelectedItem();
 	}
 
 	public void hideWindow() {

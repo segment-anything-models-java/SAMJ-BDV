@@ -30,9 +30,10 @@ public class BdvPrompts3D implements Runnable {
 
 	static class SlicingStep {
 		double offset;     //offset of this slice
-		int sx,sy, ex,ey;  //prompt corners
-		int cx,cy;         //reference of the tracking centre of this slice -- tracking
-		                   //centre on the follow-up slice tells how much to move the prompt
+		int sx,sy, ex,ey;  //prompt corners for this slice
+		int[] xyxy;        //reference of the tracking bounding box of this slice,
+		                   //difference to such bounding box in the follow-up slice tells
+		                   //how much to modify (move, resize) the prompt
 	}
 
 	/**
@@ -63,28 +64,29 @@ public class BdvPrompts3D implements Runnable {
 		currStep.offset = stepAway ? 1 : -1;
 		currStep.sx = sx; currStep.sy = sy;
 		currStep.ex = ex; currStep.ey = ey;
+		//currStep.xyxy intentionally avoided 'cause it is not needed in run() above
 		slicingParams.add(currStep);
 		return 1;
 	}
 
 	public int setupSlicing(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,
-	                            final int sx, final int sy, final int ex, final int ey) {
+	                        final int sx, final int sy, final int ex, final int ey) {
 		//plan:
 		// iterate forward with the 'slicer' as long as 'labelPresenceIndicatorAtGlobalCoord()' indicates presence
 		// of any tracked pixel in the current slice (at coordinates that we here sweep over and challenge
 		// the indicator) within the current rectangle prompt [sx,sy,ex,ey], and at each step/position/slice:
-		// calculate geometric centre of the found/indicated positions, and update the prompt accordingly
+		// calculate bounding box around the found/indicated positions, and update the prompt accordingly
 
 		slicer.resetView(viewerPanel);
 		AffineTransform3D globalToScreenT = viewerPanel.state().getViewerTransform();
 
 		labelPresenceIndicatorAtGlobalCoord.prepareForQueryingSession();
 
-		int[] cxcy = new int[2];
+		int[] bbox_xyxy = new int[4];
 		boolean foundLabel
-			= calculateLabelCentre(labelPresenceIndicatorAtGlobalCoord, globalToScreenT.inverse(), sx,sy, ex,ey, cxcy);
+			= calculateLabelBBox(labelPresenceIndicatorAtGlobalCoord, globalToScreenT.inverse(), sx,sy, ex,ey, bbox_xyxy);
 
-		if (foundLabel) System.out.println("Found label at screen! coords ["+cxcy[0]+","+cxcy[1]+"]");
+		if (foundLabel) System.out.println("Found label at screen! Bbox "+print_bbox(bbox_xyxy));
 		else System.out.println("Found NOT the label!");
 
 		slicingParams.clear();
@@ -93,27 +95,28 @@ public class BdvPrompts3D implements Runnable {
 		int offset = 0;
 		SlicingStep currStep = new SlicingStep();
 		currStep.offset = offset;
-		currStep.cx = cxcy[0];
-		currStep.cy = cxcy[1];
+		currStep.xyxy = bbox_xyxy;
 		currStep.sx = sx; currStep.sy = sy;
 		currStep.ex = ex; currStep.ey = ey;
 		slicingParams.add(currStep);
 
 		while (foundLabel) {
 			globalToScreenT = slicer.sameViewShiftedBy(++offset);
-			foundLabel = calculateLabelCentre(labelPresenceIndicatorAtGlobalCoord, globalToScreenT.inverse(),
-			                                  currStep.sx,currStep.sy, currStep.ex,currStep.ey, cxcy);
+			bbox_xyxy = new int[4];
+			foundLabel = calculateLabelBBox(labelPresenceIndicatorAtGlobalCoord, globalToScreenT.inverse(),
+			                                currStep.sx,currStep.sy, currStep.ex,currStep.ey, bbox_xyxy);
 
-			if (foundLabel) System.out.println("Found label at offset "+offset+" at screen coords ["+cxcy[0]+","+cxcy[1]+"]");
+			if (foundLabel) System.out.println("Found label at offset "+offset+" in the Bbox "+print_bbox(bbox_xyxy));
 			else System.out.println("Found NOT the label at offset "+offset+", stopping.");
 
 			if (foundLabel) {
 				SlicingStep nextStep = new SlicingStep();
 				nextStep.offset = offset; //shortcut for: currStep.offset + 1.0
-				nextStep.cx = cxcy[0];
-				nextStep.cy = cxcy[1];
-				nextStep.sx = currStep.sx + nextStep.cx-currStep.cx; nextStep.sy = currStep.sy + nextStep.cy-currStep.cy;
-				nextStep.ex = currStep.ex + nextStep.cx-currStep.cx; nextStep.ey = currStep.ey + nextStep.cy-currStep.cy;
+				nextStep.xyxy = bbox_xyxy;
+				nextStep.sx = currStep.sx + nextStep.xyxy[0]-currStep.xyxy[0];
+				nextStep.sy = currStep.sy + nextStep.xyxy[1]-currStep.xyxy[1];
+				nextStep.ex = currStep.ex + nextStep.xyxy[2]-currStep.xyxy[2];
+				nextStep.ey = currStep.ey + nextStep.xyxy[3]-currStep.xyxy[3];
 				slicingParams.add(nextStep);
 				currStep = nextStep;
 			}
@@ -158,6 +161,46 @@ public class BdvPrompts3D implements Runnable {
 		out_cxcy[0] = (int)(sum_cx / sum_cnt);
 		out_cxcy[1] = (int)(sum_cy / sum_cnt);
 		return true;
+	}
+
+	boolean calculateLabelBBox(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,
+	                           final AffineTransform3D screenToGlobalT,
+	                           final int sx, final int sy, final int ex, final int ey,
+	                           final int[] out_xyxy) {
+		long sum_cnt = 0;
+
+		screenCoord[2] = 0;
+		for (int y = sy; y <= ey; ++y) {
+			screenCoord[1] = y;
+			for (int x = sx; x <= ex; ++x) {
+				screenCoord[0] = x;
+
+				realPtr.setPosition(screenCoord);
+				screenToGlobalT.apply(realPtr, realPtr);
+				if (labelPresenceIndicatorAtGlobalCoord.isPresent(realPtr)) {
+					sum_cnt++;
+					if (sum_cnt == 1) {
+						//initiate the bbox
+						out_xyxy[0] = x;
+						out_xyxy[1] = y;
+						out_xyxy[2] = x;
+						out_xyxy[3] = y;
+					} else {
+						//possibly grow the bbox
+						out_xyxy[0] = Math.min(x, out_xyxy[0]);
+						out_xyxy[1] = Math.min(y, out_xyxy[1]);
+						out_xyxy[2] = Math.max(x, out_xyxy[2]);
+						out_xyxy[3] = Math.max(y, out_xyxy[3]);
+					}
+				}
+			}
+		}
+
+		return sum_cnt > 0;
+	}
+
+	String print_bbox(final int[] xyxy) {
+		return "["+xyxy[0]+","+xyxy[1]+" -> "+xyxy[2]+","+xyxy[3]+"]";
 	}
 
 	final private int[] screenCoord = new int[3];

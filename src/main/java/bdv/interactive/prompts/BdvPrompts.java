@@ -43,6 +43,7 @@ import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 import org.scijava.ui.behaviour.util.TriggerBehaviourBindings;
+import ai.nets.samj.gui.KeyStrokesMonitor;
 
 import java.awt.*;
 import java.util.Collection;
@@ -476,6 +477,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		{
 			if (!isMyDragSessionValid) return;
 			samjOverlay.setEndOfLine(x,y);
+
+			//for __multi-keys__ + mouse drag sessions: monitor if there are still some keys pressed
+			if (keyStrokeMonitor.getPressedKeysCnt() == 0) {
+				//hmm...  the drag session should be over, let's finish it now; btw, this happens only
+				//with the multi-key drag sessions where detecting the end of a drag session is not easy
+				end(x,y);
+			}
 		}
 
 		@Override
@@ -602,6 +610,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 	private boolean isRepeatPromptOnNextSliceBehaviourInstalled = false;
 	public boolean isRepeatPromptOnNextSliceBehaviourInstalled() { return isRepeatPromptOnNextSliceBehaviourInstalled; }
+	protected final KeyStrokesMonitor keyStrokeMonitor = new KeyStrokesMonitor();
 
 
 	public void installSideViewsBehaviour() {
@@ -633,6 +642,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true, 'K'),
 				  "bdvprompts_rectangle_samj_contrast", "K" );
 */
+		this.viewerPanel.getDisplayComponent().addKeyListener(keyStrokeMonitor);
 
 		/* ==================>> this is irrelevant for Labkit <<==================
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {

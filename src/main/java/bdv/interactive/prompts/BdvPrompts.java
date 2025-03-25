@@ -353,16 +353,17 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			getCurrentPolysRedo().clear();
 		}
 
-		protected final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
+		protected final BasicStroke lightStroke = new BasicStroke( 1.0f );
+		protected final BasicStroke thickStroke = new BasicStroke( 2.0f );
 		protected Color colorPrompt = Color.GREEN;
 		protected Color colorPolygons = Color.RED;
 		private int colorFromBDV = -1;
 
-		final private Color colorGreen  = Color.GREEN;
-		final private Color colorBlue   = Color.BLUE;
-		final private Color colorOrange = Color.ORANGE;
+		final private Color colorGreen   = Color.GREEN;
+		final private Color colorMagenta = Color.MAGENTA;
+		final private Color colorOrange  = Color.ORANGE;
 		public void promptColorL() { colorPrompt = colorGreen; }
-		public void promptColorK() { colorPrompt = colorBlue; }
+		public void promptColorK() { colorPrompt = colorMagenta; }
 		public void promptColorJ() { colorPrompt = colorOrange; }
 
 		protected double toleratedOffViewPlaneDistance = 6.0;
@@ -371,11 +372,11 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		protected void draw(Graphics2D g) {
 			//final double uiScale = UIUtils.getUIScaleFactor( this );
 			//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
-			g.setStroke(stroke);
 
 			if (shouldDoPrompts && isLineReadyForDrawing) {
 				//draws the line
 				g.setPaint(colorPrompt);
+				g.setStroke(thickStroke);
 				g.drawLine(sx,sy, ex,sy);
 				g.drawLine(ex,sy, ex,ey);
 				g.drawLine(ex,ey, sx,ey);
@@ -392,6 +393,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 				//draws the currently recognized polygons
 				g.setPaint(colorPolygons);
+				g.setStroke(lightStroke);
 				viewerPanel.state().getViewerTransform(globalToScreenTransform); //this is a global -> view/screen
 				boolean isCloseToViewingPlane = true, isCloseToViewingPlaneB = true;
 				final List<PlanarPolygonIn3D> polygonList = getCurrentPolygons();

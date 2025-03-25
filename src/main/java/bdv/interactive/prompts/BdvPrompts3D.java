@@ -56,7 +56,7 @@ public class BdvPrompts3D implements Runnable {
 		viewerPanel.getDisplayComponent().repaint();
 	}
 
-	public boolean setupSlicing(boolean stepAway, final int sx, final int sy, final int ex, final int ey) {
+	public int setupSlicing(boolean stepAway, final int sx, final int sy, final int ex, final int ey) {
 		slicingParams.clear();
 		slicer.resetView(viewerPanel);
 		SlicingStep currStep = new SlicingStep();
@@ -64,10 +64,10 @@ public class BdvPrompts3D implements Runnable {
 		currStep.sx = sx; currStep.sy = sy;
 		currStep.ex = ex; currStep.ey = ey;
 		slicingParams.add(currStep);
-		return true;
+		return 1;
 	}
 
-	public boolean setupSlicing(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,
+	public int setupSlicing(final LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord,
 	                            final int sx, final int sy, final int ex, final int ey) {
 		//plan:
 		// iterate forward with the 'slicer' as long as 'labelPresenceIndicatorAtGlobalCoord()' indicates presence
@@ -88,7 +88,7 @@ public class BdvPrompts3D implements Runnable {
 		else System.out.println("Found NOT the label!");
 
 		slicingParams.clear();
-		if (!foundLabel) return false;
+		if (!foundLabel) return 0;
 
 		int offset = 0;
 		SlicingStep currStep = new SlicingStep();
@@ -120,7 +120,7 @@ public class BdvPrompts3D implements Runnable {
 		}
 
 		System.out.println("Tracking slices finished, now re-iterate them with the actual prompting....");
-		return true;
+		return offset;
 	}
 
 

@@ -506,6 +506,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		final BdvPrompts3D.LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord;
 		final BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, this::handleSlice);
+		int processedNumberOfSlicesInASession, totalNumberOfSlicesInASession;
 
 		@Override
 		public void end( final int x, final int y )
@@ -513,9 +514,11 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.normalizeLineEnds();
 			if (samjOverlay.shouldDoPrompts) {
-				if ( slicing.setupSlicing(labelPresenceIndicatorAtGlobalCoord,
-						samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey) ) {
+				totalNumberOfSlicesInASession = slicing.setupSlicing(labelPresenceIndicatorAtGlobalCoord,
+						samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
+				if (totalNumberOfSlicesInASession > 0) {
 					//if we got here, setupSlicing() managed to find slices to process
+					processedNumberOfSlicesInASession = 0;
 					new Thread(slicing).start();
 					//samjOverlay.isLineReadyForDrawing = false; this is taken care of at the end of the run() above
 				} else {
@@ -527,7 +530,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}
 
 		private void handleSlice() {
-			System.out.println("-----=-=-=--=-=---------- doing slice");
+			System.out.println("-----=-=-=--=-=----- doing slice "+(++processedNumberOfSlicesInASession)+"/"+totalNumberOfSlicesInASession);
 			lostViewOfAnnotationSite();  //NB: only makes sure that the handler() below will take a new view input image
 			this.handleRectanglePrompt();
 		}

@@ -638,10 +638,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//    which ATM means only to use a particular color for the prompt rectangle, the "L-color" and "K-color"
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false, 'L'),
 				  "bdvprompts_rectangle_samj_orig", "L" );
-/*
-		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true, 'K'),
-				  "bdvprompts_rectangle_samj_contrast", "K" );
-*/
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true, 'L'),
+				  "bdvprompts_rectangle_samj_contrast", "shift|L" );
 		this.viewerPanel.getDisplayComponent().addKeyListener(keyStrokeMonitor);
 
 		/* ==================>> this is irrelevant for Labkit <<==================

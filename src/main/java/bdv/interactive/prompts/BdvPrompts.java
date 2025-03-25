@@ -537,6 +537,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		DragBehaviourSkeletonFor3D slicesTrackingBehaviour = new DragBehaviourSkeletonFor3D(
 				  this::processRectanglePrompt, false, 'K', labelPresenceIndicatorAtGlobalCoord);
 		behaviours.behaviour(slicesTrackingBehaviour, "bdvprompts_rectangle_samj_3D", "K");
+
+		slicesTrackingBehaviour = new DragBehaviourSkeletonFor3D(
+				  isNewAnnotationImageInstalled -> {
+					  System.out.println("Not running SAMJ. Doing dry fly-through to inspect the prompts positioning.");
+					  try { Thread.sleep(300); }
+					  catch (InterruptedException e) { /* empty */ }
+				  },
+				  false, 'K', labelPresenceIndicatorAtGlobalCoord);
+		behaviours.behaviour(slicesTrackingBehaviour, "bdvprompts_rectangle_samj_dryrun_3D", "shift|K");
 	}
 
 	public void installRepeatPromptOnNextSliceBehaviour() {

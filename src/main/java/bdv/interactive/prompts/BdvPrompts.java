@@ -1,9 +1,9 @@
 package bdv.interactive.prompts;
 
-import ai.nets.samj.util.PlanarShapesRasterizer;
 import ai.nets.samj.util.Prompts;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
+import bdv.interactive.prompts.views.SideViews;
 import bdv.interactive.prompts.views.SlicingViews;
 import bdv.interactive.prompts.views.SpatioTemporalView;
 import bdv.tools.brightness.ConverterSetup;
@@ -28,20 +28,18 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.img.planar.PlanarImgs;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.type.numeric.integer.UnsignedShortType;
-import net.imglib2.view.ExtendedRandomAccessibleInterval;
 import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 import org.scijava.ui.behaviour.util.TriggerBehaviourBindings;
+import ai.nets.samj.gui.KeyStrokesMonitor;
 
 import java.awt.*;
 import java.util.Collection;
@@ -51,7 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Stack;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
@@ -462,6 +460,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		@Override
 		public void init( final int x, final int y )
 		{
+			isMyDragSessionValid = isAnybodyInDragSession.compareAndSet(false, true);
+			if (!isMyDragSessionValid) return;
+
 			promptColorChooser.run();
 			samjOverlay.setStartOfLine(x,y);
 		}
@@ -469,12 +470,24 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		@Override
 		public void drag( final int x, final int y )
 		{
+			if (!isMyDragSessionValid) return;
 			samjOverlay.setEndOfLine(x,y);
+
+			//for __multi-keys__ + mouse drag sessions: monitor if there are still some keys pressed
+			if (keyStrokeMonitor.getPressedKeysCnt() == 0) {
+				//hmm...  the drag session should be over, let's finish it now; btw, this happens only
+				//with the multi-key drag sessions where detecting the end of a drag session is not easy
+				end(x,y);
+			}
 		}
 
 		@Override
 		public void end( final int x, final int y )
 		{
+			if (!isMyDragSessionValid) return;
+			isMyDragSessionValid = false;
+			isAnybodyInDragSession.set(false); //returning my token
+
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.isLineReadyForDrawing = false;
 			samjOverlay.normalizeLineEnds();
@@ -491,7 +504,11 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			if (isNewViewImage) installNewAnnotationSite();
 			this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
 		}
+
+		//for __multi-keys__ + mouse drag sessions
+		boolean isMyDragSessionValid = false;
 	}
+	final AtomicBoolean isAnybodyInDragSession = new AtomicBoolean(false);
 
 
 	class DragBehaviourSkeletonFor3D extends DragBehaviourSkeleton {
@@ -505,16 +522,23 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		final BdvPrompts3D.LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord;
 		final BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, this::handleSlice);
+		int processedNumberOfSlicesInASession, totalNumberOfSlicesInASession;
 
 		@Override
 		public void end( final int x, final int y )
 		{
+			if (!isMyDragSessionValid) return;
+			isMyDragSessionValid = false;
+			isAnybodyInDragSession.set(false); //returning my token
+
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.normalizeLineEnds();
 			if (samjOverlay.shouldDoPrompts) {
-				if ( slicing.setupSlicing(labelPresenceIndicatorAtGlobalCoord,
-						samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey) ) {
+				totalNumberOfSlicesInASession = slicing.setupSlicing(labelPresenceIndicatorAtGlobalCoord,
+						samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
+				if (totalNumberOfSlicesInASession > 0) {
 					//if we got here, setupSlicing() managed to find slices to process
+					processedNumberOfSlicesInASession = 0;
 					new Thread(slicing).start();
 					//samjOverlay.isLineReadyForDrawing = false; this is taken care of at the end of the run() above
 				} else {
@@ -526,7 +550,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}
 
 		private void handleSlice() {
-			System.out.println("-----=-=-=--=-=---------- doing slice");
+			System.out.println("-----=-=-=--=-=----- doing slice "+(++processedNumberOfSlicesInASession)+"/"+totalNumberOfSlicesInASession);
 			lostViewOfAnnotationSite();  //NB: only makes sure that the handler() below will take a new view input image
 			this.handleRectanglePrompt();
 		}
@@ -536,6 +560,15 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		DragBehaviourSkeletonFor3D slicesTrackingBehaviour = new DragBehaviourSkeletonFor3D(
 				  this::processRectanglePrompt, false, 'K', labelPresenceIndicatorAtGlobalCoord);
 		behaviours.behaviour(slicesTrackingBehaviour, "bdvprompts_rectangle_samj_3D", "K");
+
+		slicesTrackingBehaviour = new DragBehaviourSkeletonFor3D(
+				  isNewAnnotationImageInstalled -> {
+					  System.out.println("Not running SAMJ. Doing dry fly-through to inspect the prompts positioning.");
+					  try { Thread.sleep(300); }
+					  catch (InterruptedException e) { /* empty */ }
+				  },
+				  false, 'K', labelPresenceIndicatorAtGlobalCoord);
+		behaviours.behaviour(slicesTrackingBehaviour, "bdvprompts_rectangle_samj_dryrun_3D", "shift|K");
 	}
 
 	public void installRepeatPromptOnNextSliceBehaviour() {
@@ -572,6 +605,23 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 	private boolean isRepeatPromptOnNextSliceBehaviourInstalled = false;
 	public boolean isRepeatPromptOnNextSliceBehaviourInstalled() { return isRepeatPromptOnNextSliceBehaviourInstalled; }
+	protected final KeyStrokesMonitor keyStrokeMonitor = new KeyStrokesMonitor();
+
+
+	public void installSideViewsBehaviour() {
+		final SideViews localView = new SideViews(viewerPanel);
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			localView.animateViewerToFrontView(viewerPanel);
+		}, "bdvprompts_front_view", "ctrl|I");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			localView.animateViewerToSideView(viewerPanel);
+		}, "bdvprompts_side_view", "ctrl|J");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.animateViewerToTopView(viewerPanel);
+		}, "bdvprompts_top_view", "ctrl|K");
+	}
 
 
 	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,
@@ -583,10 +633,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//    which ATM means only to use a particular color for the prompt rectangle, the "L-color" and "K-color"
 		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false, 'L'),
 				  "bdvprompts_rectangle_samj_orig", "L" );
-/*
-		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true, 'K'),
-				  "bdvprompts_rectangle_samj_contrast", "K" );
-*/
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true, 'L'),
+				  "bdvprompts_rectangle_samj_contrast", "shift|L" );
+		this.viewerPanel.getDisplayComponent().addKeyListener(keyStrokeMonitor);
 
 		/* ==================>> this is irrelevant for Labkit <<==================
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {

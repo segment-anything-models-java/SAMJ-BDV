@@ -52,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Stack;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -463,6 +464,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		@Override
 		public void init( final int x, final int y )
 		{
+			isMyDragSessionValid = isAnybodyInDragSession.compareAndSet(false, true);
+			if (!isMyDragSessionValid) return;
+
 			promptColorChooser.run();
 			samjOverlay.setStartOfLine(x,y);
 		}
@@ -470,12 +474,17 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		@Override
 		public void drag( final int x, final int y )
 		{
+			if (!isMyDragSessionValid) return;
 			samjOverlay.setEndOfLine(x,y);
 		}
 
 		@Override
 		public void end( final int x, final int y )
 		{
+			if (!isMyDragSessionValid) return;
+			isMyDragSessionValid = false;
+			isAnybodyInDragSession.set(false); //returning my token
+
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.isLineReadyForDrawing = false;
 			samjOverlay.normalizeLineEnds();
@@ -492,7 +501,11 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			if (isNewViewImage) installNewAnnotationSite();
 			this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
 		}
+
+		//for __multi-keys__ + mouse drag sessions
+		boolean isMyDragSessionValid = false;
 	}
+	final AtomicBoolean isAnybodyInDragSession = new AtomicBoolean(false);
 
 
 	class DragBehaviourSkeletonFor3D extends DragBehaviourSkeleton {
@@ -511,6 +524,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		@Override
 		public void end( final int x, final int y )
 		{
+			if (!isMyDragSessionValid) return;
+			isMyDragSessionValid = false;
+			isAnybodyInDragSession.set(false); //returning my token
+
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.normalizeLineEnds();
 			if (samjOverlay.shouldDoPrompts) {

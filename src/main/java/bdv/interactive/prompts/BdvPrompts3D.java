@@ -6,6 +6,7 @@ import net.imglib2.RealLocalizable;
 import net.imglib2.RealPoint;
 import net.imglib2.realtransform.AffineTransform3D;
 
+import java.awt.Dimension;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -79,6 +80,9 @@ public class BdvPrompts3D implements Runnable {
 
 		slicer.resetView(viewerPanel);
 		AffineTransform3D globalToScreenT = viewerPanel.state().getViewerTransform();
+		viewerPanel.getDisplayComponent().getSize(screenPixelSize);
+		screenPixelSize.width -= 1;  //to make it the last valid coordinate (rather than 'size' itself)
+		screenPixelSize.height -= 1;
 
 		labelPresenceIndicatorAtGlobalCoord.prepareForQueryingSession();
 
@@ -86,7 +90,7 @@ public class BdvPrompts3D implements Runnable {
 		boolean foundLabel
 			= calculateLabelBBox(labelPresenceIndicatorAtGlobalCoord, globalToScreenT.inverse(), sx,sy, ex,ey, bbox_xyxy);
 
-		if (foundLabel) System.out.println("Found label at screen! Bbox "+print_bbox(bbox_xyxy));
+		if (foundLabel) System.out.println("Found label at screen! Bbox "+print_bbox(bbox_xyxy)+" in screen pixel coords");
 		else System.out.println("Found NOT the label!");
 
 		slicingParams.clear();
@@ -106,17 +110,17 @@ public class BdvPrompts3D implements Runnable {
 			foundLabel = calculateLabelBBox(labelPresenceIndicatorAtGlobalCoord, globalToScreenT.inverse(),
 			                                currStep.sx,currStep.sy, currStep.ex,currStep.ey, bbox_xyxy);
 
-			if (foundLabel) System.out.println("Found label at offset "+offset+" in the Bbox "+print_bbox(bbox_xyxy));
+			if (foundLabel) System.out.println("Found label at offset "+offset+" in the Bbox "+print_bbox(bbox_xyxy)+" in screen pixel coords");
 			else System.out.println("Found NOT the label at offset "+offset+", stopping.");
 
 			if (foundLabel) {
 				SlicingStep nextStep = new SlicingStep();
 				nextStep.offset = offset; //shortcut for: currStep.offset + 1.0
 				nextStep.xyxy = bbox_xyxy;
-				nextStep.sx = currStep.sx + nextStep.xyxy[0]-currStep.xyxy[0];
-				nextStep.sy = currStep.sy + nextStep.xyxy[1]-currStep.xyxy[1];
-				nextStep.ex = currStep.ex + nextStep.xyxy[2]-currStep.xyxy[2];
-				nextStep.ey = currStep.ey + nextStep.xyxy[3]-currStep.xyxy[3];
+				nextStep.sx = Math.max(currStep.sx + nextStep.xyxy[0]-currStep.xyxy[0], 0);
+				nextStep.sy = Math.max(currStep.sy + nextStep.xyxy[1]-currStep.xyxy[1], 0);
+				nextStep.ex = Math.min(currStep.ex + nextStep.xyxy[2]-currStep.xyxy[2], screenPixelSize.width);
+				nextStep.ey = Math.min(currStep.ey + nextStep.xyxy[3]-currStep.xyxy[3], screenPixelSize.height);
 				slicingParams.add(nextStep);
 				currStep = nextStep;
 			}
@@ -205,4 +209,5 @@ public class BdvPrompts3D implements Runnable {
 
 	final private int[] screenCoord = new int[3];
 	final private RealPoint realPtr = new RealPoint(3);
+	final private Dimension screenPixelSize = new Dimension();
 }

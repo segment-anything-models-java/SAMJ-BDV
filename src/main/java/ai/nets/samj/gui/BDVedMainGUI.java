@@ -289,12 +289,15 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 	}
 
 	public static final String SAMJ_CONTROLS_HELP_HTML =
-			"<html><b>Hold down L</b> key, <b>Left Click and Drag</b> and <b>Release L</b>" +
-			" on the image to select a region inside which SAMJ will annotate," +
-			" operating on the <b>original image</b>.<br/><br/>" +
-			"<b>Hold down K</b> key, <b>Left Click and Drag</b> and <b>Release K</b>" +
-			" on the image to select a region inside which SAMJ will annotate," +
-			" operating <b>under the current contrast</b> setting.</html>";
+			"<html>The <b>Help</b> button below will open <i>SAMJ in Labkit tutorials</i> in a web browser" +
+			" where more of SAMJ functionalities and key shortcuts are explained.<br/><br/>" +
+			"Basic usage and Notes follows:<br/>" +
+			"<b>Select a label</b> in the left panel, place mouse cursor over the image, <b>Hold down L</b> key and" +
+			" <b>Move mouse</b> to start defining a rectangular region inside which SAMJ will operate. This is finished" +
+			" when <b>L is released</b> and only then SAMJ will annotate the pixels with the selected label.<br/><br/>" +
+			"Notes:<br/><b>-</b> Sometimes one has to click into the image panel so that it gets focus and can start" +
+			" reading key strokes.<br/><b>-</b> <u>SAMJ is enabled</u> only when its <u>icon is activated</u>.<br/>" +
+			"<b>-</b> Don't forget to install SAM network (triangle button above).</html>";
 
 	public static final Vector<String> PROMPTS_DEBUGGING_OPTIONS
 			= new Vector<>( Arrays.asList(

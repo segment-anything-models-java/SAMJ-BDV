@@ -82,6 +82,8 @@ import java.util.function.Consumer;
  * @param <OT> pixel type of the image submitted to the prompts processors
  */
 public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & NativeType<OT>> {
+	public static final String URL_WITH_DEFAULT_BDV_HELP = "https://github.com/segment-anything-models-java/SAMJ-BDV/";
+
 	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final OT promptsPixelType) {
 		this(operateOnThisImage, "Input image", "SAMJ", promptsPixelType);
 	}

@@ -3,6 +3,7 @@ package ai.nets.samj.gui;
 import ai.nets.samj.annotation.Mask;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.gui.components.ComboBoxItem;
+import ai.nets.samj.gui.tools.Tools;
 import ai.nets.samj.ui.ConsumerInterface;
 import ai.nets.samj.util.MultiPromptsWithScript;
 import bdv.interactive.prompts.BdvPrompts;
@@ -20,6 +21,7 @@ import org.scijava.script.ScriptService;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.io.File;
 import java.nio.file.Path;
@@ -250,6 +252,13 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
 		close.removeActionListener( close.getActionListeners()[0] ); //removes the original action
 		close.addActionListener( (ignore) -> hideWindow() );
+
+		//remove first all action listeners attached to the Help button
+		while (help.getActionListeners().length > 0) {
+			ActionListener l = help.getActionListeners()[0];
+			help.removeActionListener(l);
+		}
+		help.addActionListener((ignored) -> Tools.openUrlInWebBrowser(BdvPrompts.URL_WITH_DEFAULT_BDV_HELP));
 	}
 
 	protected String getCurrentlySelectedModelName() {

@@ -333,9 +333,4 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		@Override
 		public boolean isValidPromptSelected() { return false; }
 	};
-
-
-	public static void main(String[] args) {
-		new BDVedMainGUI(null, "some BDV window").showWindow();
-	}
 }

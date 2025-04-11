@@ -22,9 +22,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-@Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>SAMJ>BDV on XML file")
+@Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>BigDataViewer>BDV with SAMJ on XML file")
 public class PluginBdvOnXmlDataset extends DynamicCommand {
-	@Parameter(style = FileWidget.OPEN_STYLE)
+	@Parameter(label = "BDV handle XML:", style = FileWidget.OPEN_STYLE)
 	File inputXml;
 
 	@Parameter(label = "Select network to use:", initializer = "listAvailableNetworks")

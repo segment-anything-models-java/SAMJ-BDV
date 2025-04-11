@@ -21,7 +21,7 @@ import sc.fiji.simplifiedio.SimplifiedIO;
 import java.util.ArrayList;
 import java.util.List;
 
-@Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>SAMJ>BDV on opened image")
+@Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>BigDataViewer>BDV with SAMJ on opened image")
 public class PluginBdvOnOpenedImage extends DynamicCommand {
 	@Parameter
 	Dataset inputImage;
@@ -43,9 +43,11 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 	@Parameter(label = "Use only the largest ROIs:")
 	boolean useLargestRois = true;
 
+	/*
 	@Parameter(label = "Image display mode:",
 			  choices = {"Normally only original input image", "Original input image & Original input image", "Inverted input image & Original input image"})
-	String displayMode = "Only";
+	*/
+	String displayMode = "Normally";
 
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
@@ -109,15 +111,5 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 		}
 
 		return annotator;
-	}
-
-
-	public static void main(String[] args) {
-		final BdvPrompts<?,?> annotator = new PluginBdvOnOpenedImage()
-			.annotateWithBDV( SimplifiedIO.openImage(
-				"/home/ulman/devel/HackBrno23/HackBrno23_introIntoImglib2AndBDV__SOLUTION/src/main/resources/t1-head.tif"
-			).getImg() );
-		annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
-		annotator.addPromptsProcessor( new ReportImageOnConsoleResponder<>() );
 	}
 }

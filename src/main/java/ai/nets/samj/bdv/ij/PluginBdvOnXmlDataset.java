@@ -1,5 +1,4 @@
 package ai.nets.samj.bdv.ij;
-
 import ai.nets.samj.bdv.promptresponders.FakeResponder;
 import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
@@ -28,23 +27,6 @@ import java.util.List;
 public class PluginBdvOnXmlDataset extends DynamicCommand {
 	@Parameter(label = "BDV handle XML:", style = FileWidget.OPEN_STYLE)
 	File inputXml;
-
-	@Parameter(label = "Select network to use:", initializer = "listAvailableNetworks")
-	String selectedNetwork = "fake";
-
-	void listAvailableNetworks() {
-		final List<String> choicesList = new ArrayList<>(10);
-		choicesList.addAll( availableNetworks.availableModels() );
-		choicesList.add( "fake responses" );
-		this.getInfo()
-				  .getMutableInput("selectedNetwork", String.class)
-				  .setChoices( choicesList );
-	}
-	//
-	private final AvailableNetworksFactory availableNetworks = new AvailableNetworksFactory();
-
-	@Parameter(label = "Use only the largest ROIs:")
-	boolean useLargestRois = true;
 
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
@@ -80,15 +62,6 @@ public class PluginBdvOnXmlDataset extends DynamicCommand {
 
 			if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
-			System.out.println("...working with "+selectedNetwork);
-			SAMModel model = availableNetworks.getModel(selectedNetwork);
-			if (model != null) {
-				SamjResponder<FloatType> samj = new SamjResponder<>(model);
-				samj.returnLargestRoi = useLargestRois;
-				annotator.addPromptsProcessor(samj);
-			} else {
-				annotator.addPromptsProcessor( new FakeResponder<>() );
-			}
 		} catch (SpimDataException e) {
 			System.out.println("Exception occurred during loading of the XML dataset: "+e.getMessage());
 			return null;

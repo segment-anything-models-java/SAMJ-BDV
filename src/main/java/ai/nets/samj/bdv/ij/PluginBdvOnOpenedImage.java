@@ -52,10 +52,6 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
 
-	@Parameter(label = "Show images for multi-prompter ('J'-mode):",
-			  choices = {"Don't show anything extra", "Only cropped-out image", "Four debug images", "All possible debug images"})
-	String multiPrompterVisualDebug = "Don't";
-
 	@Override
 	public void run() {
 		Img<? extends RealType<?>> origImage = inputImage.getImgPlus().getImg();
@@ -83,12 +79,10 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 
 			annotator = new BdvPrompts<>(invertedImg, "Input inverted image", img, "Original image", "SAMJ", new FloatType());
 		}
+		annotator.enableShowingPolygons();
 
 		annotator.installDefaultMultiPromptBehaviour();
 		annotator.enableShowingPolygons();
-		if (showImagesSubmittedToNetwork) {
-			annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
-		}
 
 		if (multiPrompterVisualDebug.startsWith("Only")) {
 			annotator.setMultiPromptsSrcOnlyDebug();
@@ -109,6 +103,13 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 		} else {
 			annotator.addPromptsProcessor( new FakeResponder<>() );
 		}
+
+		//install SAMJ into the BDV's CardPanel; should hold: cp != null
+		CardPanel cp = annotator.getCardPanelIfKnown();
+		final BDVedMainGUI<?> samjDialog = new BDVedMainGUI<>(annotator, "BDV SAMJ");
+		BDVedMainGUI.installToCardsPanel(cp, samjDialog);
+
+		if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
 		return annotator;
 	}

@@ -5,6 +5,7 @@ import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.SAMModel;
+import ai.nets.samj.gui.BDVedMainGUI;
 import ai.nets.samj.util.AvailableNetworksFactory;
 import bdv.interactive.prompts.BdvPrompts;
 import net.imagej.Dataset;
@@ -19,6 +20,7 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.simplifiedio.SimplifiedIO;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>BigDataViewer>BDV with SAMJ on opened image")
@@ -68,7 +70,11 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 		BDVedMainGUI.installToCardsPanel(annotator.getCardPanelIfKnown(), samjDialog);
 
 		annotator.enableShowingPolygons();
-		annotator.installDefaultMultiPromptBehaviour();
+		annotator.addPromptsProcessor((BdvPrompts.PromptsProcessor)(prompt, hasViewChangedSinceBefore) -> {
+			annotator.getViewerPanel().showMessage("Choose SAMJ model first.");
+			System.out.println("BigDataViewer: Choose SAMJ model first.");
+			return Collections.emptyList();
+		});
 
 		if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 

@@ -21,6 +21,7 @@ import org.scijava.widget.FileWidget;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>BigDataViewer>BDV with SAMJ on XML file")
@@ -60,7 +61,11 @@ public class PluginBdvOnXmlDataset extends DynamicCommand {
 			BDVedMainGUI.installToCardsPanel(bdv.getViewerFrame().getCardPanel(), samjDialog);
 
 			annotator.enableShowingPolygons();
-			annotator.installDefaultMultiPromptBehaviour();
+			annotator.addPromptsProcessor((BdvPrompts.PromptsProcessor)(prompt, hasViewChangedSinceBefore) -> {
+				bdv.getViewer().showMessage("Choose SAMJ model first.");
+				System.out.println("BigDataViewer: Choose SAMJ model first.");
+				return Collections.emptyList();
+			});
 
 			if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 

@@ -323,6 +323,9 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		@Override
 		public Object getFocusedImage() { return null; }
 		@Override
+		public String getFocusedImageName() { return ""; }
+
+		@Override
 		public <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> getFocusedImageAsRai() { return null; }
 		@Override
 		public List<int[]> getPointRoisOnFocusImage() { return Collections.emptyList(); }
@@ -344,5 +347,7 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		public void deleteRectRoi(Rectangle rect) { /* intentionally empty */ }
 		@Override
 		public boolean isValidPromptSelected() { return false; }
+		@Override
+		public void notifyBatchSamize(String modelName, String maskPrompt) { /* intentionally empty */ }
 	};
 }

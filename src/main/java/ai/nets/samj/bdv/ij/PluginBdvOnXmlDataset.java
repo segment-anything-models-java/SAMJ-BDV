@@ -54,11 +54,13 @@ public class PluginBdvOnXmlDataset extends DynamicCommand {
 					  bdv.getConverterSetups().getConverterSetup(sac),
 					  bdv.getViewerFrame().getTriggerbindings(),
 					  "SAMJ prompts", new FloatType(), true);
-			annotator.enableShowingPolygons();
 
 			//install SAMJ into the BDV's CardPanel
 			final BDVedMainGUI<?> samjDialog = new BDVedMainGUI<>(annotator, bdv.getViewerFrame().getTitle());
 			BDVedMainGUI.installToCardsPanel(bdv.getViewerFrame().getCardPanel(), samjDialog);
+
+			annotator.enableShowingPolygons();
+			annotator.installDefaultMultiPromptBehaviour();
 
 			if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 

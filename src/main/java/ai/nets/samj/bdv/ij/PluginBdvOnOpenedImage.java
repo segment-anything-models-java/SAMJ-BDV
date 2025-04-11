@@ -26,23 +26,6 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 	@Parameter
 	Dataset inputImage;
 
-	@Parameter(label = "Select network to use:", initializer = "listAvailableNetworks")
-	String selectedNetwork = "fake";
-
-	void listAvailableNetworks() {
-		final List<String> choicesList = new ArrayList<>(10);
-		choicesList.addAll( availableNetworks.availableModels() );
-		choicesList.add( "fake responses" );
-		this.getInfo()
-				  .getMutableInput("selectedNetwork", String.class)
-				  .setChoices( choicesList );
-	}
-	//
-	private final AvailableNetworksFactory availableNetworks = new AvailableNetworksFactory();
-
-	@Parameter(label = "Use only the largest ROIs:")
-	boolean useLargestRois = true;
-
 	/*
 	@Parameter(label = "Image display mode:",
 			  choices = {"Normally only original input image", "Original input image & Original input image", "Inverted input image & Original input image"})
@@ -79,35 +62,13 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 
 			annotator = new BdvPrompts<>(invertedImg, "Input inverted image", img, "Original image", "SAMJ", new FloatType());
 		}
-		annotator.enableShowingPolygons();
 
-		annotator.installDefaultMultiPromptBehaviour();
-		annotator.enableShowingPolygons();
-
-		if (multiPrompterVisualDebug.startsWith("Only")) {
-			annotator.setMultiPromptsSrcOnlyDebug();
-		} else if (multiPrompterVisualDebug.startsWith("Four")) {
-			annotator.setMultiPromptsMildDebug();
-		} else if (multiPrompterVisualDebug.startsWith("All")) {
-			annotator.setMultiPromptsFullDebug();
-		} else {
-			annotator.setMultiPromptsNoDebug();
-		}
-
-		System.out.println("...working with "+selectedNetwork);
-		SAMModel model = availableNetworks.getModel(selectedNetwork);
-		if (model != null) {
-			SamjResponder<FloatType> samj = new SamjResponder<>(model);
-			samj.returnLargestRoi = useLargestRois;
-			annotator.addPromptsProcessor(samj);
-		} else {
-			annotator.addPromptsProcessor( new FakeResponder<>() );
-		}
-
-		//install SAMJ into the BDV's CardPanel; should hold: cp != null
-		CardPanel cp = annotator.getCardPanelIfKnown();
+		//install SAMJ into the BDV's CardPanel
 		final BDVedMainGUI<?> samjDialog = new BDVedMainGUI<>(annotator, "BDV SAMJ");
-		BDVedMainGUI.installToCardsPanel(cp, samjDialog);
+		BDVedMainGUI.installToCardsPanel(annotator.getCardPanelIfKnown(), samjDialog);
+
+		annotator.enableShowingPolygons();
+		annotator.installDefaultMultiPromptBehaviour();
 
 		if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 

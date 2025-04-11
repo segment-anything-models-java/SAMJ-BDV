@@ -5,6 +5,7 @@ import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.SAMModel;
+import ai.nets.samj.gui.BDVedMainGUI;
 import ai.nets.samj.util.AvailableNetworksFactory;
 import bdv.BigDataViewer;
 import bdv.export.ProgressWriterConsole;
@@ -18,6 +19,7 @@ import org.scijava.command.DynamicCommand;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.widget.FileWidget;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,6 +73,10 @@ public class PluginBdvOnXmlDataset extends DynamicCommand {
 					  bdv.getViewerFrame().getTriggerbindings(),
 					  "SAMJ prompts", new FloatType(), true);
 			annotator.enableShowingPolygons();
+
+			//install SAMJ into the BDV's CardPanel
+			final BDVedMainGUI<?> samjDialog = new BDVedMainGUI<>(annotator, bdv.getViewerFrame().getTitle());
+			BDVedMainGUI.installToCardsPanel(bdv.getViewerFrame().getCardPanel(), samjDialog);
 
 			if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 

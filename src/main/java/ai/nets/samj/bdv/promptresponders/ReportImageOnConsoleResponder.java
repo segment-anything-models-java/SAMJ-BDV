@@ -12,7 +12,7 @@ import java.util.List;
 public class ReportImageOnConsoleResponder <T extends RealType<T> & NativeType<T>> implements BdvPrompts.PromptsProcessor<T> {
 	@Override
 	public List<PlanarPolygonIn3D> process(PlanarRectangleIn3D<T> prompt, boolean hasViewChangedSinceBefore) {
-		System.out.println("Processing a new prompt...");
+		System.out.println("Processing a new prompt... "+prompt.getBbox2D());
 		if (hasViewChangedSinceBefore) {
 			System.out.println("  ...on a new image: "+prompt.getViewImage2D());
 		}

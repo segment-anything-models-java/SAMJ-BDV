@@ -1,9 +1,10 @@
 package bdv.interactive.prompts;
 
-import ai.nets.samj.util.PlanarShapesRasterizer;
 import ai.nets.samj.util.Prompts;
 import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
+import bdv.interactive.prompts.views.SideViews;
+import bdv.interactive.prompts.views.SlicingViews;
 import bdv.interactive.prompts.views.SpatioTemporalView;
 import bdv.tools.brightness.ConverterSetup;
 import bdv.util.BdvFunctions;
@@ -27,34 +28,62 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.img.planar.PlanarImgs;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.view.Views;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 import org.scijava.ui.behaviour.util.TriggerBehaviourBindings;
+import ai.nets.samj.gui.KeyStrokesMonitor;
 
 import java.awt.*;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Stack;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
+ *
+ * A note on coordinate systems:
+ * The central (Cartesian) coordinate system (shorthand: "coords") is a 'global' one, which
+ * the BDV uses intrinsically. It is the coords that one can read in the top-right corner of
+ * the BDV display, it is this one where individual sources meet - into which they are mapped.
+ *
+ * Then there is a source coords for each source/original image. This one typically aligns with
+ * the pixel grid of the source/image. So, a transformation between this coords and the global
+ * coords involves pixel size, anisotropy and potential positioning of this source/image.
+ * This is what the source.getSpimSource().getSourceTransform() reports.
+ *
+ * The current slicing through the volume(s) in BDV, the current view (aka viewer), the current
+ * screen content, this is realized/rendered into an 2D image that is "sent" to the screen.
+ * This image's width and height thus matches exactly the pixel width and height of the
+ * BDV's main display window. This is what the bdv.state().getViewerTransform() reports.
+ *
+ * So, these are the three coords: raw image data -to- global -to- some view/slicing.
+ *
+ * The annotation images belong to the "some view" coord, while polygons are defined
+ * using the global coords. These two, in fact, the transformation between these two,
+ * are important for creating prompts and displaying of polygons. When polygons are to
+ * be rendered to the underlying original raw image data, the transformation between this
+ * (source pixel grid) and the global coords becomes important.
+ *
+ *
  * @param <IT> pixel type of the input image on which the prompts operate
  * @param <OT> pixel type of the image submitted to the prompts processors
  */
 public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & NativeType<OT>> {
+	public static final String URL_WITH_DEFAULT_BDV_HELP = "https://github.com/segment-anything-models-java/SAMJ-BDV/";
+
 	public BdvPrompts(final RandomAccessibleInterval<IT> operateOnThisImage, final OT promptsPixelType) {
 		this(operateOnThisImage, "Input image", "SAMJ", promptsPixelType);
 	}
@@ -204,12 +233,18 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	public boolean removePolygonsConsumer(final Consumer<PlanarPolygonIn3D> consumer) {
 		return polygonsConsumers.remove(consumer);
 	}
+	public Collection<Consumer<PlanarPolygonIn3D>> listPolygonsConsumers() {
+		return Collections.unmodifiableList(polygonsConsumers);
+	}
 
 	public void addPromptsProcessor(final PromptsProcessor<OT> promptToPolygonsGenerator) {
 		promptsProcessors.add(promptToPolygonsGenerator);
 	}
 	public boolean removePromptsProcessor(final PromptsProcessor<OT> promptToPolygonsGenerator) {
 		return promptsProcessors.remove(promptToPolygonsGenerator);
+	}
+	public Collection<PromptsProcessor<OT>> listPromptsProcessors() {
+		return Collections.unmodifiableList(promptsProcessors);
 	}
 
 	public interface PromptsProcessor <PT extends RealType<PT> & NativeType<PT>> {
@@ -230,15 +265,19 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	// ======================== overlay content ========================
 	private final PromptsAndPolygonsDrawingOverlay samjOverlay;
 
-	public void stopDrawing() {
-		samjOverlay.shouldDrawLine = false;
-		samjOverlay.shouldDrawPolygons = false;
+	public void startPrompts() {
+		samjOverlay.isLineReadyForDrawing = false;
+		samjOverlay.shouldDoPrompts = true;
+	}
+	public void stopPrompts() {
+		samjOverlay.shouldDoPrompts = false;
 	}
 
 	public void startDrawing() {
-		samjOverlay.isLineReadyForDrawing = false;
-		samjOverlay.shouldDrawLine = true;
 		samjOverlay.shouldDrawPolygons = true;
+	}
+	public void stopDrawing() {
+		samjOverlay.shouldDrawPolygons = false;
 	}
 
 	public void forgetAllPolygons() {
@@ -250,8 +289,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	class PromptsAndPolygonsDrawingOverlay extends BdvOverlay implements Consumer<PlanarPolygonIn3D> {
 		private int sx,sy; //starting coordinate of the line, the "first end"
 		private int ex,ey; //ending coordinate of the line, the "second end"
-		protected boolean shouldDrawLine = true;
+		protected boolean shouldDoPrompts = true;
 		private boolean isLineReadyForDrawing = false;
+		public void requestNoDrawingOfPromptLine() { isLineReadyForDrawing = false; }
 
 		public void setStartOfLine(int x, int y) {
 			sx = x;
@@ -315,10 +355,18 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			getCurrentPolysRedo().clear();
 		}
 
-		protected final BasicStroke stroke = new BasicStroke( 1.0f ); //lightweight I guess
+		protected final BasicStroke lightStroke = new BasicStroke( 1.0f );
+		protected final BasicStroke thickStroke = new BasicStroke( 2.0f );
 		protected Color colorPrompt = Color.GREEN;
 		protected Color colorPolygons = Color.RED;
 		private int colorFromBDV = -1;
+
+		final private Color colorGreen   = Color.GREEN;
+		final private Color colorMagenta = Color.MAGENTA;
+		final private Color colorOrange  = Color.ORANGE;
+		public void promptColorL() { colorPrompt = colorGreen; }
+		public void promptColorK() { colorPrompt = colorMagenta; }
+		public void promptColorJ() { colorPrompt = colorOrange; }
 
 		protected double toleratedOffViewPlaneDistance = 6.0;
 
@@ -326,11 +374,11 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		protected void draw(Graphics2D g) {
 			//final double uiScale = UIUtils.getUIScaleFactor( this );
 			//final BasicStroke stroke = new BasicStroke( ( float ) uiScale );
-			g.setStroke(stroke);
 
-			if (shouldDrawLine && isLineReadyForDrawing) {
+			if (shouldDoPrompts && isLineReadyForDrawing) {
 				//draws the line
 				g.setPaint(colorPrompt);
+				g.setStroke(thickStroke);
 				g.drawLine(sx,sy, ex,sy);
 				g.drawLine(ex,sy, ex,ey);
 				g.drawLine(ex,ey, sx,ey);
@@ -347,12 +395,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 				//draws the currently recognized polygons
 				g.setPaint(colorPolygons);
-				viewerPanel.state().getViewerTransform(imgToScreenTransform);
+				g.setStroke(lightStroke);
+				viewerPanel.state().getViewerTransform(globalToScreenTransform); //this is a global -> view/screen
 				boolean isCloseToViewingPlane = true, isCloseToViewingPlaneB = true;
 				final List<PlanarPolygonIn3D> polygonList = getCurrentPolygons();
 				for (PlanarPolygonIn3D p : polygonList) {
-					p.getTransformTo3d(polyToImgTransform);
-					polyToImgTransform.preConcatenate(imgToScreenTransform);
+					p.getTransformTo3d(polyToGlobalTransform);
+					polyToGlobalTransform.preConcatenate(globalToScreenTransform);
 					//TODO: don't loop if bbox is already far away
 					//... when measuring the rendering times, it turned out that walking through polygons'
 					//    vertices even to realize that the vertices are off-screen (either laterally or
@@ -364,10 +413,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 						//NB: the first (i=0) point is repeated to close the loop
 						p.coordinate2D(i % p.size(), auxCoord3D);
 						if (i % 2 == 0) {
-							polyToImgTransform.apply(auxCoord3D, screenCoord);
+							polyToGlobalTransform.apply(auxCoord3D, screenCoord);
 							isCloseToViewingPlane = Math.abs(screenCoord[2]) < toleratedOffViewPlaneDistance;
 						} else {
-							polyToImgTransform.apply(auxCoord3D, screenCoordB);
+							polyToGlobalTransform.apply(auxCoord3D, screenCoordB);
 							isCloseToViewingPlaneB = Math.abs(screenCoordB[2]) < toleratedOffViewPlaneDistance;
 						}
 						if (i > 0 && isCloseToViewingPlane && isCloseToViewingPlaneB)
@@ -379,8 +428,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}
 
 		//mem placeholders to avoid repeating calls to new()
-		final AffineTransform3D polyToImgTransform = new AffineTransform3D();
-		final AffineTransform3D imgToScreenTransform = new AffineTransform3D();
+		final AffineTransform3D polyToGlobalTransform = new AffineTransform3D();
+		final AffineTransform3D globalToScreenTransform = new AffineTransform3D();
 		final double[] auxCoord3D = new double[3];
 		final double[] screenCoord = new double[3];
 		final double[] screenCoordB = new double[3];
@@ -389,32 +438,64 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	// ======================== actions - behaviours ========================
 	class DragBehaviourSkeleton implements DragBehaviour {
 		DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef, boolean shouldApplyContrastSetting) {
+			this(localPromptMethodRef, shouldApplyContrastSetting, 'L');
+		}
+		DragBehaviourSkeleton(RectanglePromptProcessor localPromptMethodRef,
+		                      boolean shouldApplyContrastSetting,
+		                      char promptColorMode) {
 			this.methodThatProcessesRectanglePrompt = localPromptMethodRef;
 			this.considerCurrentContrastSetting = shouldApplyContrastSetting;
+			switch (promptColorMode) {
+				case 'K':
+					promptColorChooser = samjOverlay::promptColorK;
+					break;
+				case 'J':
+					promptColorChooser = samjOverlay::promptColorJ;
+					break;
+				default:
+					promptColorChooser = samjOverlay::promptColorL;
+			}
 		}
 
+		final Runnable promptColorChooser;
 		final RectanglePromptProcessor methodThatProcessesRectanglePrompt;
 		final boolean considerCurrentContrastSetting;
 
 		@Override
 		public void init( final int x, final int y )
 		{
+			isMyDragSessionValid = isAnybodyInDragSession.compareAndSet(false, true);
+			if (!isMyDragSessionValid) return;
+
+			promptColorChooser.run();
 			samjOverlay.setStartOfLine(x,y);
 		}
 
 		@Override
 		public void drag( final int x, final int y )
 		{
+			if (!isMyDragSessionValid) return;
 			samjOverlay.setEndOfLine(x,y);
+
+			//for __multi-keys__ + mouse drag sessions: monitor if there are still some keys pressed
+			if (keyStrokeMonitor.getPressedKeysCnt() == 0) {
+				//hmm...  the drag session should be over, let's finish it now; btw, this happens only
+				//with the multi-key drag sessions where detecting the end of a drag session is not easy
+				end(x,y);
+			}
 		}
 
 		@Override
 		public void end( final int x, final int y )
 		{
+			if (!isMyDragSessionValid) return;
+			isMyDragSessionValid = false;
+			isAnybodyInDragSession.set(false); //returning my token
+
 			samjOverlay.setEndOfLine(x,y);
 			samjOverlay.isLineReadyForDrawing = false;
 			samjOverlay.normalizeLineEnds();
-			handleRectanglePrompt();
+			if (samjOverlay.shouldDoPrompts) handleRectanglePrompt();
 		}
 
 		void handleRectanglePrompt() {
@@ -427,18 +508,140 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			if (isNewViewImage) installNewAnnotationSite();
 			this.methodThatProcessesRectanglePrompt.apply( isNewViewImage );
 		}
+
+		//for __multi-keys__ + mouse drag sessions
+		boolean isMyDragSessionValid = false;
 	}
+	final AtomicBoolean isAnybodyInDragSession = new AtomicBoolean(false);
+
+
+	class DragBehaviourSkeletonFor3D extends DragBehaviourSkeleton {
+		DragBehaviourSkeletonFor3D(RectanglePromptProcessor localPromptMethodRef,
+		                           boolean shouldApplyContrastSetting,
+		                           char promptColorMode,
+		                           final BdvPrompts3D.LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord) {
+			super(localPromptMethodRef, shouldApplyContrastSetting, promptColorMode);
+			this.labelPresenceIndicatorAtGlobalCoord = labelPresenceIndicatorAtGlobalCoord;
+		}
+
+		final BdvPrompts3D.LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord;
+		final BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, this::handleSlice);
+		int processedNumberOfSlicesInASession, totalNumberOfSlicesInASession;
+
+		@Override
+		public void end( final int x, final int y )
+		{
+			if (!isMyDragSessionValid) return;
+			isMyDragSessionValid = false;
+			isAnybodyInDragSession.set(false); //returning my token
+
+			samjOverlay.setEndOfLine(x,y);
+			samjOverlay.normalizeLineEnds();
+			if (samjOverlay.shouldDoPrompts) {
+				totalNumberOfSlicesInASession = slicing.setupSlicing(labelPresenceIndicatorAtGlobalCoord,
+						samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
+				if (totalNumberOfSlicesInASession > 0) {
+					//if we got here, setupSlicing() managed to find slices to process
+					processedNumberOfSlicesInASession = 0;
+					new Thread(slicing).start();
+					//samjOverlay.isLineReadyForDrawing = false; this is taken care of at the end of the run() above
+				} else {
+					//at least stop drawing the prompt rectangle
+					samjOverlay.isLineReadyForDrawing = false;
+					viewerPanel.getDisplayComponent().repaint();
+				}
+			}
+		}
+
+		private void handleSlice() {
+			System.out.println("-----=-=-=--=-=----- doing slice "+(++processedNumberOfSlicesInASession)+"/"+totalNumberOfSlicesInASession);
+			lostViewOfAnnotationSite();  //NB: only makes sure that the handler() below will take a new view input image
+			this.handleRectanglePrompt();
+		}
+	}
+
+	public void installPerSlicesTrackingPromptBehaviour(final BdvPrompts3D.LabelPresenceIndicatorAtGlobalCoord labelPresenceIndicatorAtGlobalCoord) {
+		DragBehaviourSkeletonFor3D slicesTrackingBehaviour = new DragBehaviourSkeletonFor3D(
+				  this::processRectanglePrompt, false, 'K', labelPresenceIndicatorAtGlobalCoord);
+		behaviours.behaviour(slicesTrackingBehaviour, "bdvprompts_rectangle_samj_3D", "K");
+
+		slicesTrackingBehaviour = new DragBehaviourSkeletonFor3D(
+				  isNewAnnotationImageInstalled -> {
+					  System.out.println("Not running SAMJ. Doing dry fly-through to inspect the prompts positioning.");
+					  try { Thread.sleep(300); }
+					  catch (InterruptedException e) { /* empty */ }
+				  },
+				  false, 'K', labelPresenceIndicatorAtGlobalCoord);
+		behaviours.behaviour(slicesTrackingBehaviour, "bdvprompts_rectangle_samj_dryrun_3D", "shift|K");
+	}
+
+	public void installRepeatPromptOnNextSliceBehaviour() {
+		final SlicingViews localView = new SlicingViews(viewerPanel);
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			viewerPanel.state().setViewerTransform(localView.nextCloserSameView());
+		}, "bdvprompts_slicing_toward", "ctrl|N");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			viewerPanel.state().setViewerTransform(localView.nextFurtherSameView());
+		}, "bdvprompts_slicing_away", "ctrl|M");
+
+		final BdvPrompts3D slicing = new BdvPrompts3D(viewerPanel, samjOverlay, () -> {
+			//this is executed at every slice position (after the position is displayed)
+			installNewAnnotationSite();
+			processRectanglePrompt(true);
+		});
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			samjOverlay.normalizeLineEnds();                    //makes sure the prompt has correct "TL and BR corners"
+			samjOverlay.isLineReadyForDrawing = true;           //makes the prompt "drawable" again
+			slicing.setupSlicing(false, samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
+			new Thread(slicing).start();
+		}, "bdvprompts_slicing_toward_and_samj", "shift|N");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			samjOverlay.normalizeLineEnds();                    //makes sure the prompt has correct "TL and BR corners"
+			samjOverlay.isLineReadyForDrawing = true;           //makes the prompt "drawable" again
+			slicing.setupSlicing(true, samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
+			new Thread(slicing).start();
+		}, "bdvprompts_slicing_away_and_samj", "shift|M");
+
+		isRepeatPromptOnNextSliceBehaviourInstalled = true;
+	}
+
+	private boolean isRepeatPromptOnNextSliceBehaviourInstalled = false;
+	public boolean isRepeatPromptOnNextSliceBehaviourInstalled() { return isRepeatPromptOnNextSliceBehaviourInstalled; }
+	protected final KeyStrokesMonitor keyStrokeMonitor = new KeyStrokesMonitor();
+
+
+	public void installSideViewsBehaviour() {
+		final SideViews localView = new SideViews(viewerPanel);
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			localView.animateViewerToFrontView(viewerPanel);
+		}, "bdvprompts_front_view", "ctrl|I");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.resetView(viewerPanel);
+			localView.animateViewerToSideView(viewerPanel);
+		}, "bdvprompts_side_view", "ctrl|J");
+		behaviours.behaviour((ClickBehaviour)(x,y) -> {
+			localView.animateViewerToTopView(viewerPanel);
+		}, "bdvprompts_top_view", "ctrl|K");
+	}
+
 
 	protected void installBasicBehaviours(final TriggerBehaviourBindings bindThemHere,
 	                                      final boolean installAlsoUndoRedoKeys) {
 		behaviours.install( bindThemHere, "bdv_samj_prompts" );
 
-		//install behaviour for moving a line in the BDV view, with shortcut "L"
-		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false),
+		//install behaviour for creating a rectangular prompt in the BDV view, with shortcuts "L" and "K"
+		//NB: the 'L' and 'K' used with the DragBehaviourSkeleton() only flag the regime of the prompting,
+		//    which ATM means only to use a particular color for the prompt rectangle, the "L-color" and "K-color"
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, false, 'L'),
 				  "bdvprompts_rectangle_samj_orig", "L" );
-		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true),
-				  "bdvprompts_rectangle_samj_contrast", "K" );
+		behaviours.behaviour( new DragBehaviourSkeleton(this::processRectanglePrompt, true, 'L'),
+				  "bdvprompts_rectangle_samj_contrast", "shift|L" );
+		this.viewerPanel.getDisplayComponent().addKeyListener(keyStrokeMonitor);
 
+		/* ==================>> this is irrelevant for Labkit <<==================
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			samjOverlay.toleratedOffViewPlaneDistance += 1.0;
 			viewerPanel.getDisplayComponent().repaint();
@@ -449,6 +652,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			viewerPanel.getDisplayComponent().repaint();
 			System.out.println("Current tolerated view off-plane distance: "+samjOverlay.toleratedOffViewPlaneDistance);
 		}, "bdvprompts_longer_view_distance", "D");
+		*/
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			if (annotationSites.isEmpty()) {
@@ -470,6 +674,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 			displayAnnotationSite(lastVisitedAnnotationSiteId);
 		}, "bdvprompts_last_view", "shift|W");
 
+		/* ==================>> this is irrelevant for Labkit <<==================
 		if (installAlsoUndoRedoKeys) {
 			behaviours.behaviour((ClickBehaviour) (x, y) -> samjOverlay.currentPolysUndoOne(),
 			"bdvprompts_undo", "U");
@@ -479,6 +684,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		behaviours.behaviour((ClickBehaviour) (x, y) -> {
 			Img<UnsignedShortType> maskImage = PlanarImgs.unsignedShorts(this.image.dimensionsAsLongArray());
+			final ExtendedRandomAccessibleInterval<UnsignedShortType, Img<UnsignedShortType>> extMaskImage = Views.extendValue(maskImage, 0);
+			//
 			PlanarShapesRasterizer rasterizer = new PlanarShapesRasterizer();
 			AtomicInteger value = new AtomicInteger(0);
 			samjOverlay.getCurrentPolygons()
@@ -486,14 +693,21 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 				.forEach(polygon -> {
 					int drawValue = value.addAndGet(1);
 					System.out.println("Rendering polygon no. "+drawValue);
-					rasterizer.rasterizeIntoImg(polygon, Views.extendValue(maskImage,0), drawValue);
+					rasterizer.rasterizeIntoImg(polygon,this.imageToGlobalTransform.inverse(), extMaskImage, drawValue);
 				});
 			ImageJFunctions.show(maskImage, "SAMJ BDV masks");
-		}, "bdvprompts_export", "R");
+		}, "bdvprompts_export", "Y");
+		*/
 	}
 
 	public void installDefaultMultiPromptBehaviour() {
 		installOwnMultiPromptBehaviour(Prompts::getSeedsByContrastThresholdingAndClosing,
+				"bdvprompts_rectangle_thres_seeds",
+				"J");
+	}
+
+	public void installOwnMultiPromptBehaviour(final SeedsFromPromptCreator<OT> seedsCreator) {
+		installOwnMultiPromptBehaviour(seedsCreator,
 				"bdvprompts_rectangle_thres_seeds",
 				"J");
 	}
@@ -503,8 +717,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		behaviours.behaviour(
 			new DragBehaviourSkeleton(
 				isNewAnnotationImageInstalled -> findSeedsAndProcessAsRectanglePrompts(seedsCreator, isNewAnnotationImageInstalled),
-				false //NB: the seedsCreator will see the current contrast setting, and the prompts
-				      //    shall be applied on the original (unaltered) input image -> thus 'false' here
+				false, //NB: the seedsCreator will see the current contrast setting, and the prompts
+				       //    shall be applied on the original (unaltered) input image -> thus 'false' here
+				'J'    //flags the prompting regime - ATM only to use a particular color for the rectangle prompt
 			),
 			actionName,
 			actionTriggers
@@ -541,7 +756,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//create prompt with coords w.r.t. the annotation site image
 		PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
 				  this.annotationSiteViewImg,
-				  this.viewerPanel.state().getViewerTransform().inverse());
+				  this.viewerPanel.state().getViewerTransform().inverse()); //view -> global coords
+				  //NB: viewerPanel.state().getViewerTransform() is giving global to view(er)/screen
 		prompt.setDiagonal(samjOverlay.sx,samjOverlay.sy, samjOverlay.ex,samjOverlay.ey);
 
 		doOnePrompt(prompt, isNewAnnotationImageInstalled);
@@ -578,7 +794,8 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		final PlanarRectangleIn3D<OT> prompt = new PlanarRectangleIn3D<>(
 				this.annotationSiteViewImg,
-				this.viewerPanel.state().getViewerTransform().inverse()
+				this.viewerPanel.state().getViewerTransform().inverse() //view -> global coords
+				//NB: viewerPanel.state().getViewerTransform() is giving global to view(er)/screen
 			);
 
 		//NB: boxes are in 'roi' local coords, we need coords of 'annotationSiteViewImg'
@@ -610,7 +827,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	//aux (and to avoid repetitive new() calls) for the collectViewPixelData() below:
 	private final double[] srcImgPos = new double[3];  //orig underlying 3D image
 	private final double[] screenPos = new double[3];  //the current view 2D image, as a 3D coord though
-	private final AffineTransform3D imgToScreenTransform = new AffineTransform3D();
+	private final AffineTransform3D globalToScreenAuxTransform = new AffineTransform3D();
 
 	protected Img<OT> collectViewPixelData(final RandomAccessibleInterval<IT> srcImg) {
 		final RealRandomAccessible<IT> srcRealImg = Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>());
@@ -623,14 +840,19 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//NB: 2D (not 3D!) image and of the size of the screen -> ArrayImg backend should be enough...
 		Cursor<OT> viewCursor = viewImg.localizingCursor();
 
-		viewerPanel.state().getViewerTransform(imgToScreenTransform);
+		//NB: viewerPanel.state().getViewerTransform() is giving global to (current) view(er) == the screen content
+		viewerPanel.state().getViewerTransform(globalToScreenAuxTransform); // A
+		//                                                                  B = imageToGlobalTransform
+		// taking AB gives orig_image to screen, but inverse is wanted,
+		// taking inverse  (AB)^-1 = B^-1 A^-1  gives the wanted screen to image (through global coord system),
+		// so B needs to come after A (not preConcatenate())
+		globalToScreenAuxTransform.concatenate(imageToGlobalTransform);
 		screenPos[2] = 0.0; //to be on the safe side
 
 		while (viewCursor.hasNext()) {
 			OT px = viewCursor.next();
 			viewCursor.localize(screenPos);
-			imgToScreenTransform.applyInverse(srcImgPos, screenPos); //NB: Inverse has also "reversed" order of arguments!
-			imageToGlobalTransform.applyInverse(srcImgPos, srcImgPos);
+			globalToScreenAuxTransform.applyInverse(srcImgPos, screenPos); //NB: Inverse has also "reversed" order of arguments!
 			px.setReal( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() );
 		}
 

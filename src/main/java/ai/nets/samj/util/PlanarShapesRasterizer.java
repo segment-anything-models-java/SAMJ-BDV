@@ -8,6 +8,7 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
+import java.util.function.Consumer;
 
 /**
  * A utility class (which, however, requires some aux variables for its work and,
@@ -21,7 +22,8 @@ public class PlanarShapesRasterizer {
 	final double[] coord0 = new double[3];
 	final double[] coordAlongX = new double[3];
 	final double[] coordAlongY = new double[3];
-	final AffineTransform3D viewToImgT = new AffineTransform3D();
+	final AffineTransform3D shapeTo3dSpace = new AffineTransform3D();
+	public static final AffineTransform3D IDENTITY_TRANSFORM = new AffineTransform3D();
 
 	final double[] dx = new double[4];
 	final double[] dy = new double[4];
@@ -45,11 +47,31 @@ public class PlanarShapesRasterizer {
 	 */
 	public <T extends RealType<T>>
 	void rasterizeIntoImg(final AbstractPlanarShapeIn3D shape,
+	                      final AffineTransform3D shape3dToImgTransform,
 	                      final RandomAccessible<T> img,
 	                      final double drawValue) {
 		if (img.numDimensions() < 2)
 			throw new IllegalArgumentException("Provide 2D (or more-dimensional) image to draw the shape into.");
+		final RandomAccess<T> imgRA
+				  = img.numDimensions() > 2 ? img.randomAccess() : Views.addDimension(img).randomAccess();
 
+		rasterize(shape,shape3dToImgTransform, (pos) -> imgRA.setPositionAndGet((long)pos[0],(long)pos[1],(long)pos[2]).setReal(drawValue) );
+	}
+
+	public <T extends RealType<T>>
+	void rasterizeIntoImg(final AbstractPlanarShapeIn3D shape,
+	                      final RandomAccessible<T> img,
+	                      final double drawValue) {
+		rasterizeIntoImg(shape, IDENTITY_TRANSFORM, img, drawValue);
+	}
+
+
+	/**
+	 * See {@link PlanarShapesRasterizer#rasterizeIntoImg(AbstractPlanarShapeIn3D, AffineTransform3D, RandomAccessible, double)}
+	 */
+	public void rasterize(final AbstractPlanarShapeIn3D shape,
+	                      final AffineTransform3D shape3dToImgTransform,
+	                      final Consumer<double[]> setterAtTheProvided3dPosition) {
 		final Interval roi2d = shape.getBbox2D();
 		coord0[0] = roi2d.min(0);
 		coord0[1] = roi2d.min(1);
@@ -64,44 +86,34 @@ public class PlanarShapesRasterizer {
 		coordAlongY[2] = 0.0;
 
 		//project the three corners into the 'img' 3D space
-		shape.getTransformTo3d(viewToImgT);
-		viewToImgT.apply(coord0,coord0);
-		viewToImgT.apply(coordAlongX,coordAlongX);
-		viewToImgT.apply(coordAlongY,coordAlongY);
-		roundToInt(coord0);
-		roundToInt(coordAlongX);
-		roundToInt(coordAlongY);
+		shape.getTransformTo3d(shapeTo3dSpace);
+		shapeTo3dSpace.preConcatenate(shape3dToImgTransform);
+		shapeTo3dSpace.apply(coord0,coord0);
+		shapeTo3dSpace.apply(coordAlongX,coordAlongX);
+		shapeTo3dSpace.apply(coordAlongY,coordAlongY);
 
 		//NB: returns (x,y,z) step vector, and number of such steps as the 4th index!
 		normalizedVecFromAtoB(coord0, coordAlongX, dx);
 		normalizedVecFromAtoB(coord0, coordAlongY, dy);
 
-		final RandomAccess<T> imgRA
-				  = img.numDimensions() > 2 ? img.randomAccess() : Views.addDimension(img).randomAccess();
-
-		for (int y = 0; y < dy[3]; ++y) {
+		for (int y = 0; y < 2*dy[3]; ++y) {
 			//reusing the memory but the variable's name doesn't match its purpose!
-			coordAlongY[0] = coord0[0] + (double)y * dy[0];
-			coordAlongY[1] = coord0[1] + (double)y * dy[1];
-			coordAlongY[2] = coord0[2] + (double)y * dy[2];
+			coordAlongY[0] = coord0[0] + (double)y * 0.5 * dy[0];
+			coordAlongY[1] = coord0[1] + (double)y * 0.5 * dy[1];
+			coordAlongY[2] = coord0[2] + (double)y * 0.5 * dy[2];
+			final double xShift = (y & 1) > 0 ? 0.5 : 0.0;
 
 			for (int x = 0; x < dx[3]; ++x) {
 				//"sweeping position" in the original 3D image space
-				coordAlongX[0] = coordAlongY[0] + (double)x * dx[0];
-				coordAlongX[1] = coordAlongY[1] + (double)x * dx[1];
-				coordAlongX[2] = coordAlongY[2] + (double)x * dx[2];
+				coordAlongX[0] = coordAlongY[0] + ((double)x+xShift) * dx[0];
+				coordAlongX[1] = coordAlongY[1] + ((double)x+xShift) * dx[1];
+				coordAlongX[2] = coordAlongY[2] + ((double)x+xShift) * dx[2];
 
 				//take back to the 2D view world/coordinates
-				viewToImgT.applyInverse(coord,coordAlongX);
+				shapeTo3dSpace.applyInverse(coord,coordAlongX);
 				//NB: coord[2] should be close to 0.0
-
-				if (shape.isPointInShape(coord[0], coord[1])) {
-					roundToInt(coordAlongX); //TODO: this could (should?) be moved above just prior the applyInverse() transform,
-					                         //      to query the point that's really fitting to the current 3d image pixel
-					imgRA
-					  .setPositionAndGet((long)coordAlongX[0],(long)coordAlongX[1],(long)coordAlongX[2])
-					  .setReal(drawValue);
-				}
+//				System.out.println("3D ["+coordAlongX[0]+","+coordAlongX[1]+","+coordAlongX[2]+"] -> ["+coord[0]+","+coord[1]+","+coord[2]+"]");
+				if (shape.isPointInShape(coord[0], coord[1])) setterAtTheProvided3dPosition.accept(coordAlongX);
 			}
 		}
 	}
@@ -111,7 +123,7 @@ public class PlanarShapesRasterizer {
 		double max = -1.0;
 		for (int d = 0; d < 3; ++d) {
 			diffVec[d] = B[d] - A[d];
-			max = Math.max(diffVec[d],max);
+			max = Math.max(Math.abs(diffVec[d]),max);
 		}
 
 		for (int d = 0; d < 3; ++d) diffVec[d] /= max;
@@ -122,13 +134,5 @@ public class PlanarShapesRasterizer {
 
 	void roundToInt(double[] vec) {
 		for (int i = 0; i < vec.length; ++i) vec[i] = Math.round(vec[i]);
-	}
-
-	/** A convenience shortcut: Utility shape drawer/rasterizer into the given RAI. */
-	public static <T extends RealType<T>>
-	void rasterizeIntoImg(final AbstractPlanarShapeIn3D shape,
-	                      final RandomAccessibleInterval<T> img,
-	                      final double drawValue) {
-		new PlanarShapesRasterizer().rasterizeIntoImg(shape, Views.extendValue(img,0.0), drawValue);
 	}
 }

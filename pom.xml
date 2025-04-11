@@ -5,13 +5,13 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>38.0.1</version>
+		<version>39.0.0</version>
 		<relativePath />
 	</parent>
 
 	<groupId>ai.nets</groupId>
 	<artifactId>samj-BDV</artifactId>
-	<version>0.0.4-SNAPSHOT</version>
+	<version>0.0.6-SNAPSHOT</version>
 
 	<name>SAM network inside BigDataViewer</name>
 	<description>A BigDataVeiwer utilization for interactive segmentation using the SAM network</description>
@@ -77,6 +77,15 @@
 
 		<!-- FIXME: use release version of samj for reproducible builds. -->
 		<samj.version>0.0.3-SNAPSHOT</samj.version>
+
+		<!-- copied from labkit-ui pom.xml -->
+		<imglib2.version>7.1.0</imglib2.version>
+		<imglib2-realtransform.version>4.0.3</imglib2-realtransform.version>
+		<imglib2-roi.version>0.15.0</imglib2-roi.version>
+		<imglib2-cache.version>1.0.0-beta-18</imglib2-cache.version>
+		<imglib2-algorithm.version>0.15.3</imglib2-algorithm.version>
+		<bigdataviewer-core.version>10.6.0</bigdataviewer-core.version>
+		<bigdataviewer-vistools.version>1.0.0-beta-36</bigdataviewer-vistools.version>
 	</properties>
 
 	<repositories>

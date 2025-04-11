@@ -134,6 +134,10 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	}
 
 
+	public ViewerPanel getViewerPanel() {
+		return this.viewerPanel;
+	}
+
 	public CardPanel getCardPanelIfKnown() {
 		return cardPanel;
 	}

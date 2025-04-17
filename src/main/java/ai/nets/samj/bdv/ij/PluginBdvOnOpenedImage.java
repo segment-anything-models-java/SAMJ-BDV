@@ -46,7 +46,7 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 	public <T extends RealType<T>> BdvPrompts<T,FloatType> annotateWithBDV(final Img<T> img) {
 		final BdvPrompts<T, FloatType> annotator;
 		if (displayMode.startsWith("Normally")) {
-			annotator = new BdvPrompts<>(img, "Input image", "SAMJ", new FloatType());
+			annotator = new BdvPrompts<>(img, inputImage.getName(), "SAMJ", new FloatType());
 		} else if (displayMode.startsWith("Original")) {
 			annotator = new BdvPrompts<>(img, "Input image", img, "Original image", "SAMJ", new FloatType());
 		} else {
@@ -66,16 +66,17 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 		}
 
 		//install SAMJ into the BDV's CardPanel
-		final BDVedMainGUI<?> samjDialog = new BDVedMainGUI<>(annotator, "BDV SAMJ");
+		final BDVedMainGUI<?> samjDialog = new BDVedMainGUI<>(annotator, inputImage.getName());
 		BDVedMainGUI.installToCardsPanel(annotator.getCardPanelIfKnown(), samjDialog);
 
-		annotator.enableShowingPolygons();
-		annotator.addPromptsProcessor((BdvPrompts.PromptsProcessor)(prompt, hasViewChangedSinceBefore) -> {
-			annotator.getViewerPanel().showMessage("Choose SAMJ model first.");
-			System.out.println("BigDataViewer: Choose SAMJ model first.");
-			return Collections.emptyList();
-		});
+		final SAMModel net = AvailableNetworksFactory.reportAndChooseFirstAvailable(annotator, s -> System.out.println("BigDataViewer: " + s));
+		if (net != null) {
+			System.out.println("BigDataViewer: Using initially the first-one listed. Change it by clicking the SAMJ button in the collapsed, right-hand-side panel in the BigDataViewer.");
+		} else {
+			System.err.println("BigDataViewer: No SAMJ model installed yet. Please, click the SAMJ button in the collapsed, right-hand-side panel in the BigDataViewer to configure SAMJ.");
+		}
 
+		annotator.enableShowingPolygons();
 		if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
 		return annotator;

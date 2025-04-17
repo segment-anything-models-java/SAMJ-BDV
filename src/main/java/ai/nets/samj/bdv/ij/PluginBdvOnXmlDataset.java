@@ -60,13 +60,14 @@ public class PluginBdvOnXmlDataset extends DynamicCommand {
 			final BDVedMainGUI<?> samjDialog = new BDVedMainGUI<>(annotator, bdv.getViewerFrame().getTitle());
 			BDVedMainGUI.installToCardsPanel(bdv.getViewerFrame().getCardPanel(), samjDialog);
 
-			annotator.enableShowingPolygons();
-			annotator.addPromptsProcessor((BdvPrompts.PromptsProcessor)(prompt, hasViewChangedSinceBefore) -> {
-				bdv.getViewer().showMessage("Choose SAMJ model first.");
-				System.out.println("BigDataViewer: Choose SAMJ model first.");
-				return Collections.emptyList();
-			});
+			final SAMModel net = AvailableNetworksFactory.reportAndChooseFirstAvailable(annotator, s -> System.out.println("BigDataViewer: " + s));
+			if (net != null) {
+				System.out.println("BigDataViewer: Using initially the first-one listed. Change it by clicking the SAMJ button in the collapsed, right-hand-side panel in the BigDataViewer.");
+			} else {
+				System.err.println("BigDataViewer: No SAMJ model installed yet. Please, click the SAMJ button in the collapsed, right-hand-side panel in the BigDataViewer to configure SAMJ.");
+			}
 
+			annotator.enableShowingPolygons();
 			if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
 		} catch (SpimDataException e) {

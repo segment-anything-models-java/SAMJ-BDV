@@ -8,6 +8,17 @@ public class LocalDetachedContext {
 	private LocalDetachedContext() {};
 	private static Context localContext = null;
 
+	public static void memorizeThisContext(final Context scijavaContext) {
+		if (scijavaContext == null) {
+			System.out.println("INFO FOR DEVELOPERS: Refusing to memorize NULL Context... expect troubles later.");
+			return;
+		}
+		if (localContext != null && localContext != scijavaContext) {
+			System.out.println("INFO FOR DEVELOPERS: RE-Memorizing some new Context...");
+		}
+		localContext = scijavaContext;
+	}
+
 	public static void startWithThisContext(final Context scijavaContext) {
 		if (localContext != null) {
 			if (localContext == scijavaContext) return; //NB: don't complain when the very same Context is given again

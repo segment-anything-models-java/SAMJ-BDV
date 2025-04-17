@@ -79,6 +79,14 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 		annotator.enableShowingPolygons();
 		if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
+		if (img.numDimensions() > 2) {
+			System.out.println("BigDataViewer: Detected 3D image, enabling 'perSlices' SAMJ annotations.");
+			annotator.installRepeatPromptOnNextSliceBehaviour();
+			//TODO: presence indicator requires very fast query if a coordinate is within a prompt (polygon)
+			//annotator.installPerSlicesTrackingPromptBehaviour(new LabelPresenceIndicatorAtGlobalCoord());
+			annotator.installSideViewsBehaviour();
+		}
+
 		return annotator;
 	}
 }

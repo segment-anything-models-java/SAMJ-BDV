@@ -70,6 +70,14 @@ public class PluginBdvOnXmlDataset extends DynamicCommand {
 			annotator.enableShowingPolygons();
 			if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
+			if (sac.getSpimSource().getSource(0,0).numDimensions() > 2) {
+				System.out.println("BigDataViewer: Detected 3D image, enabling 'perSlices' SAMJ annotations.");
+				annotator.installRepeatPromptOnNextSliceBehaviour();
+				//TODO: presence indicator requires very fast query if a coordinate is within a prompt (polygon)
+				//annotator.installPerSlicesTrackingPromptBehaviour(new LabelPresenceIndicatorAtGlobalCoord());
+				annotator.installSideViewsBehaviour();
+			}
+
 		} catch (SpimDataException e) {
 			System.out.println("Exception occurred during loading of the XML dataset: "+e.getMessage());
 			return null;

@@ -788,7 +788,9 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 
 		//request redraw, just in case after all polygons are consumed,
 		//and also to make sure the prompt rectangle disappears
-		viewerPanel.getDisplayComponent().repaint();
+		//viewerPanel.getDisplayComponent().repaint();
+		//TODO: overit vuci oficialnimu SAMJ, jestli to takto staci (podezreni na neodmalovani promptoveho ramecku)
+		viewerPanel.requestRepaint();
 	}
 
 	private void findSeedsAndProcessAsRectanglePrompts(SeedsFromPromptCreator<OT> seedsCreator,

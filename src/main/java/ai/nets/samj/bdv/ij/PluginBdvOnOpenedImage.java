@@ -5,6 +5,7 @@ import ai.nets.samj.bdv.promptresponders.ReportImageOnConsoleResponder;
 import ai.nets.samj.bdv.promptresponders.SamjResponder;
 import ai.nets.samj.bdv.promptresponders.ShowImageInIJResponder;
 import ai.nets.samj.communication.model.SAMModel;
+import ai.nets.samj.gui.BDVedMainGUI;
 import ai.nets.samj.util.AvailableNetworksFactory;
 import bdv.interactive.prompts.BdvPrompts;
 import net.imagej.Dataset;
@@ -19,29 +20,13 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import sc.fiji.simplifiedio.SimplifiedIO;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Plugin(type = Command.class, name = "SAMJ Annotator in BDV", menuPath = "Plugins>BigDataViewer>BDV with SAMJ on opened image")
 public class PluginBdvOnOpenedImage extends DynamicCommand {
 	@Parameter
 	Dataset inputImage;
-
-	@Parameter(label = "Select network to use:", initializer = "listAvailableNetworks")
-	String selectedNetwork = "fake";
-
-	void listAvailableNetworks() {
-		final List<String> choicesList = new ArrayList<>(10);
-		choicesList.addAll( availableNetworks.availableModels() );
-		choicesList.add( "fake responses" );
-		this.getInfo()
-				  .getMutableInput("selectedNetwork", String.class)
-				  .setChoices( choicesList );
-	}
-	//
-	private final AvailableNetworksFactory availableNetworks = new AvailableNetworksFactory();
-
-	@Parameter(label = "Use only the largest ROIs:")
-	boolean useLargestRois = true;
 
 	/*
 	@Parameter(label = "Image display mode:",
@@ -52,10 +37,6 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 	@Parameter(label = "Show images submitted for encoding:")
 	boolean showImagesSubmittedToNetwork = false;
 
-	@Parameter(label = "Show images for multi-prompter ('J'-mode):",
-			  choices = {"Don't show anything extra", "Only cropped-out image", "Four debug images", "All possible debug images"})
-	String multiPrompterVisualDebug = "Don't";
-
 	@Override
 	public void run() {
 		Img<? extends RealType<?>> origImage = inputImage.getImgPlus().getImg();
@@ -65,7 +46,7 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 	public <T extends RealType<T>> BdvPrompts<T,FloatType> annotateWithBDV(final Img<T> img) {
 		final BdvPrompts<T, FloatType> annotator;
 		if (displayMode.startsWith("Normally")) {
-			annotator = new BdvPrompts<>(img, "Input image", "SAMJ", new FloatType());
+			annotator = new BdvPrompts<>(img, inputImage.getName(), "SAMJ", new FloatType());
 		} else if (displayMode.startsWith("Original")) {
 			annotator = new BdvPrompts<>(img, "Input image", img, "Original image", "SAMJ", new FloatType());
 		} else {
@@ -84,30 +65,26 @@ public class PluginBdvOnOpenedImage extends DynamicCommand {
 			annotator = new BdvPrompts<>(invertedImg, "Input inverted image", img, "Original image", "SAMJ", new FloatType());
 		}
 
-		annotator.installDefaultMultiPromptBehaviour();
+		//install SAMJ into the BDV's CardPanel
+		final BDVedMainGUI<?> samjDialog = new BDVedMainGUI<>(annotator, inputImage.getName());
+		BDVedMainGUI.installToCardsPanel(annotator.getCardPanelIfKnown(), samjDialog);
+
+		final SAMModel net = AvailableNetworksFactory.reportAndChooseFirstAvailable(annotator, s -> System.out.println("BigDataViewer: " + s));
+		if (net != null) {
+			System.out.println("BigDataViewer: Using initially the first-one listed. Change it by clicking the SAMJ button in the collapsed, right-hand-side panel in the BigDataViewer.");
+		} else {
+			System.err.println("BigDataViewer: No SAMJ model installed yet. Please, click the SAMJ button in the collapsed, right-hand-side panel in the BigDataViewer to configure SAMJ.");
+		}
+
 		annotator.enableShowingPolygons();
-		if (showImagesSubmittedToNetwork) {
-			annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
-		}
+		if (showImagesSubmittedToNetwork) annotator.addPromptsProcessor( new ShowImageInIJResponder<>() );
 
-		if (multiPrompterVisualDebug.startsWith("Only")) {
-			annotator.setMultiPromptsSrcOnlyDebug();
-		} else if (multiPrompterVisualDebug.startsWith("Four")) {
-			annotator.setMultiPromptsMildDebug();
-		} else if (multiPrompterVisualDebug.startsWith("All")) {
-			annotator.setMultiPromptsFullDebug();
-		} else {
-			annotator.setMultiPromptsNoDebug();
-		}
-
-		System.out.println("...working with "+selectedNetwork);
-		SAMModel model = availableNetworks.getModel(selectedNetwork);
-		if (model != null) {
-			SamjResponder<FloatType> samj = new SamjResponder<>(model);
-			samj.returnLargestRoi = useLargestRois;
-			annotator.addPromptsProcessor(samj);
-		} else {
-			annotator.addPromptsProcessor( new FakeResponder<>() );
+		if (img.numDimensions() > 2) {
+			System.out.println("BigDataViewer: Detected 3D image, enabling 'perSlices' SAMJ annotations.");
+			annotator.installRepeatPromptOnNextSliceBehaviour();
+			//TODO: presence indicator requires very fast query if a coordinate is within a prompt (polygon)
+			//annotator.installPerSlicesTrackingPromptBehaviour(new LabelPresenceIndicatorAtGlobalCoord());
+			annotator.installSideViewsBehaviour();
 		}
 
 		return annotator;

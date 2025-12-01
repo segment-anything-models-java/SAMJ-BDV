@@ -8,6 +8,7 @@ import ai.nets.samj.ui.ConsumerInterface;
 import ai.nets.samj.util.MultiPromptsWithScript;
 import bdv.interactive.prompts.BdvPrompts;
 import bdv.interactive.prompts.BdvPromptsUtils;
+import bdv.ui.CardPanel;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
@@ -350,4 +351,11 @@ public class BDVedMainGUI <OT extends RealType<OT> & NativeType<OT>> extends Mai
 		@Override
 		public void notifyBatchSamize(String modelName, String maskPrompt) { /* intentionally empty */ }
 	};
+
+
+	public static void installToCardsPanel(final CardPanel cardPanel, final BDVedMainGUI<?> samjDialog) {
+		final JButton button = new JButton("SAMJ configuration dialog");
+		button.addActionListener(ignore -> samjDialog.showWindow());
+		cardPanel.addCard("SAMJ", button, true);
+	}
 }

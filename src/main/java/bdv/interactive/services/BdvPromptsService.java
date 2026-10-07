@@ -267,38 +267,25 @@ public class BdvPromptsService {
 	public int getMinimalBoxSize() { return minimalBoxSize; }
 
 	// ======================== appearance ========================
-	private volatile Color color = Color.GREEN;
+	private volatile Color defaultColor = Color.GREEN;
+	private volatile Stroke defaultStroke = createStroke(2.0f, LineStyle.SOLID);
 	private final Map<String, Color> colorPerAction = new ConcurrentHashMap<>();
-	private volatile float thickness = 2.0f;
-	private volatile LineStyle lineStyle = LineStyle.SOLID;
-	private volatile Stroke stroke = createStroke(thickness, lineStyle);
+	private final Map<String, Stroke> strokePerAction = new ConcurrentHashMap<>();
 
-	public void setColor(final Color color) {
-		this.color = color;
-		requestRepaint();
-	}
-	public Color getColor() { return color; }
-
-	/** Use a specific color for boxes created with this action; null removes the override. */
-	public void setColor(final String actionName, final Color color) {
-		if (color == null) colorPerAction.remove(actionName);
-		else colorPerAction.put(actionName, color);
+	/** Use a specific color for boxes created with this action */
+	public void setBoxColor(final String actionName, final Color color) {
+		colorPerAction.put(actionName, color);
 		requestRepaint();
 	}
 
-	public void setThickness(final float thickness) {
-		this.thickness = thickness;
-		this.stroke = createStroke(thickness, lineStyle);
+	/**
+	 * Use a specific line style and width for boxes created with this action.
+	 * The line styles are {@link LineStyle#SOLID}, {@link LineStyle#DASHED} or {@link LineStyle#DOTTED}.
+	 */
+	public void setBoxStyle(final String actionName, final LineStyle lineStyle, final float thickness) {
+		strokePerAction.put(actionName, createStroke(thickness, lineStyle));
 		requestRepaint();
 	}
-	public float getThickness() { return thickness; }
-
-	public void setLineStyle(final LineStyle style) {
-		this.lineStyle = style;
-		this.stroke = createStroke(thickness, style);
-		requestRepaint();
-	}
-	public LineStyle getLineStyle() { return lineStyle; }
 
 	protected static Stroke createStroke(final float thickness, final LineStyle style) {
 		switch (style) {
@@ -358,12 +345,11 @@ public class BdvPromptsService {
 			final String action = activeAction; // a local (unmodifiable) copy to render consistently
 			if (action == null && !isBoxShownProgrammatically) return;
 
-			final Color c = action != null ? colorPerAction.getOrDefault(action, color) : color;
 			final Graphics2D g2 = (Graphics2D) g;
 			final Stroke origStroke = g2.getStroke();
 			final Color origColor = g2.getColor();
-			g2.setColor(c);
-			g2.setStroke(stroke);
+			g2.setColor(colorPerAction.getOrDefault(action, defaultColor));
+			g2.setStroke(strokePerAction.getOrDefault(action, defaultStroke));
 			g2.drawRect(Math.min(sx, ex), Math.min(sy, ey), Math.abs(ex - sx), Math.abs(ey - sy));
 			g2.setStroke(origStroke);
 			g2.setColor(origColor);

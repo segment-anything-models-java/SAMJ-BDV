@@ -47,8 +47,8 @@ public class ServicesDemo {
 
 		// --- named actions; triggers come from BDV's keymap (defaults if unknown there)
 		BdvPromptsActions.addAllTo(bdvPromptsService);
-		bdvPromptsService.setLineStyle(BdvPromptsService.LineStyle.DASHED);
-		bdvPromptsService.setColor(BdvPromptsActions.PROMPT_CONTRAST, Color.MAGENTA);
+		bdvPromptsService.setBoxColor(BdvPromptsActions.PROMPT_CONTRAST, Color.MAGENTA);
+		bdvPromptsService.setBoxStyle(BdvPromptsActions.PROMPT, BdvPromptsService.LineStyle.DASHED, 2.0f);
 
 		// --- a "module" that works on original pixels, and caches its view image
 		final AtomicBoolean moduleEnabled = new AtomicBoolean(true);

@@ -2,9 +2,12 @@ package bdv.interactive.services;
 
 import bdv.tools.brightness.ConverterSetup;
 import bdv.util.BdvHandle;
+import bdv.util.MipmapTransforms;
 import bdv.viewer.Interpolation;
 import bdv.viewer.Source;
 import bdv.viewer.SourceAndConverter;
+import bdv.viewer.ViewerState;
+import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 
@@ -109,7 +112,29 @@ public class ConvertedViewsService extends OriginalViewsService {
 	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT> & NativeType<IT>>
 	CapturedView<OT> getCurrentConvertedView(final OT outputPixelType,
 	                                         final int mipmapLevel, final Interpolation interpolation) {
-		return captureView((Source)source.getSpimSource(), outputPixelType,
-				mipmapLevel, interpolation, this::convert);
+
+		final Source<IT> s = (Source)source.getSpimSource();
+		final ViewerState state = viewer.state().snapshot();
+		final int tp = state.getCurrentTimepoint();
+		final int width = viewer.getDisplayComponent().getWidth();
+		final int height = viewer.getDisplayComponent().getHeight();
+		final AffineTransform3D globalToScreen = state.getViewerTransform();
+
+		return captureView(s, tp, globalToScreen, mipmapLevel, interpolation,
+				width, height, outputPixelType, this::convert);
+	}
+
+	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>>
+	CapturedView<OT> getEventConvertedView(final OT outputPixelType,
+	                                       final BdvPromptsEvent event, final Interpolation interpolation) {
+
+		final Source<IT> s = (Source)source.getSpimSource();
+		final int tp = event.getTimepoint();
+		final int width = event.getCanvasWidth();
+		final int height = event.getCanvasHeight();
+		final AffineTransform3D globalToScreen = event.getGlobalToScreenTransform();
+
+		return captureView(s, tp, globalToScreen, -1, interpolation,
+				width, height, outputPixelType, this::convert);
 	}
 }

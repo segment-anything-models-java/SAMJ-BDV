@@ -115,29 +115,25 @@ public class OriginalViewsService implements AutoCloseable {
 
 	// ======================== capturing the views ========================
 	/**
-	 * A view image together with what's needed to interpret it: the change counter
-	 * that was valid when the capturing started, and the geometry of the view.
+	 * A view image together with its "provenance", that is the resolution from
+	 * which it was pulled, at which timepoint, and under what geometry of the view.
 	 */
 	public static class CapturedView<T extends RealType<T>> {
-		CapturedView(final Img<T> image, final long changeCounter,
+		CapturedView(final Img<T> image,
 		             final AffineTransform3D globalToScreen, final int timepoint, final int mipmapLevel) {
 			this.image = image;
-			this.changeCounter = changeCounter;
 			this.globalToScreen = globalToScreen;
 			this.timepoint = timepoint;
 			this.mipmapLevel = mipmapLevel;
 		}
 
 		private final Img<T> image;
-		private final long changeCounter;
 		private final AffineTransform3D globalToScreen;
 		private final int timepoint;
 		private final int mipmapLevel;
 
 		/** 2D image of exactly the size of the viewer canvas, pixel (x,y) is the screen pixel (x,y). */
 		public Img<T> getImage() { return image; }
-		/** To be used with {@link OriginalViewsService#hasChangedSince(long)}. */
-		public long getChangeCounter() { return changeCounter; }
 		/** A copy of the viewer transform (global -&gt; screen) used for the capturing. */
 		public AffineTransform3D getGlobalToScreenTransform() { return globalToScreen.copy(); }
 		/** A copy of the inverse of the viewer transform (screen -&gt; global) used for the capturing. */
@@ -166,7 +162,28 @@ public class OriginalViewsService implements AutoCloseable {
 	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>>
 	CapturedView<OT> getCurrentView(final Source<IT> source, final OT outputPixelType,
 	                                final int mipmapLevel, final Interpolation interpolation) {
-		return captureView(source, outputPixelType, mipmapLevel, interpolation, DoubleUnaryOperator.identity());
+
+		final ViewerState state = viewer.state().snapshot();
+		final int tp = state.getCurrentTimepoint();
+		final int width = viewer.getDisplayComponent().getWidth();
+		final int height = viewer.getDisplayComponent().getHeight();
+		final AffineTransform3D globalToScreen = state.getViewerTransform();
+
+		return captureView(source, tp, globalToScreen, mipmapLevel, interpolation,
+				width, height, outputPixelType, DoubleUnaryOperator.identity());
+	}
+
+	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>>
+	CapturedView<OT> getEventView(final Source<IT> source, final OT outputPixelType,
+	                              final BdvPromptsEvent event, final Interpolation interpolation) {
+
+		final int tp = event.getTimepoint();
+		final int width = event.getCanvasWidth();
+		final int height = event.getCanvasHeight();
+		final AffineTransform3D globalToScreen = event.getGlobalToScreenTransform();
+
+		return captureView(source, tp, globalToScreen, -1, interpolation,
+				width, height, outputPixelType, DoubleUnaryOperator.identity());
 	}
 
 	/**
@@ -178,24 +195,16 @@ public class OriginalViewsService implements AutoCloseable {
 	 * @param valueConverter applied on every pixel value, must not be null (use
 	 *                       {@link DoubleUnaryOperator#identity()} for no conversion)
 	 */
-	protected <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>>
-	CapturedView<OT> captureView(final Source<IT> source, final OT outputPixelType,
+	public static <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>>
+	CapturedView<OT> captureView(final Source<IT> source, final int tp,
+	                             final AffineTransform3D globalToScreen,
 	                             final int mipmapLevel, final Interpolation interpolation,
+	                             final int outputWidth, final int outputHeight,
+	                             final OT outputPixelType,
 	                             final DoubleUnaryOperator valueConverter) {
-		final long counter = getChangeCounter();
-		final ViewerState state = viewer.state().snapshot();
-		final int width = viewer.getDisplayComponent().getWidth();
-		final int height = viewer.getDisplayComponent().getHeight();
-
-		final AffineTransform3D globalToScreen = state.getViewerTransform();
-		final int tp = state.getCurrentTimepoint();
 
 		if (!source.isPresent(tp)) {
-			//NB: file-backed sources would return null from getSource() here
-			if (width <= 0 || height <= 0)
-				throw new IllegalStateException("Viewer canvas has no size (" + width + "x" + height + ").");
-			final Img<OT> emptyImg = new ArrayImgFactory<>(outputPixelType).create(width, height);
-			return new CapturedView<>(emptyImg, counter, globalToScreen, tp, Math.max(mipmapLevel, 0));
+			return new CapturedView<>(getEmptyScreenPixels(outputWidth,outputHeight,outputPixelType), globalToScreen, tp, 0);
 		}
 
 		final int level = mipmapLevel >= 0 ? mipmapLevel
@@ -208,9 +217,8 @@ public class OriginalViewsService implements AutoCloseable {
 		final AffineTransform3D screenToSource = sourceToGlobal.inverse();
 
 		final Img<OT> img = collectScreenPixels(source.getSource(tp, level),
-				screenToSource, interpolation, width, height, outputPixelType, valueConverter);
-
-		return new CapturedView<>(img, counter, globalToScreen, tp, level);
+				screenToSource, interpolation, outputWidth, outputHeight, outputPixelType, valueConverter);
+		return new CapturedView<>(img, globalToScreen, tp, level);
 	}
 
 	/**
@@ -255,5 +263,14 @@ public class OriginalViewsService implements AutoCloseable {
 		}
 
 		return screenViewImg;
+	}
+
+	private static <OT extends RealType<OT> & NativeType<OT>> Img<OT> getEmptyScreenPixels(
+			  final int outputWidth, final int outputHeight,
+			  OT outputPixelType) {
+
+		if (outputWidth <= 0 || outputHeight <= 0)
+			throw new IllegalStateException("Viewer canvas has no size (" + outputWidth + "x" + outputHeight + ").");
+		return new ArrayImgFactory<>(outputPixelType).create(outputWidth, outputHeight);
 	}
 }

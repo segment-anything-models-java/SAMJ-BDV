@@ -1,14 +1,14 @@
 package ai.nets.samj.bdv;
 
 import bdv.KeyConfigScopes;
-import bdv.interactive.services.RubberBandService;
+import bdv.interactive.services.BdvPromptsService;
 import org.scijava.plugin.Plugin;
 import org.scijava.ui.behaviour.io.gui.CommandDescriptionProvider;
 import org.scijava.ui.behaviour.io.gui.CommandDescriptions;
 
 /**
- * The single place where SAMJ-BDV's rubber-band actions are named, given their
- * default triggers and their descriptions.
+ * The single place where BDV's rectangular prompting-relevant actions are named,
+ * given their default triggers and their descriptions.
  * <p>
  * The {@link Descriptions} provider is what makes them listed in the BDV keymap
  * editor: BDV's {@code KeymapManager} harvests all {@link CommandDescriptionProvider}s
@@ -16,7 +16,7 @@ import org.scijava.ui.behaviour.io.gui.CommandDescriptions;
  * the SciJava plugin index, which is generated at compile time from the
  * {@link Plugin} annotation; no {@code Context} is needed in our code).
  * <p>
- * The {@link RubberBandService} itself works without this provider, its actions
+ * The {@link BdvPromptsService} itself works without this provider, its actions
  * would just not appear in the editor.
  */
 public class BdvPromptsActions {
@@ -31,16 +31,16 @@ public class BdvPromptsActions {
 	public static final String[] MULTI_PROMPT_KEYS = new String[] { "J" };
 
 	/** Adds all the above actions, with their default triggers, to the service. */
-	public static void addAllTo(final RubberBandService rubberBand) {
-		rubberBand.addAction(PROMPT, PROMPT_KEYS);
-		rubberBand.addAction(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS);
-		rubberBand.addAction(MULTI_PROMPT, MULTI_PROMPT_KEYS);
+	public static void addAllTo(final BdvPromptsService service) {
+		service.addAction(PROMPT, PROMPT_KEYS);
+		service.addAction(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS);
+		service.addAction(MULTI_PROMPT, MULTI_PROMPT_KEYS);
 	}
 
 	@Plugin(type = CommandDescriptionProvider.class)
 	public static class Descriptions extends CommandDescriptionProvider {
 		public Descriptions() {
-			super(KeyConfigScopes.BIGDATAVIEWER, RubberBandService.KEYCONFIG_CONTEXT);
+			super(KeyConfigScopes.BIGDATAVIEWER, BdvPromptsService.KEYCONFIG_CONTEXT);
 		}
 
 		@Override

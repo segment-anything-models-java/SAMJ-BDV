@@ -37,28 +37,28 @@ public class ServicesDemo {
 			c.get().set((c.getIntPosition(0) / 32 + c.getIntPosition(1) / 32 + c.getIntPosition(2) / 8) % 2 * 1000 + 100);
 		}
 
-		final BdvStackSource<UnsignedShortType> shown = BdvFunctions.show(img, "demo");
-		final BdvHandle bdv = shown.getBdvHandle();
+		final BdvStackSource<UnsignedShortType> bdvStackSource = BdvFunctions.show(img, "demo");
+		final BdvHandle bdv = bdvStackSource.getBdvHandle();
 
 		// --- the three services, created once, handed to whoever needs them
-		final RubberBandService rubberBand = new RubberBandService(bdv);
+		final BdvPromptsService bdvPromptsService = new BdvPromptsService(bdv);
 		final OriginalViewsService originalViews = new OriginalViewsService(bdv);
-		final ConvertedViewsService convertedViews = new ConvertedViewsService(bdv, shown.getSources().get(0));
+		final ConvertedViewsService convertedViews = new ConvertedViewsService(bdv, bdvStackSource.getSources().get(0));
 
 		// --- named actions; triggers come from BDV's keymap (defaults if unknown there)
-		BdvPromptsActions.addAllTo(rubberBand);
-		rubberBand.setLineStyle(RubberBandService.LineStyle.DASHED);
-		rubberBand.setColor(BdvPromptsActions.PROMPT_CONTRAST, Color.MAGENTA);
+		BdvPromptsActions.addAllTo(bdvPromptsService);
+		bdvPromptsService.setLineStyle(BdvPromptsService.LineStyle.DASHED);
+		bdvPromptsService.setColor(BdvPromptsActions.PROMPT_CONTRAST, Color.MAGENTA);
 
 		// --- a "module" that works on original pixels, and caches its view image
 		final AtomicBoolean moduleEnabled = new AtomicBoolean(true);
 		final Object[] cache = new Object[1]; //poor man's field
-		rubberBand.addListener(BdvPromptsActions.PROMPT, moduleEnabled::get, e -> {
+		bdvPromptsService.addListener(BdvPromptsActions.PROMPT, moduleEnabled::get, e -> {
 			@SuppressWarnings("unchecked")
 			CapturedView<FloatType> view = (CapturedView<FloatType>) cache[0];
 			final boolean isNewView = view == null || originalViews.hasChangedSince(view.getChangeCounter());
 			if (isNewView) {
-				view = originalViews.getCurrentView(shown.getSources().get(0).getSpimSource(), new FloatType());
+				view = originalViews.getCurrentView(bdvStackSource.getSources().get(0).getSpimSource(), new FloatType());
 				cache[0] = view;
 			}
 			report("original ", e, view, isNewView);
@@ -66,7 +66,7 @@ public class ServicesDemo {
 
 		// --- a "module" that works on contrast-adjusted pixels
 		final Object[] cache2 = new Object[1];
-		rubberBand.addListener(BdvPromptsActions.PROMPT_CONTRAST, e -> {
+		bdvPromptsService.addListener(BdvPromptsActions.PROMPT_CONTRAST, e -> {
 			@SuppressWarnings("unchecked")
 			CapturedView<FloatType> view = (CapturedView<FloatType>) cache2[0];
 			final boolean isNewView = view == null || convertedViews.hasChangedSince(view.getChangeCounter());
@@ -86,7 +86,7 @@ public class ServicesDemo {
 		}, "toggle L module", "D");
 	}
 
-	static void report(final String what, final RubberBandEvent e,
+	static void report(final String what, final BdvPromptsEvent e,
 	                   final CapturedView<FloatType> view, final boolean isNewView) {
 		double sum = 0;
 		for (FloatType px : Views.interval(view.getImage(), e.asInterval())) sum += px.getRealDouble();

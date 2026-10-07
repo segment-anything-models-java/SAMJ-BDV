@@ -48,8 +48,8 @@ import java.util.function.BooleanSupplier;
  * a {@link BooleanSupplier}: when a drag of an action finishes, only the listeners
  * of that action whose guard currently returns true are notified, e.g.
  * <pre>
- *   rubberBand.addAction("samj prompt", "L");
- *   rubberBand.addListener("samj prompt", myButton::isEnabled, e -&gt; doSomething(e));
+ *   bdvPromptsService.addAction("samj prompt", "L");
+ *   bdvPromptsService.addListener("samj prompt", myButton::isEnabled, e -&gt; doSomething(e));
  * </pre>
  * A drag is not even started (no box is displayed) unless at least one guard
  * of the action evaluates to true at the moment the dragging begins.
@@ -62,7 +62,7 @@ import java.util.function.BooleanSupplier;
  * <p>
  * Listeners are called on the AWT Event Dispatch Thread.
  */
-public class RubberBandService {
+public class BdvPromptsService {
 
 	public enum LineStyle { SOLID, DASHED, DOTTED }
 
@@ -70,15 +70,15 @@ public class RubberBandService {
 	public static final String KEYCONFIG_CONTEXT = KeyConfigContexts.BIGDATAVIEWER;
 
 	// ======================== construction & disposal ========================
-	public RubberBandService(final BdvHandle bdv) {
-		this(bdv, "rubberband_" + INSTANCE_COUNTER.incrementAndGet());
+	public BdvPromptsService(final BdvHandle bdv) {
+		this(bdv, "bdvPromptsService_" + INSTANCE_COUNTER.incrementAndGet());
 	}
 
 	/**
 	 * @param bindingsName Name under which this service's trigger and behaviour
 	 *                     maps are installed into the BDV's trigger bindings.
 	 */
-	public RubberBandService(final BdvHandle bdv, final String bindingsName) {
+	public BdvPromptsService(final BdvHandle bdv, final String bindingsName) {
 		this.bdv = bdv;
 		this.viewer = bdv.getViewerPanel();
 		this.bindingsName = bindingsName;
@@ -133,7 +133,7 @@ public class RubberBandService {
 
 	// ======================== actions ========================
 	/**
-	 * Creates a new rubber-band action, a named drag behaviour. The actual trigger(s)
+	 * Creates a new box prompting action, as a named drag behaviour. The actual trigger(s)
 	 * are taken from the keymap if it knows this action; otherwise the provided default
 	 * triggers are used (and recorded into the keymap). Triggers follow the ui-behaviour
 	 * syntax, e.g. "L", "shift L", "ctrl button1". Adding an existing action does nothing.
@@ -173,8 +173,8 @@ public class RubberBandService {
 	// ======================== listeners per action ========================
 	private static final class GuardedListener {
 		final BooleanSupplier guard;
-		final RubberBandListener listener;
-		GuardedListener(final BooleanSupplier guard, final RubberBandListener listener) {
+		final BdvPromptsListener listener;
+		GuardedListener(final BooleanSupplier guard, final BdvPromptsListener listener) {
 			this.guard = guard;
 			this.listener = listener;
 		}
@@ -183,7 +183,7 @@ public class RubberBandService {
 	private final Map<String, List<GuardedListener>> listeners = new ConcurrentHashMap<>();
 
 	/** Registers the listener for the action such that it is always notified. */
-	public void addListener(final String actionName, final RubberBandListener listener) {
+	public void addListener(final String actionName, final BdvPromptsListener listener) {
 		addListener(actionName, () -> true, listener);
 	}
 
@@ -196,7 +196,7 @@ public class RubberBandService {
 	 */
 	public void addListener(final String actionName,
 	                        final BooleanSupplier guard,
-	                        final RubberBandListener listener) {
+	                        final BdvPromptsListener listener) {
 		final List<GuardedListener> list = listeners.get(actionName);
 		if (list == null)
 			throw new IllegalArgumentException("Unknown action '" + actionName + "', addAction() it first.");
@@ -209,13 +209,13 @@ public class RubberBandService {
 	 *
 	 * @return true if anything was removed
 	 */
-	public boolean removeListener(final String actionName, final RubberBandListener listener) {
+	public boolean removeListener(final String actionName, final BdvPromptsListener listener) {
 		final List<GuardedListener> list = listeners.get(actionName);
 		return list != null && list.removeIf(gl -> gl.listener == listener);
 	}
 
 	/** Unregisters this listener from all actions. */
-	public void removeListener(final RubberBandListener listener) {
+	public void removeListener(final BdvPromptsListener listener) {
 		for (List<GuardedListener> list : listeners.values()) list.removeIf(gl -> gl.listener == listener);
 	}
 
@@ -226,13 +226,13 @@ public class RubberBandService {
 		return false;
 	}
 
-	private void notifyListeners(final String actionName, final RubberBandEvent event) {
+	private void notifyListeners(final String actionName, final BdvPromptsEvent event) {
 		final List<GuardedListener> list = listeners.get(actionName);
 		if (list == null) return;
 		for (GuardedListener gl : list) {
 			if (!gl.guard.getAsBoolean()) continue;
 			try {
-				gl.listener.rubberBandFinished(event);
+				gl.listener.onPromptEntered(event);
 			} catch (RuntimeException e) {
 				//one faulty listener should not prevent the others from being notified
 				e.printStackTrace();
@@ -426,7 +426,7 @@ public class RubberBandService {
 			final int y0 = clamp(Math.min(sy, ey), maxY), y1 = clamp(Math.max(sy, ey), maxY);
 			if (x1 - x0 + 1 < minimalBoxSize || y1 - y0 + 1 < minimalBoxSize) return;
 
-			final RubberBandEvent event = new RubberBandEvent(action, x0, y0, x1, y1,
+			final BdvPromptsEvent event = new BdvPromptsEvent(action, x0, y0, x1, y1,
 					canvasWidth, canvasHeight,
 					viewer.state().getViewerTransform(), viewer.state().getCurrentTimepoint());
 			notifyListeners(action, event);

@@ -5,7 +5,7 @@ import net.imglib2.Interval;
 import net.imglib2.realtransform.AffineTransform3D;
 
 /**
- * Immutable description of a finished rubber-band box.
+ * Immutable description of a finished, just entered rectangular prompt (a box).
  * <p>
  * The box is given in <b>screen (viewer canvas) pixel coordinates</b>, normalized
  * such that {@code min <= max}, clamped into the canvas, and with both ends
@@ -14,14 +14,14 @@ import net.imglib2.realtransform.AffineTransform3D;
  * so that the box can be mapped into the global coordinates even if the view
  * has changed meanwhile.
  */
-public final class RubberBandEvent {
+public final class BdvPromptsEvent {
 	private final String actionName;
 	private final int minX, minY, maxX, maxY;
 	private final int canvasWidth, canvasHeight;
 	private final AffineTransform3D globalToScreen;
 	private final int timepoint;
 
-	RubberBandEvent(final String actionName,
+	BdvPromptsEvent(final String actionName,
 	                final int minX, final int minY, final int maxX, final int maxY,
 	                final int canvasWidth, final int canvasHeight,
 	                final AffineTransform3D globalToScreen, final int timepoint) {
@@ -73,7 +73,7 @@ public final class RubberBandEvent {
 
 	@Override
 	public String toString() {
-		return "RubberBandEvent[" + actionName + ": " + minX + "," + minY + " -> " + maxX + "," + maxY
+		return "BdvPromptEvent[" + actionName + ": " + minX + "," + minY + " -> " + maxX + "," + maxY
 				+ " (" + getWidth() + "x" + getHeight() + "), tp=" + timepoint + "]";
 	}
 }

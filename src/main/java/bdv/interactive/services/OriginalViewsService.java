@@ -8,22 +8,24 @@ import bdv.viewer.ViewerPanel;
 import bdv.viewer.ViewerState;
 import bdv.viewer.ViewerStateChange;
 import bdv.viewer.ViewerStateChangeListener;
-import net.imglib2.RandomAccess;
+import net.imglib2.Cursor;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
+import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.view.Views;
 
-import java.awt.Component;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.DoubleUnaryOperator;
-import java.util.stream.IntStream;
 
 /**
  * Watches a BigDataViewer for any change that alters which pixels (of any source)
@@ -36,7 +38,7 @@ import java.util.stream.IntStream;
  * copy still shows what is on the screen.
  * <p>
  * The counter is a {@code long}: even at a million changes per second it
- * would overflow only after ~292,000 years, so a pair of counters is not needed.
+ * would overflow only after ~292,000 years, so this type has an adequate capacity.
  * <p>
  * This class ignores the display settings ({@code ConverterSetup}) of the
  * sources completely, the captured views carry the original pixel values.
@@ -114,8 +116,8 @@ public class OriginalViewsService implements AutoCloseable {
 	 * A view image together with what's needed to interpret it: the change counter
 	 * that was valid when the capturing started, and the geometry of the view.
 	 */
-	public static class CapturedView<O> {
-		CapturedView(final Img<O> image, final long changeCounter,
+	public static class CapturedView<T extends RealType<T>> {
+		CapturedView(final Img<T> image, final long changeCounter,
 		             final AffineTransform3D globalToScreen, final int timepoint, final int mipmapLevel) {
 			this.image = image;
 			this.changeCounter = changeCounter;
@@ -124,14 +126,14 @@ public class OriginalViewsService implements AutoCloseable {
 			this.mipmapLevel = mipmapLevel;
 		}
 
-		private final Img<O> image;
+		private final Img<T> image;
 		private final long changeCounter;
 		private final AffineTransform3D globalToScreen;
 		private final int timepoint;
 		private final int mipmapLevel;
 
 		/** 2D image of exactly the size of the viewer canvas, pixel (x,y) is the screen pixel (x,y). */
-		public Img<O> getImage() { return image; }
+		public Img<T> getImage() { return image; }
 		/** To be used with {@link OriginalViewsService#hasChangedSince(long)}. */
 		public long getChangeCounter() { return changeCounter; }
 		/** A copy of the viewer transform (global -&gt; screen) used for the capturing. */
@@ -150,101 +152,78 @@ public class OriginalViewsService implements AutoCloseable {
 	 * capturing started, so a change during the capturing is noticed by
 	 * the {@link #hasChangedSince(long)}.
 	 */
-	public <O extends RealType<O> & NativeType<O>>
-	CapturedView<O> getCurrentView(final Source<? extends RealType<?>> source, final O outputPixelType) {
-		return getCurrentView(source, outputPixelType, -1, Interpolation.NLINEAR, null);
+	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>>
+	CapturedView<OT> getCurrentView(final Source<IT> source, final OT outputPixelType) {
+		return getCurrentView(source, outputPixelType, -1, Interpolation.NLINEAR);
 	}
 
 	/**
 	 * @param mipmapLevel the resolution level to read from, or -1 for the best-fitting one
-	 * @param valueMapper applied on every pixel value before it is stored, null means identity
 	 */
-	public <O extends RealType<O> & NativeType<O>>
-	CapturedView<O> getCurrentView(final Source<? extends RealType<?>> source, final O outputPixelType,
-	                               final int mipmapLevel, final Interpolation interpolation,
-	                               final DoubleUnaryOperator valueMapper) {
+	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>>
+	CapturedView<OT> getCurrentView(final Source<IT> source, final OT outputPixelType,
+	                                final int mipmapLevel, final Interpolation interpolation) {
 		final long counter = getChangeCounter();
 		final ViewerState state = viewer.state().snapshot();
-		final Component canvas = viewer.getDisplayComponent();
 
 		final AffineTransform3D globalToScreen = state.getViewerTransform();
 		final int tp = state.getCurrentTimepoint();
 		final int level = mipmapLevel >= 0 ? mipmapLevel
 				: MipmapTransforms.getBestMipMapLevel(globalToScreen, source, tp);
 
-		final Img<O> img = captureView(source, tp, level, interpolation,
-				globalToScreen, canvas.getWidth(), canvas.getHeight(),
-				outputPixelType, valueMapper);
-		return new CapturedView<>(img, counter, globalToScreen, tp, level);
-	}
+		// we want: screen -> source pixel grid  ==  (globalToScreen * sourceToGlobal)^-1
+		final AffineTransform3D sourceToGlobal = new AffineTransform3D();
+		source.getSourceTransform(tp, mipmapLevel, sourceToGlobal);
+		sourceToGlobal.preConcatenate(globalToScreen); //means: source -> Global -> Screen
+		final AffineTransform3D screenToSource = sourceToGlobal.inverse();
 
-	/** Captures what's currently on the screen of the given source; just the image, no change counter. */
-	public static <O extends RealType<O> & NativeType<O>>
-	Img<O> captureCurrentView(final BdvHandle bdv, final Source<? extends RealType<?>> source, final O outputPixelType) {
-		final ViewerPanel viewer = bdv.getViewerPanel();
-		final ViewerState state = viewer.state().snapshot();
-		final AffineTransform3D globalToScreen = state.getViewerTransform();
-		final int tp = state.getCurrentTimepoint();
-		final int level = MipmapTransforms.getBestMipMapLevel(globalToScreen, source, tp);
-		return captureView(source, tp, level, Interpolation.NLINEAR, globalToScreen,
+		final Img<OT> img = collectScreenPixels(source.getSource(tp, level),
+				screenToSource, interpolation,
 				viewer.getDisplayComponent().getWidth(), viewer.getDisplayComponent().getHeight(),
-				outputPixelType, null);
+				outputPixelType);
+
+		return new CapturedView<>(img, counter, globalToScreen, tp, level);
 	}
 
 	/**
 	 * The workhorse: Resamples the source into a 2D image of the given screen size,
 	 * such that pixel (x,y) of the output holds the value of the source at the global
 	 * position that the viewer transform maps to the screen position (x,y,0).
-	 * Rows are processed in parallel.
 	 *
-	 * @param globalToScreen the viewer transform (as reported by the {@code ViewerState})
-	 * @param valueMapper applied on every pixel value before it is stored, null means identity
 	 * @return a zero-filled image if the source is not present at the timepoint
 	 * @throws IllegalStateException if the screen size is not positive (e.g. the viewer is not displayed yet)
 	 */
-	public static <O extends RealType<O> & NativeType<O>>
-	Img<O> captureView(final Source<? extends RealType<?>> source,
-	                   final int timepoint, final int mipmapLevel, final Interpolation interpolation,
-	                   final AffineTransform3D globalToScreen, final int screenWidth, final int screenHeight,
-	                   final O outputPixelType, final DoubleUnaryOperator valueMapper) {
-		if (screenWidth <= 0 || screenHeight <= 0)
-			throw new IllegalStateException("Viewer canvas has no size (" + screenWidth + "x" + screenHeight + ").");
+	public static <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>> Img<OT> collectScreenPixels(
+			  final RandomAccessibleInterval<IT> srcImg,
+			  final AffineTransform3D screenToSrcImg,
+			  final Interpolation interpolation,
+			  final int outputWidth, final int outputHeight,
+			  final OT outputPixelType) {
 
-		final Img<O> viewImg = new ArrayImgFactory<>(outputPixelType).create(screenWidth, screenHeight);
-		if (!source.isPresent(timepoint)) return viewImg;
+		if (outputWidth <= 0 || outputHeight <= 0)
+			throw new IllegalStateException("Viewer canvas has no size (" + outputWidth + "x" + outputHeight + ").");
 
-		final RealRandomAccessible<? extends RealType<?>> srcImg =
-				source.getInterpolatedSource(timepoint, mipmapLevel, interpolation);
+		// prepare the source
+		final RealRandomAccessible<IT> srcRealImg =
+				interpolation == Interpolation.NLINEAR
+						? Views.interpolate(Views.extendValue(srcImg, 0), new ClampingNLinearInterpolatorFactory<>())
+						: Views.interpolate(Views.extendValue(srcImg, 0), new NearestNeighborInterpolatorFactory<>());
+		final RealRandomAccess<IT> srcRealImgPtr = srcRealImg.realRandomAccess();
 
-		// we want: screen -> source pixel grid  ==  (globalToScreen * sourceToGlobal)^-1
-		final AffineTransform3D sourceToScreen = new AffineTransform3D();
-		source.getSourceTransform(timepoint, mipmapLevel, sourceToScreen);
-		sourceToScreen.preConcatenate(globalToScreen);
-		final AffineTransform3D screenToSource = sourceToScreen.inverse();
+		final ArrayImg<OT, ?> screenViewImg = new ArrayImgFactory<>(outputPixelType).create(outputWidth, outputHeight);
+		//NB: 2D (not 3D!) image and of the size of the screen -> ArrayImg backend should be enough...
+		final Cursor<OT> viewCursor = screenViewImg.localizingCursor();
 
-		// moving by one screen pixel along x is moving by this vector in the source
-		final double[] stepX = new double[] {
-				screenToSource.get(0, 0), screenToSource.get(1, 0), screenToSource.get(2, 0) };
+		final double[] srcImgPos = new double[3];  //orig underlying 3D image
+		final double[] screenPos = new double[3];  //the current view 2D image, as a 3D coord though
 
-		IntStream.range(0, screenHeight).parallel().forEach(y -> {
-			final RealRandomAccess<? extends RealType<?>> srcPtr = srcImg.realRandomAccess();
-			final RandomAccess<O> outPtr = viewImg.randomAccess();
-			final double[] pos = new double[3];
-			screenToSource.apply(new double[] {0, y, 0}, pos);
-			outPtr.setPosition(0, 0);
-			outPtr.setPosition(y, 1);
+		while (viewCursor.hasNext()) { //TODO lightly-parallelize this sweep
+			OT px = viewCursor.next();
+			viewCursor.localize(screenPos);
+			screenToSrcImg.apply(screenPos, srcImgPos);
+			px.setReal( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() );
+		}
 
-			for (int x = 0; x < screenWidth; ++x) {
-				srcPtr.setPosition(pos);
-				final double v = srcPtr.get().getRealDouble();
-				outPtr.get().setReal(valueMapper == null ? v : valueMapper.applyAsDouble(v));
-				outPtr.fwd(0);
-				pos[0] += stepX[0];
-				pos[1] += stepX[1];
-				pos[2] += stepX[2];
-			}
-		});
-
-		return viewImg;
+		return screenViewImg;
 	}
 }

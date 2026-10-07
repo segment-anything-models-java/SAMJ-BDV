@@ -41,7 +41,8 @@ public class SideViews {
 		return globalToScreenT_initialViewT.copy();
 	}
 	public AffineTransform3D sideView() {
-		return rotatedView( 1, 1.0 );
+		//NB: -1.0 to end where animateViewerToSideView() ends
+		return rotatedView( 1, -1.0 );
 	}
 	public AffineTransform3D frontView() {
 		return rotatedView( 0, 1.0 );

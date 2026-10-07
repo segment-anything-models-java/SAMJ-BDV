@@ -5,7 +5,6 @@ import bdv.interactive.prompts.planarshapes.PlanarPolygonIn3D;
 import bdv.interactive.prompts.planarshapes.PlanarRectangleIn3D;
 import bdv.interactive.prompts.views.SideViews;
 import bdv.interactive.prompts.views.SlicingViews;
-import bdv.interactive.prompts.views.SpatioTemporalView;
 import bdv.tools.brightness.ConverterSetup;
 import bdv.ui.CardPanel;
 import bdv.util.BdvFunctions;
@@ -668,25 +667,6 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		}, "bdvprompts_longer_view_distance", "D");
 		*/
 
-		behaviours.behaviour((ClickBehaviour) (x, y) -> {
-			if (annotationSites.isEmpty()) {
-				System.out.println("Switching NOT... no annotation sites available yet.");
-				return;
-			}
-			int nextSiteId = lastVisitedAnnotationSiteId + 1;
-			if (nextSiteId > annotationSites.size()) nextSiteId = 1;
-			System.out.println("Switching to annotation site: "+nextSiteId);
-			displayAnnotationSite(nextSiteId);
-		}, "bdvprompts_next_view", "W");
-
-		behaviours.behaviour((ClickBehaviour) (x, y) -> {
-			if (annotationSites.isEmpty()) {
-				System.out.println("Switching NOT... no annotation sites available yet.");
-				return;
-			}
-			System.out.println("Switching to last visited annotation site: "+lastVisitedAnnotationSiteId);
-			displayAnnotationSite(lastVisitedAnnotationSiteId);
-		}, "bdvprompts_last_view", "shift|W");
 
 		/* ==================>> this is irrelevant for Labkit <<==================
 		if (installAlsoUndoRedoKeys) {
@@ -752,7 +732,6 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		/**
 		 * Reads the input image, while possibly on-the-fly recalculate the image pixel
 		 * values according to the user's current contrast-adjustment. The implementing
-		 * function is expected to {@link ImageJFunctions#show(RandomAccessibleInterval)}
 		 * images at various stage of processing, if they are available.
 		 *
 		 * @param inputImageToEstablishSeedsHere A image that's exactly the user selected rectangle,
@@ -892,7 +871,7 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 	private void installNewAnnotationSite() {
 		//register the new site's data
 		final int newIdx = annotationSites.size()+1;
-		annotationSites.put(newIdx, new SpatioTemporalView(this.viewerPanel));
+		//annotationSites.put(newIdx, new SpatioTemporalView(this.viewerPanel));
 		lastVisitedAnnotationSiteId = newIdx;
 
 		annotationSiteViewImg = collectViewPixelData(this.image);
@@ -921,13 +900,13 @@ public class BdvPrompts<IT extends RealType<IT>, OT extends RealType<OT> & Nativ
 		//    of the rendering will call this.lostViewOfAnnotationSite(), but
 		//    if the switch has no visible effect, we could continue with the
 		//    current annotation site data (esp. with this.annotationSiteViewImg)
-		annotationSites.get(id).applyOnThis(this.viewerPanel);
+		//annotationSites.get(id).applyOnThis(this.viewerPanel);
 		lastVisitedAnnotationSiteId = id;
 		return true;
 	}
 
 	//maps internal ID of a view (which was registered with the key to start SAMJ Annotation) to
 	//an object that represents that exact view, and another map for polygons associated with that view
-	private final Map<Integer, SpatioTemporalView> annotationSites = new HashMap<>(100);
+	private final Map<Integer, Object> annotationSites = new HashMap<>(100);
 	private int lastVisitedAnnotationSiteId = -1;
 }

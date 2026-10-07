@@ -20,6 +20,7 @@ import java.awt.Graphics2D;
 import java.awt.Stroke;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -74,6 +75,10 @@ public class BdvPromptsService {
 		this(bdv, "bdvPromptsService_" + INSTANCE_COUNTER.incrementAndGet());
 	}
 
+	// ensures no two BdvPromptsServices (unless caller messes it up himself with the c'tor above)
+	// clash their names, their "binding spaces"
+	private static final AtomicInteger INSTANCE_COUNTER = new AtomicInteger(0);
+
 	/**
 	 * @param bindingsName Name under which this service's trigger and behaviour
 	 *                     maps are installed into the BDV's trigger bindings.
@@ -97,8 +102,6 @@ public class BdvPromptsService {
 		viewer.getDisplay().overlays().add(overlay);
 		viewer.getDisplayComponent().addKeyListener(pressedKeysMonitor);
 	}
-
-	private static final AtomicInteger INSTANCE_COUNTER = new AtomicInteger(0);
 
 	private final BdvHandle bdv;
 	private final ViewerPanel viewer;
@@ -141,14 +144,21 @@ public class BdvPromptsService {
 	 * @param actionName unique name of the action, as it appears in the keymap editor
 	 */
 	public synchronized void addAction(final String actionName, final String... defaultTriggers) {
-		if (listeners.containsKey(actionName)) return;
+		if (listeners.containsKey(actionName)) {
+			System.out.println("Silently skipping registration of an action " + actionName
+					+ " with triggers: "+ Arrays.toString(defaultTriggers));
+			return;
+		}
 		listeners.put(actionName, new CopyOnWriteArrayList<>());
 		behaviours.behaviour(new BoxDrag(actionName), actionName, defaultTriggers);
 	}
 
 	/** Uninstalls the action from BDV, together with all its listeners. */
 	public synchronized void removeAction(final String actionName) {
-		if (listeners.remove(actionName) == null) return;
+		if (listeners.remove(actionName) == null) {
+			System.out.println("Silently skipping de-registration of a not-previously-registered action " + actionName);
+			return;
+		}
 		if (actionName.equals(activeAction)) cancelDrag();
 
 		final InputTriggerMap triggers = behaviours.getInputTriggerMap();
@@ -164,10 +174,10 @@ public class BdvPromptsService {
 
 	/** @return the triggers currently bound to the action, e.g. for showing them in a GUI tooltip */
 	public Set<InputTrigger> getTriggers(final String actionName) {
-		final Set<InputTrigger> triggers = new HashSet<>();
+		final Set<InputTrigger> forReportTriggers = new HashSet<>();
 		for (Map.Entry<InputTrigger, Set<String>> binding : behaviours.getInputTriggerMap().getBindings().entrySet())
-			if (binding.getValue().contains(actionName)) triggers.add(binding.getKey());
-		return triggers;
+			if (binding.getValue().contains(actionName)) forReportTriggers.add(binding.getKey());
+		return forReportTriggers;
 	}
 
 	// ======================== listeners per action ========================
@@ -314,6 +324,13 @@ public class BdvPromptsService {
 	/** @return true while the user is dragging a box */
 	public boolean isDragging() { return activeAction != null; }
 
+	/** Aborts the drag in progress (if any) without notifying anybody. */
+	public void cancelDrag() {
+		if (activeAction == null) return;
+		activeAction = null;
+		requestRepaint();
+	}
+
 	/**
 	 * Displays a box (in screen pixel coordinates) on behalf of the client; this
 	 * has no relation to listeners. The box remains visible until {@link #hideBox()}
@@ -331,13 +348,6 @@ public class BdvPromptsService {
 		requestRepaint();
 	}
 
-	/** Aborts the drag in progress (if any) without notifying anybody. */
-	public void cancelDrag() {
-		if (activeAction == null) return;
-		activeAction = null;
-		requestRepaint();
-	}
-
 	protected void requestRepaint() {
 		viewer.getDisplay().repaint();
 	}
@@ -345,7 +355,7 @@ public class BdvPromptsService {
 	private final OverlayRenderer overlay = new OverlayRenderer() {
 		@Override
 		public void drawOverlays(final Graphics g) {
-			final String action = activeAction;
+			final String action = activeAction; // a local (unmodifiable) copy to render consistently
 			if (action == null && !isBoxShownProgrammatically) return;
 
 			final Color c = action != null ? colorPerAction.getOrDefault(action, color) : color;

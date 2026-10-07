@@ -2,7 +2,7 @@ package ai.nets.samj.util;
 
 import bdv.interactive.prompts.BdvPrompts;
 import bdv.tools.brightness.ConverterSetup;
-import net.imagej.legacy.LegacyService;
+//import net.imagej.legacy.LegacyService;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.img.display.imagej.ImageJFunctions;
@@ -92,7 +92,7 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 
 	public static void showTemplateScriptInIJ1Editor(final Context context) {
 		ScriptInfo s = new ScriptInfo(context, "seeds extractor.py", new StringReader(templateScriptItself()));
-		context.getService(LegacyService.class).openScriptInTextEditor(s);
+		//context.getService(LegacyService.class).openScriptInTextEditor(s);
 	}
 
 	public static String templateScriptItself() {

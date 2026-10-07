@@ -19,15 +19,15 @@ import org.scijava.ui.behaviour.io.gui.CommandDescriptions;
  * The {@link RubberBandService} itself works without this provider, its actions
  * would just not appear in the editor.
  */
-public class SamjBdvActions {
+public class BdvPromptsActions {
 
-	public static final String PROMPT = "samj rubberband prompt";
+	public static final String PROMPT = "rectangle prompt on original view";
 	public static final String[] PROMPT_KEYS = new String[] { "L" };
 
-	public static final String PROMPT_CONTRAST = "samj rubberband prompt on contrast-adjusted view";
+	public static final String PROMPT_CONTRAST = "rectangle prompt on contrast-adjusted view";
 	public static final String[] PROMPT_CONTRAST_KEYS = new String[] { "shift L" };
 
-	public static final String MULTI_PROMPT = "samj rubberband multi-prompt";
+	public static final String MULTI_PROMPT = "rectangle multi-prompt on original view";
 	public static final String[] MULTI_PROMPT_KEYS = new String[] { "J" };
 
 	/** Adds all the above actions, with their default triggers, to the service. */
@@ -46,11 +46,11 @@ public class SamjBdvActions {
 		@Override
 		public void getCommandDescriptions(final CommandDescriptions descriptions) {
 			descriptions.add(PROMPT, PROMPT_KEYS,
-					"Drag a box (hold the key and move the mouse) to segment the object in it with SAMJ.");
+					  "To create a box on original data, hold the key, keep holding it and move the mouse, release the key eventually.");
 			descriptions.add(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS,
-					"Like the SAMJ prompt, but SAMJ sees the image with the current brightness/contrast setting applied.");
+					  "To create a box on contrast-adjusted data, hold the key, keep holding it and move the mouse, release the key eventually.");
 			descriptions.add(MULTI_PROMPT, MULTI_PROMPT_KEYS,
-					"Drag a box in which seeds are detected; each seed is then submitted to SAMJ as a separate prompt.");
+					  "Drag a box in which seeds are detected and processed iteratively as separate prompts.");
 		}
 	}
 }

@@ -1,6 +1,6 @@
 package bdv.interactive.services;
 
-import ai.nets.samj.bdv.SamjBdvActions;
+import ai.nets.samj.bdv.BdvPromptsActions;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvHandle;
 import bdv.util.BdvStackSource;
@@ -46,14 +46,14 @@ public class ServicesDemo {
 		final ConvertedViewsService convertedViews = new ConvertedViewsService(bdv, shown.getSources().get(0));
 
 		// --- named actions; triggers come from BDV's keymap (defaults if unknown there)
-		SamjBdvActions.addAllTo(rubberBand);
+		BdvPromptsActions.addAllTo(rubberBand);
 		rubberBand.setLineStyle(RubberBandService.LineStyle.DASHED);
-		rubberBand.setColor(SamjBdvActions.PROMPT_CONTRAST, Color.MAGENTA);
+		rubberBand.setColor(BdvPromptsActions.PROMPT_CONTRAST, Color.MAGENTA);
 
 		// --- a "module" that works on original pixels, and caches its view image
 		final AtomicBoolean moduleEnabled = new AtomicBoolean(true);
 		final Object[] cache = new Object[1]; //poor man's field
-		rubberBand.addListener(SamjBdvActions.PROMPT, moduleEnabled::get, e -> {
+		rubberBand.addListener(BdvPromptsActions.PROMPT, moduleEnabled::get, e -> {
 			@SuppressWarnings("unchecked")
 			CapturedView<FloatType> view = (CapturedView<FloatType>) cache[0];
 			final boolean isNewView = view == null || originalViews.hasChangedSince(view.getChangeCounter());
@@ -66,7 +66,7 @@ public class ServicesDemo {
 
 		// --- a "module" that works on contrast-adjusted pixels
 		final Object[] cache2 = new Object[1];
-		rubberBand.addListener(SamjBdvActions.PROMPT_CONTRAST, e -> {
+		rubberBand.addListener(BdvPromptsActions.PROMPT_CONTRAST, e -> {
 			@SuppressWarnings("unchecked")
 			CapturedView<FloatType> view = (CapturedView<FloatType>) cache2[0];
 			final boolean isNewView = view == null || convertedViews.hasChangedSince(view.getChangeCounter());

@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>hold shift+L for the same on contrast-adjusted pixels</li>
  *   <li>ctrl+COMMA (BDV preferences, "Keymap" page) lists the actions in the keymap editor, where they can be re-mapped</li>
  *   <li>press D to toggle the guard of the "L" listener (simulating a GUI checkbox)</li>
+ *   <li>ctrl I / ctrl J rotate to front / side view, ctrl K rotates back; ctrl N / ctrl M move one slice closer / further</li>
  * </ul>
  */
 public class ServicesDemo {
@@ -49,6 +50,9 @@ public class ServicesDemo {
 		final BdvPromptsService bdvPromptsService = new BdvPromptsService(bdv);
 		final OriginalViewsService originalViewsService = new OriginalViewsService(bdv);
 		final ConvertedViewsService convertedViewsService = new ConvertedViewsService(bdv, bdvStackSource.getSources().get(0));
+
+		// --- extra 3D navigation: ctrl I/J/K side views, ctrl N/M slicing (also keymap-driven)
+		new ViewNavigationBehaviours(bdv).addAllActions();
 
 		// --- named actions; triggers come from BDV's keymap (defaults if unknown there)
 		BdvPromptsActions.addAllTo(bdvPromptsService);

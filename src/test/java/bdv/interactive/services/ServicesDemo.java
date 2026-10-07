@@ -62,9 +62,9 @@ public class ServicesDemo {
 		bdvPromptsService.addListener(BdvPromptsActions.PROMPT, moduleEnabled::get, e -> {
 			final boolean isNewView = originalViewsService.hasChangedSince(myChangeCounters[0]);
 			if (isNewView) {
+				myChangeCounters[0] = originalViewsService.getChangeCounter();
 				CapturedView<FloatType> view = originalViewsService.getCurrentView(
 						bdvStackSource.getSources().get(0).getSpimSource(), new FloatType());
-				myChangeCounters[0] = view.getChangeCounter();
 				report("original ", e, view, isNewView);
 				ImageJFunctions.show(view.getImage(), "original");
 			} else {
@@ -76,8 +76,8 @@ public class ServicesDemo {
 		bdvPromptsService.addListener(BdvPromptsActions.PROMPT_CONTRAST, e -> {
 			final boolean isNewView = convertedViewsService.hasChangedSince(myChangeCounters[1]);
 			if (isNewView) {
+				myChangeCounters[1] = convertedViewsService.getChangeCounter();
 				CapturedView<FloatType> view = convertedViewsService.getCurrentConvertedView(new FloatType());
-				myChangeCounters[1] = view.getChangeCounter();
 				report("converted ", e, view, isNewView);
 				ImageJFunctions.show(view.getImage(), "converted");
 			} else {
@@ -98,8 +98,8 @@ public class ServicesDemo {
 	                   final CapturedView<FloatType> view, final boolean isNewView) {
 		double sum = 0;
 		for (FloatType px : Views.interval(view.getImage(), e.asInterval())) sum += px.getRealDouble();
-		System.out.printf("%s: %s, %s view image (counter %d, level %d), mean in box = %.4f%n",
-				what, e, isNewView ? "NEW" : "cached", view.getChangeCounter(), view.getMipmapLevel(),
+		System.out.printf("%s: %s, %s view image (level %d), mean in box = %.4f%n",
+				what, e, isNewView ? "NEW" : "cached", view.getMipmapLevel(),
 				sum / ((double) e.getWidth() * e.getHeight()));
 	}
 }

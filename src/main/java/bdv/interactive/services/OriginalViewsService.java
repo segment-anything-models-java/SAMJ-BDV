@@ -93,6 +93,7 @@ public class OriginalViewsService implements AutoCloseable {
 	private final ViewerStateChangeListener stateListener = this::viewerStateChanged;
 
 	protected void viewerStateChanged(final ViewerStateChange change) {
+		//unlike in ConvertedViewsService, this method needs not be synchronized
 		switch (change) {
 			case VIEWER_TRANSFORM_CHANGED:
 			case CURRENT_TIMEPOINT_CHANGED:
@@ -193,7 +194,7 @@ public class OriginalViewsService implements AutoCloseable {
 	 * @return a zero-filled image if the source is not present at the timepoint
 	 * @throws IllegalStateException if the screen size is not positive (e.g. the viewer is not displayed yet)
 	 */
-	public static <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>> Img<OT> collectScreenPixels(
+	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>> Img<OT> collectScreenPixels(
 			  final RandomAccessibleInterval<IT> srcImg,
 			  final AffineTransform3D screenToSrcImg,
 			  final Interpolation interpolation,
@@ -221,9 +222,11 @@ public class OriginalViewsService implements AutoCloseable {
 			OT px = viewCursor.next();
 			viewCursor.localize(screenPos);
 			screenToSrcImg.apply(screenPos, srcImgPos);
-			px.setReal( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() );
+			px.setReal( convert( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() ) );
 		}
 
 		return screenViewImg;
 	}
+
+	protected double convert(double in) { return in; }
 }

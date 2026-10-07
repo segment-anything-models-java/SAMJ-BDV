@@ -8,8 +8,6 @@ import bdv.viewer.SourceAndConverter;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 
-import java.util.function.DoubleUnaryOperator;
-
 /**
  * Like the {@link OriginalViewsService}, but bound to one particular source, and
  * additionally watching this source's {@link ConverterSetup}: a change of its
@@ -42,6 +40,7 @@ public class ConvertedViewsService extends OriginalViewsService {
 		this.converterSetup = converterSetup;
 		this.lastMin = converterSetup.getDisplayRangeMin();
 		this.lastMax = converterSetup.getDisplayRangeMax();
+		setLastRange();
 		converterSetup.setupChangeListeners().add(setupListener);
 	}
 
@@ -67,57 +66,43 @@ public class ConvertedViewsService extends OriginalViewsService {
 
 	// ======================== change monitoring ========================
 	private final ConverterSetup.SetupChangeListener setupListener = this::setupParametersChanged;
-	private double lastMin, lastMax;
+	private double lastMin;
+	private double lastMax;
+	private double lastRange;
+
+	private void setLastRange() {
+		lastRange = Math.max(lastMax - lastMin, 1.0);
+	}
 
 	protected synchronized void setupParametersChanged(final ConverterSetup setup) {
+		//TODO test instanceof Jakub LUT editor and make decisions based on his listeners...
+		//else the code below for the "legacy" Converters:
 		final double min = setup.getDisplayRangeMin();
 		final double max = setup.getDisplayRangeMax();
 		if (min == lastMin && max == lastMax) return; //e.g. only the color has changed
 		lastMin = min;
 		lastMax = max;
+		setLastRange();
 		notifyChange();
 	}
 
 	// ======================== capturing the views ========================
-	/** The current view of the bound source, with the values mapped through the display range into [0,1]. */
-	public <O extends RealType<O> & NativeType<O>>
-	CapturedView<O> getCurrentConvertedView(final O outputPixelType) {
-		return getCurrentConvertedView(outputPixelType, 0.0, 1.0);
+	@Override
+	protected double convert(double in) {
+		//TODO: use the source's actual converter
+		double o = (in - lastMin) / lastRange;
+		o = Math.min(1.0, Math.max(0.0, o)); //clamping...
+		return o;
 	}
 
-	/**
-	 * The current view of the bound source, with the display range [min,max]
-	 * mapped linearly onto [targetMin,targetMax], values outside are clamped.
-	 */
-	public <O extends RealType<O> & NativeType<O>>
-	CapturedView<O> getCurrentConvertedView(final O outputPixelType, final double targetMin, final double targetMax) {
-		//NB: the counter must be read before the display range, otherwise a change of
-		//    the range in between would go unnoticed; getCurrentView() reads the counter
-		//    again (later), which is only more conservative
-		final long counter = getChangeCounter();
-		final DoubleUnaryOperator mapper = displayRangeMapper(
-				converterSetup.getDisplayRangeMin(), converterSetup.getDisplayRangeMax(), targetMin, targetMax);
-		final CapturedView<O> view = getCurrentView(getBoundSpimSource(), outputPixelType, -1, Interpolation.NLINEAR, mapper);
-		return new CapturedView<>(view.getImage(), counter,
-				view.getGlobalToScreenTransform(), view.getTimepoint(), view.getMipmapLevel());
+	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT> & NativeType<IT>>
+	CapturedView<OT> getCurrentConvertedView(final OT outputPixelType) {
+		return getCurrentView((Source)source.getSpimSource(), outputPixelType);
 	}
 
-	/** The current view of the bound source with the original pixel values. */
-	public <O extends RealType<O> & NativeType<O>>
-	CapturedView<O> getCurrentOriginalView(final O outputPixelType) {
-		return getCurrentView(getBoundSpimSource(), outputPixelType);
-	}
-
-	private Source<? extends RealType<?>> getBoundSpimSource() {
-		return source.getSpimSource();
-	}
-
-	public static DoubleUnaryOperator displayRangeMapper(final double min, double max,
-	                                                      final double targetMin, final double targetMax) {
-		if (max == min) max = min + 1.0;
-		final double scale = (targetMax - targetMin) / (max - min);
-		final double lo = Math.min(targetMin, targetMax);
-		final double hi = Math.max(targetMin, targetMax);
-		return v -> Math.min(Math.max((v - min) * scale + targetMin, lo), hi);
+	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT> & NativeType<IT>>
+	CapturedView<OT> getCurrentConvertedView(final OT outputPixelType,
+	                                final int mipmapLevel, final Interpolation interpolation) {
+		return getCurrentView((Source)source.getSpimSource(), outputPixelType, mipmapLevel, interpolation);
 	}
 }

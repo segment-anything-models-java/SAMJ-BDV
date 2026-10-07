@@ -71,7 +71,9 @@ public class ConvertedViewsService extends OriginalViewsService {
 	private double lastRange;
 
 	private void setLastRange() {
-		lastRange = Math.max(lastMax - lastMin, 1.0);
+		//NB: guards only against a zero (or inverted) range, any positive range
+		//    (including one narrower than 1, common with float data) is kept
+		lastRange = lastMax > lastMin ? lastMax - lastMin : 1.0;
 	}
 
 	protected synchronized void setupParametersChanged(final ConverterSetup setup) {
@@ -87,7 +89,11 @@ public class ConvertedViewsService extends OriginalViewsService {
 	}
 
 	// ======================== capturing the views ========================
-	@Override
+	/**
+	 * Maps a pixel value through the bound source's current display range into [0,1], clamped.
+	 * Applied only by the {@code getCurrentConvertedView()} methods; the inherited
+	 * {@code getCurrentView()} methods return original values, as they do in the superclass.
+	 */
 	protected double convert(double in) {
 		//TODO: use the source's actual converter
 		double o = (in - lastMin) / lastRange;
@@ -97,12 +103,13 @@ public class ConvertedViewsService extends OriginalViewsService {
 
 	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT> & NativeType<IT>>
 	CapturedView<OT> getCurrentConvertedView(final OT outputPixelType) {
-		return getCurrentView((Source)source.getSpimSource(), outputPixelType);
+		return getCurrentConvertedView(outputPixelType, -1, Interpolation.NLINEAR);
 	}
 
 	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT> & NativeType<IT>>
 	CapturedView<OT> getCurrentConvertedView(final OT outputPixelType,
-	                                final int mipmapLevel, final Interpolation interpolation) {
-		return getCurrentView((Source)source.getSpimSource(), outputPixelType, mipmapLevel, interpolation);
+	                                         final int mipmapLevel, final Interpolation interpolation) {
+		return captureView((Source)source.getSpimSource(), outputPixelType,
+				mipmapLevel, interpolation, this::convert);
 	}
 }

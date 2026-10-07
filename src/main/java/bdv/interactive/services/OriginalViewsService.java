@@ -26,6 +26,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.DoubleUnaryOperator;
 
 /**
  * Watches a BigDataViewer for any change that alters which pixels (of any source)
@@ -160,28 +161,54 @@ public class OriginalViewsService implements AutoCloseable {
 
 	/**
 	 * @param mipmapLevel the resolution level to read from, or -1 for the best-fitting one
+	 * @return the captured view; its image is zero-filled if the source is not present at the current timepoint
 	 */
 	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>>
 	CapturedView<OT> getCurrentView(final Source<IT> source, final OT outputPixelType,
 	                                final int mipmapLevel, final Interpolation interpolation) {
+		return captureView(source, outputPixelType, mipmapLevel, interpolation, DoubleUnaryOperator.identity());
+	}
+
+	/**
+	 * Like {@link #getCurrentView(Source, RealType, int, Interpolation)}, but every pixel
+	 * value is passed through the {@code valueConverter} before it is stored. This is
+	 * for subclasses that offer their own, converted, views; this class itself never
+	 * converts values.
+	 *
+	 * @param valueConverter applied on every pixel value, must not be null (use
+	 *                       {@link DoubleUnaryOperator#identity()} for no conversion)
+	 */
+	protected <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>>
+	CapturedView<OT> captureView(final Source<IT> source, final OT outputPixelType,
+	                             final int mipmapLevel, final Interpolation interpolation,
+	                             final DoubleUnaryOperator valueConverter) {
 		final long counter = getChangeCounter();
 		final ViewerState state = viewer.state().snapshot();
+		final int width = viewer.getDisplayComponent().getWidth();
+		final int height = viewer.getDisplayComponent().getHeight();
 
 		final AffineTransform3D globalToScreen = state.getViewerTransform();
 		final int tp = state.getCurrentTimepoint();
+
+		if (!source.isPresent(tp)) {
+			//NB: file-backed sources would return null from getSource() here
+			if (width <= 0 || height <= 0)
+				throw new IllegalStateException("Viewer canvas has no size (" + width + "x" + height + ").");
+			final Img<OT> emptyImg = new ArrayImgFactory<>(outputPixelType).create(width, height);
+			return new CapturedView<>(emptyImg, counter, globalToScreen, tp, Math.max(mipmapLevel, 0));
+		}
+
 		final int level = mipmapLevel >= 0 ? mipmapLevel
 				: MipmapTransforms.getBestMipMapLevel(globalToScreen, source, tp);
 
 		// we want: screen -> source pixel grid  ==  (globalToScreen * sourceToGlobal)^-1
 		final AffineTransform3D sourceToGlobal = new AffineTransform3D();
-		source.getSourceTransform(tp, mipmapLevel, sourceToGlobal);
+		source.getSourceTransform(tp, level, sourceToGlobal);
 		sourceToGlobal.preConcatenate(globalToScreen); //means: source -> Global -> Screen
 		final AffineTransform3D screenToSource = sourceToGlobal.inverse();
 
 		final Img<OT> img = collectScreenPixels(source.getSource(tp, level),
-				screenToSource, interpolation,
-				viewer.getDisplayComponent().getWidth(), viewer.getDisplayComponent().getHeight(),
-				outputPixelType);
+				screenToSource, interpolation, width, height, outputPixelType, valueConverter);
 
 		return new CapturedView<>(img, counter, globalToScreen, tp, level);
 	}
@@ -190,16 +217,18 @@ public class OriginalViewsService implements AutoCloseable {
 	 * The workhorse: Resamples the source into a 2D image of the given screen size,
 	 * such that pixel (x,y) of the output holds the value of the source at the global
 	 * position that the viewer transform maps to the screen position (x,y,0).
+	 * The pixel values are passed through the valueConverter.
 	 *
-	 * @return a zero-filled image if the source is not present at the timepoint
+	 * @param valueConverter applied on every pixel value, must not be null
 	 * @throws IllegalStateException if the screen size is not positive (e.g. the viewer is not displayed yet)
 	 */
-	public <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>> Img<OT> collectScreenPixels(
-			  final RandomAccessibleInterval<IT> srcImg,
-			  final AffineTransform3D screenToSrcImg,
-			  final Interpolation interpolation,
-			  final int outputWidth, final int outputHeight,
-			  final OT outputPixelType) {
+	public static <OT extends RealType<OT> & NativeType<OT>, IT extends RealType<IT>> Img<OT> collectScreenPixels(
+			final RandomAccessibleInterval<IT> srcImg,
+			final AffineTransform3D screenToSrcImg,
+			final Interpolation interpolation,
+			final int outputWidth, final int outputHeight,
+			final OT outputPixelType,
+			final DoubleUnaryOperator valueConverter) {
 
 		if (outputWidth <= 0 || outputHeight <= 0)
 			throw new IllegalStateException("Viewer canvas has no size (" + outputWidth + "x" + outputHeight + ").");
@@ -222,11 +251,9 @@ public class OriginalViewsService implements AutoCloseable {
 			OT px = viewCursor.next();
 			viewCursor.localize(screenPos);
 			screenToSrcImg.apply(screenPos, srcImgPos);
-			px.setReal( convert( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() ) );
+			px.setReal( valueConverter.applyAsDouble( srcRealImgPtr.setPositionAndGet(srcImgPos).getRealDouble() ) );
 		}
 
 		return screenViewImg;
 	}
-
-	protected double convert(double in) { return in; }
 }

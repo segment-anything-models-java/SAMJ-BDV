@@ -57,7 +57,8 @@ public class ServicesDemo {
 
 		// --- a "module" that works on original pixels, and caches its view image
 		final AtomicBoolean moduleEnabled = new AtomicBoolean(true);
-		final long[] myChangeCounters = new long[2];
+		//NB: -1 is never a valid counter value, so the very first prompt always captures a view
+		final long[] myChangeCounters = new long[] {-1, -1};
 		bdvPromptsService.addListener(BdvPromptsActions.PROMPT, moduleEnabled::get, e -> {
 			final boolean isNewView = originalViewsService.hasChangedSince(myChangeCounters[0]);
 			if (isNewView) {
@@ -67,7 +68,7 @@ public class ServicesDemo {
 				report("original ", e, view, isNewView);
 				ImageJFunctions.show(view.getImage(), "original");
 			} else {
-				System.out.println("Now new original view");
+				System.out.println("No new original view");
 			}
 		});
 
@@ -80,7 +81,7 @@ public class ServicesDemo {
 				report("converted ", e, view, isNewView);
 				ImageJFunctions.show(view.getImage(), "converted");
 			} else {
-				System.out.println("Now new converted view");
+				System.out.println("No new converted view");
 			}
 		});
 

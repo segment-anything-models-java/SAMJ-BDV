@@ -303,18 +303,19 @@ public class BdvPromptsService {
 	// ======================== the box state & drawing ========================
 	//NB: the box state is touched from the EDT (input events and painting),
 	//    and possibly from client threads via showBox()/hideBox()
-	private volatile String activeAction = null;       //non-null while user drags
+	private static final String NO_ACTIVE_ACTION = "IndicatorOfNoAction";
+	private volatile String activeAction = NO_ACTIVE_ACTION; //gets a different value while user drags
 	private volatile boolean isBoxShownProgrammatically = false;
-	private volatile int sx, sy, ex, ey;               //box corners as the user dragged them (not normalized)
+	private volatile int sx, sy, ex, ey; //box corners as the user dragged them (not normalized)
 	private volatile int canvasWidth, canvasHeight;
 
 	/** @return true while the user is dragging a box */
-	public boolean isDragging() { return activeAction != null; }
+	public boolean isDragging() { return activeAction != NO_ACTIVE_ACTION; }
 
 	/** Aborts the drag in progress (if any) without notifying anybody. */
 	public void cancelDrag() {
-		if (activeAction == null) return;
-		activeAction = null;
+		if (activeAction == NO_ACTIVE_ACTION) return;
+		activeAction = NO_ACTIVE_ACTION;
 		requestRepaint();
 	}
 
@@ -343,7 +344,7 @@ public class BdvPromptsService {
 		@Override
 		public void drawOverlays(final Graphics g) {
 			final String action = activeAction; // a local (unmodifiable) copy to render consistently
-			if (action == null && !isBoxShownProgrammatically) return;
+			if (action == NO_ACTIVE_ACTION && !isBoxShownProgrammatically) return;
 
 			final Graphics2D g2 = (Graphics2D) g;
 			final Stroke origStroke = g2.getStroke();
@@ -390,7 +391,7 @@ public class BdvPromptsService {
 
 		@Override
 		public void init(final int x, final int y) {
-			if (!enabled || activeAction != null) return;
+			if (!enabled || activeAction != NO_ACTIVE_ACTION) return;
 			if (!isAnyGuardOpen(action)) return;
 
 			startedWithKeysHeld = pressedKeysMonitor.isAnyKeyPressed();
@@ -412,7 +413,7 @@ public class BdvPromptsService {
 		public void end(final int x, final int y) {
 			if (!action.equals(activeAction)) return;
 			ex = x; ey = y;
-			activeAction = null;
+			activeAction = NO_ACTIVE_ACTION;
 			requestRepaint();
 
 			//normalize and clamp into the canvas

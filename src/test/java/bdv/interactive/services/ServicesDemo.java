@@ -58,6 +58,7 @@ public class ServicesDemo {
 		BdvPromptsActions.addAllTo(bdvPromptsService);
 		bdvPromptsService.setBoxColor(BdvPromptsActions.PROMPT_CONTRAST, Color.MAGENTA);
 		bdvPromptsService.setBoxStyle(BdvPromptsActions.PROMPT, BdvPromptsService.LineStyle.DASHED, 2.0f);
+		bdvPromptsService.setBoxStyle(BdvPromptsActions.REPEAT_PROMPT, BdvPromptsService.LineStyle.DASHED, 2.0f);
 
 		// --- a "module" that works on original pixels, and caches its view image
 		final AtomicBoolean moduleEnabled = new AtomicBoolean(true);
@@ -73,6 +74,15 @@ public class ServicesDemo {
 				ImageJFunctions.show(view.getImage(), "original");
 			} else {
 				System.out.println("No new original view");
+			}
+		});
+		bdvPromptsService.addListener(BdvPromptsActions.REPEAT_PROMPT, moduleEnabled::get, e -> {
+			final boolean isNewView = originalViewsService.hasChangedSince(myChangeCounters[0]);
+			if (isNewView) {
+				myChangeCounters[0] = originalViewsService.getChangeCounter();
+				System.out.println("REPEAT: OOOriginal view");
+			} else {
+				System.out.println("REPEAT: No new original view");
 			}
 		});
 

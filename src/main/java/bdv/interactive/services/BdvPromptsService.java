@@ -6,6 +6,7 @@ import bdv.ui.keymap.KeymapManager;
 import bdv.util.BdvHandle;
 import bdv.viewer.OverlayRenderer;
 import bdv.viewer.ViewerPanel;
+import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.InputTrigger;
 import org.scijava.ui.behaviour.InputTriggerMap;
@@ -151,6 +152,44 @@ public class BdvPromptsService {
 		}
 		listeners.put(actionName, new CopyOnWriteArrayList<>());
 		behaviours.behaviour(new BoxDrag(actionName), actionName, defaultTriggers);
+	}
+
+	/**
+	 * Creates a new "repeat the last box" action, as a named click behaviour (keymap-driven,
+	 * just like {@link #addAction(String, String...)}). When triggered, its listeners receive
+	 * a {@link BdvPromptsEvent} with the <i>last box</i> (in screen coordinates) and with
+	 * the <i>current</i> view geometry (viewer transform, timepoint, canvas size).
+	 * The last box is the last one finished by the user (with any action), or the last one
+	 * displayed with {@link #showBox(int, int, int, int)}, whichever came later.
+	 * Nothing happens if there's been no box yet, or no guard of this action is open.
+	 *
+	 * @param actionName unique name of the action, as it appears in the keymap editor
+	 */
+	public synchronized void addRepeatAction(final String actionName, final String... defaultTriggers) {
+		if (listeners.containsKey(actionName)) {
+			System.out.println("Silently skipping registration of an action " + actionName
+					+ " with triggers: "+ Arrays.toString(defaultTriggers));
+			return;
+		}
+		listeners.put(actionName, new CopyOnWriteArrayList<>());
+		behaviours.behaviour((ClickBehaviour) (x, y) -> repeatLastBox(actionName), actionName, defaultTriggers);
+	}
+
+	private void repeatLastBox(final String actionName) {
+		final int[] box = lastBox; //a local copy, the field may change meanwhile
+		if (!enabled || isDragging() || box == null) return;
+		if (!isAnyGuardOpen(actionName)) return;
+
+		final BdvPromptsEvent event = new BdvPromptsEvent(actionName, box[0], box[1], box[2], box[3],
+				canvasWidth, canvasHeight,
+				viewer.state().getViewerTransform(), viewer.state().getCurrentTimepoint());
+		notifyListeners(actionName, event);
+	}
+
+	/** @return the last box as {x_min, y_min, x_max, y_max} (see {@link #addRepeatAction(String, String...)}), or null if none yet */
+	public int[] getLastBox() {
+		final int[] box = lastBox;
+		return box == null ? null : box.clone();
 	}
 
 	/** Uninstalls the action from BDV, together with all its listeners. */
@@ -308,6 +347,8 @@ public class BdvPromptsService {
 	private volatile boolean isBoxShownProgrammatically = false;
 	private volatile int sx, sy, ex, ey; //box corners as the user dragged them (not normalized)
 	private volatile int canvasWidth, canvasHeight;
+	private volatile String programmaticBoxAction = NO_ACTIVE_ACTION; //whose appearance the programmatic box takes
+	private volatile int[] lastBox = null; //normalized {x0,y0,x1,y1}, see addRepeatAction()
 
 	/** @return true while the user is dragging a box */
 	public boolean isDragging() { return activeAction != NO_ACTIVE_ACTION; }
@@ -325,8 +366,18 @@ public class BdvPromptsService {
 	 * or until the user starts a new drag.
 	 */
 	public void showBox(final int x0, final int y0, final int x1, final int y1) {
+		showBox(NO_ACTIVE_ACTION, x0, y0, x1, y1);
+	}
+
+	/**
+	 * Like {@link #showBox(int, int, int, int)}, but the box is drawn with the color and style
+	 * of the given action (see {@link #setBoxColor(String, Color)}, {@link #setBoxStyle(String, LineStyle, float)}).
+	 */
+	public void showBox(final String appearanceOfAction, final int x0, final int y0, final int x1, final int y1) {
 		if (isDragging()) return;
 		sx = x0; sy = y0; ex = x1; ey = y1;
+		lastBox = new int[] {Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)};
+		programmaticBoxAction = appearanceOfAction;
 		isBoxShownProgrammatically = true;
 		requestRepaint();
 	}
@@ -343,8 +394,9 @@ public class BdvPromptsService {
 	private final OverlayRenderer overlay = new OverlayRenderer() {
 		@Override
 		public void drawOverlays(final Graphics g) {
-			final String action = activeAction; // a local (unmodifiable) copy to render consistently
-			if (action == NO_ACTIVE_ACTION && !isBoxShownProgrammatically) return;
+			final String dragAction = activeAction; // a local (unmodifiable) copy to render consistently
+			if (dragAction == NO_ACTIVE_ACTION && !isBoxShownProgrammatically) return;
+			final String action = dragAction != NO_ACTIVE_ACTION ? dragAction : programmaticBoxAction;
 
 			final Graphics2D g2 = (Graphics2D) g;
 			final Stroke origStroke = g2.getStroke();
@@ -423,6 +475,7 @@ public class BdvPromptsService {
 			final int y0 = clamp(Math.min(sy, ey), maxY), y1 = clamp(Math.max(sy, ey), maxY);
 			if (x1 - x0 + 1 < minimalBoxSize || y1 - y0 + 1 < minimalBoxSize) return;
 
+			lastBox = new int[] {x0, y0, x1, y1};
 			final BdvPromptsEvent event = new BdvPromptsEvent(action, x0, y0, x1, y1,
 					canvasWidth, canvasHeight,
 					viewer.state().getViewerTransform(), viewer.state().getCurrentTimepoint());

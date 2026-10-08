@@ -346,12 +346,12 @@ public class BdvPromptsService {
 	//NB: both _DrawingAction refer to name of an action because of which the box
 	//    shall be displayed/painted; both also work as flags to draw the box or not
 	private static final String NO_ACTIVE_ACTION = "IndicatorOfNoAction";
-	private volatile boolean isBoxShownProgrammatically = false;
 	private volatile String userDrawingAction = NO_ACTIVE_ACTION; //gets a different value while user drags
 	private volatile String programmaticDrawingAction = NO_ACTIVE_ACTION; //whose appearance the programmatic box takes
+
 	private volatile int sx, sy, ex, ey; //box corners as the user dragged them (not normalized)
-	private volatile int canvasWidth, canvasHeight;
 	private final int[] lastBox = new int[4]; //see addRepeatAction() and BoxDraw.end()
+	private volatile int canvasWidth, canvasHeight;
 
 	/** @return true while the user is dragging a box */
 	public boolean isDragging() { return userDrawingAction != NO_ACTIVE_ACTION; }
@@ -386,19 +386,19 @@ public class BdvPromptsService {
 	 * Like {@link #showBox(int, int, int, int)}, but the box is drawn with the color and style
 	 * of the given action (see {@link #setBoxColor(String, Color)}, {@link #setBoxStyle(String, LineStyle, float)}).
 	 */
-	public void showBox(final String useStyleOfThisAction, final int x0, final int y0, final int x1, final int y1) {
+	public void showBox(final String usePromptStyleOfThisAction,
+	                    final int x0, final int y0, final int x1, final int y1) {
 		if (isDragging()) return;
 		lastBox[0] = sx = Math.min(x0, x1);
 		lastBox[1] = sy = Math.min(y0, y1);
 		lastBox[2] = ex = Math.max(x0, x1);
 		lastBox[3] = ey = Math.max(y0, y1);
-		programmaticDrawingAction = useStyleOfThisAction;
-		isBoxShownProgrammatically = true;
+		programmaticDrawingAction = usePromptStyleOfThisAction;
 		requestRepaint();
 	}
 
 	public void hideBox() {
-		isBoxShownProgrammatically = false;
+		programmaticDrawingAction = NO_ACTIVE_ACTION;
 		requestRepaint();
 	}
 
@@ -409,9 +409,8 @@ public class BdvPromptsService {
 	private final OverlayRenderer overlay = new OverlayRenderer() {
 		@Override
 		public void drawOverlays(final Graphics g) {
-			final String dragAction = userDrawingAction; // a local (unmodifiable) copy to render consistently
-			if (dragAction == NO_ACTIVE_ACTION && !isBoxShownProgrammatically) return;
-			final String action = dragAction != NO_ACTIVE_ACTION ? dragAction : programmaticDrawingAction;
+			final String action = userDrawingAction != NO_ACTIVE_ACTION ? userDrawingAction : programmaticDrawingAction;
+			if (action == NO_ACTIVE_ACTION) return;
 
 			final Graphics2D g2 = (Graphics2D) g;
 			final Stroke origStroke = g2.getStroke();
@@ -461,10 +460,11 @@ public class BdvPromptsService {
 			if (!enabled || userDrawingAction != NO_ACTIVE_ACTION) return;
 			if (!isAnyGuardOpen(action)) return;
 
-			startedWithKeysHeld = pressedKeysMonitor.isAnyKeyPressed();
-			isBoxShownProgrammatically = false;
-			sx = x; sy = y; ex = x; ey = y;
 			userDrawingAction = action;
+			programmaticDrawingAction = NO_ACTIVE_ACTION; //mark the end of the programmatically showed box
+
+			startedWithKeysHeld = pressedKeysMonitor.isAnyKeyPressed();
+			sx = x; sy = y; ex = x; ey = y;
 			requestRepaint();
 		}
 

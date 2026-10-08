@@ -150,7 +150,7 @@ public class BdvPromptsService {
 
 	/**
 	 * Creates a new "repeat the last box" action, as a named click behaviour (keymap-driven,
-	 * just like {@link #addAction(String, String...)}). When triggered, its listeners receive
+	 * just like {@link #addInsertPromptAction(String, String...)}). When triggered, its listeners receive
 	 * a {@link BdvPromptsEvent} with the <i>last box</i> (in screen coordinates) and with
 	 * the <i>current</i> view geometry (viewer transform, timepoint, canvas size).
 	 * The last box is the last one finished by the user (with any action), or the last one
@@ -160,13 +160,7 @@ public class BdvPromptsService {
 	 * @param actionName unique name of the action, as it appears in the keymap editor
 	 */
 	public synchronized void addRepeatAction(final String actionName, final String... defaultTriggers) {
-		if (listeners.containsKey(actionName)) {
-			System.out.println("Silently skipping registration of an action " + actionName
-					+ " with triggers: "+ Arrays.toString(defaultTriggers));
-			return;
-		}
-		listeners.put(actionName, new CopyOnWriteArrayList<>());
-		behaviours.behaviour((ClickBehaviour) (x, y) -> repeatLastBox(actionName), actionName, defaultTriggers);
+		addAction((ClickBehaviour) (x, y) -> repeatLastBox(actionName), actionName, defaultTriggers);
 	}
 
 	private void repeatLastBox(final String actionName) {

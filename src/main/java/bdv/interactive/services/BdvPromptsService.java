@@ -197,7 +197,7 @@ public class BdvPromptsService {
 			System.out.println("Silently skipping de-registration of a not-previously-registered action " + actionName);
 			return;
 		}
-		if (actionName.equals(activeAction)) cancelDrag();
+		if (actionName.equals(userDrawingAction)) cancelDrag();
 
 		final InputTriggerMap triggers = behaviours.getInputTriggerMap();
 		for (Map.Entry<InputTrigger, Set<String>> binding : triggers.getBindings().entrySet())
@@ -343,21 +343,23 @@ public class BdvPromptsService {
 	// ======================== the box state & drawing ========================
 	//NB: the box state is touched from the EDT (input events and painting),
 	//    and possibly from client threads via showBox()/hideBox()
+	//NB: both _DrawingAction refer to name of an action because of which the box
+	//    shall be displayed/painted; both also work as flags to draw the box or not
 	private static final String NO_ACTIVE_ACTION = "IndicatorOfNoAction";
-	private volatile String activeAction = NO_ACTIVE_ACTION; //gets a different value while user drags
 	private volatile boolean isBoxShownProgrammatically = false;
+	private volatile String userDrawingAction = NO_ACTIVE_ACTION; //gets a different value while user drags
+	private volatile String programmaticDrawingAction = NO_ACTIVE_ACTION; //whose appearance the programmatic box takes
 	private volatile int sx, sy, ex, ey; //box corners as the user dragged them (not normalized)
 	private volatile int canvasWidth, canvasHeight;
-	private volatile String programmaticBoxAction = NO_ACTIVE_ACTION; //whose appearance the programmatic box takes
 	private final int[] lastBox = new int[4]; //see addRepeatAction() and BoxDraw.end()
 
 	/** @return true while the user is dragging a box */
-	public boolean isDragging() { return activeAction != NO_ACTIVE_ACTION; }
+	public boolean isDragging() { return userDrawingAction != NO_ACTIVE_ACTION; }
 
 	/** Aborts the drag in progress (if any) without notifying anybody. */
 	public void cancelDrag() {
-		if (activeAction == NO_ACTIVE_ACTION) return;
-		activeAction = NO_ACTIVE_ACTION;
+		if (userDrawingAction == NO_ACTIVE_ACTION) return;
+		userDrawingAction = NO_ACTIVE_ACTION;
 		requestRepaint();
 	}
 
@@ -390,7 +392,7 @@ public class BdvPromptsService {
 		lastBox[1] = sy = Math.min(y0, y1);
 		lastBox[2] = ex = Math.max(x0, x1);
 		lastBox[3] = ey = Math.max(y0, y1);
-		programmaticBoxAction = useStyleOfThisAction;
+		programmaticDrawingAction = useStyleOfThisAction;
 		isBoxShownProgrammatically = true;
 		requestRepaint();
 	}
@@ -407,9 +409,9 @@ public class BdvPromptsService {
 	private final OverlayRenderer overlay = new OverlayRenderer() {
 		@Override
 		public void drawOverlays(final Graphics g) {
-			final String dragAction = activeAction; // a local (unmodifiable) copy to render consistently
+			final String dragAction = userDrawingAction; // a local (unmodifiable) copy to render consistently
 			if (dragAction == NO_ACTIVE_ACTION && !isBoxShownProgrammatically) return;
-			final String action = dragAction != NO_ACTIVE_ACTION ? dragAction : programmaticBoxAction;
+			final String action = dragAction != NO_ACTIVE_ACTION ? dragAction : programmaticDrawingAction;
 
 			final Graphics2D g2 = (Graphics2D) g;
 			final Stroke origStroke = g2.getStroke();
@@ -456,19 +458,19 @@ public class BdvPromptsService {
 
 		@Override
 		public void init(final int x, final int y) {
-			if (!enabled || activeAction != NO_ACTIVE_ACTION) return;
+			if (!enabled || userDrawingAction != NO_ACTIVE_ACTION) return;
 			if (!isAnyGuardOpen(action)) return;
 
 			startedWithKeysHeld = pressedKeysMonitor.isAnyKeyPressed();
 			isBoxShownProgrammatically = false;
 			sx = x; sy = y; ex = x; ey = y;
-			activeAction = action;
+			userDrawingAction = action;
 			requestRepaint();
 		}
 
 		@Override
 		public void drag(final int x, final int y) {
-			if (!action.equals(activeAction)) return;
+			if (!action.equals(userDrawingAction)) return;
 			ex = x; ey = y;
 			requestRepaint();
 			if (startedWithKeysHeld && !pressedKeysMonitor.isAnyKeyPressed()) end(x, y);
@@ -476,9 +478,9 @@ public class BdvPromptsService {
 
 		@Override
 		public void end(final int x, final int y) {
-			if (!action.equals(activeAction)) return; //TODO these are super expensive operations!!!
+			if (!action.equals(userDrawingAction)) return; //TODO these are super expensive operations!!!
 			ex = x; ey = y;
-			activeAction = NO_ACTIVE_ACTION;
+			userDrawingAction = NO_ACTIVE_ACTION;
 			requestRepaint();
 
 			//normalize and clamp into the canvas

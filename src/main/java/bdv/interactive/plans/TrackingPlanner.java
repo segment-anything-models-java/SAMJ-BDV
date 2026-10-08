@@ -26,6 +26,33 @@ import java.util.List;
 public final class TrackingPlanner {
 	private TrackingPlanner() {}
 
+	/**
+	 * Similar to {@link #plan(BdvPromptsEvent, LabelPresenceIndicator, double, int)} but not
+	 * checking any real images/pixels. Instead, it just does the given number of steps while
+	 * moving the prompt one screen pixel to the right.
+	 */
+	public static List<BdvPromptsEvent> plan(final BdvPromptsEvent initialEvent,
+	                                         final double step, final int doThisNumOfSlices) {
+		final List<BdvPromptsEvent> plan = new ArrayList<>();
+		final SlicingViews slicer = new SlicingViews(initialEvent.getGlobalToScreenTransform());
+
+		BdvPromptsEvent prevEvent = initialEvent;
+
+		for (int slice = 0; slice < doThisNumOfSlices; ++slice) {
+			final BdvPromptsEvent examinedEvent = slice == 0 ? initialEvent
+					: prevEvent.withView( slicer.sameViewShiftedBy(slice * step) );
+
+			if (slice > 0) {
+				//move and resize the box by how much the label's bounding box has changed
+				final int[] box = prevEvent.asXYXY();
+				prevEvent = examinedEvent.withBox(box[0] + 1, box[1], box[2] + 1, box[3]);
+			}
+			plan.add(prevEvent);
+		}
+
+		return plan;
+	}
+
 	/** Tells if the tracked object is present at a position given in global coordinates. */
 	public interface LabelPresenceIndicator {
 		/** Called once before every slice is examined, e.g. to refresh some caches. */

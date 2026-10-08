@@ -1,7 +1,6 @@
 package bdv.interactive.plans.helpers;
 
 import bdv.interactive.plans.SeedsUtils;
-import bdv.interactive.prompts.BdvPrompts;
 import bdv.tools.brightness.ConverterSetup;
 //import net.imagej.legacy.LegacyService;
 import net.imglib2.RandomAccessibleInterval;
@@ -18,7 +17,7 @@ import org.scijava.script.ScriptService;
 import java.io.File;
 import java.io.StringReader;
 
-public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> implements BdvPrompts.SeedsFromPromptCreator<T> {
+public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> {
 
 	final ScriptService scriptService;
 	final ModuleService moduleService;
@@ -43,17 +42,16 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 		this.scriptWaitingTimeMins = newWaitingTimeMins;
 	}
 
-	@Override
 	public RandomAccessibleInterval<T> establishBinarySeeds(RandomAccessibleInterval<T> inputImageToEstablishSeedsHere,
 	                                                        ConverterSetup considerThisIntensityScaling,
 	                                                        int bitFieldForRequestedDebugImages) {
 		final ImgPlusOverImgSharedMem extImg = ImgPlusOverImgSharedMem.cloneThis(inputImageToEstablishSeedsHere);
 
 		if ((bitFieldForRequestedDebugImages & SeedsUtils.SHOW_ORIGINAL_DBGIMAGE) > 0) {
-			ImageJFunctions.show(inputImageToEstablishSeedsHere, Prompts.getDebugImagesCounter() + ": source original image");
+			ImageJFunctions.show(inputImageToEstablishSeedsHere, SeedsUtils.getDebugImagesCounter() + ": source original image");
 		}
-		if ((bitFieldForRequestedDebugImages & Prompts.SHOW_SOURCE_DBGIMAGE) > 0) {
-			ImageJFunctions.show(extImg.floatTypeImg, Prompts.getDebugImagesCounter() + ": original image shared with the script");
+		if ((bitFieldForRequestedDebugImages & SeedsUtils.SHOW_SOURCE_DBGIMAGE) > 0) {
+			ImageJFunctions.show(extImg.floatTypeImg, SeedsUtils.getDebugImagesCounter() + ": original image shared with the script");
 		}
 
 		try {
@@ -75,8 +73,8 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 			module.run();
 			System.out.println("==> External script finished now.");
 
-			if ((bitFieldForRequestedDebugImages & Prompts.SHOW_THRESHOLDED_DBGIMAGE) > 0) {
-				ImageJFunctions.show(extImg.floatTypeImg, Prompts.getDebugImagesCounter() + ": seeds image obtained from the script");
+			if ((bitFieldForRequestedDebugImages & SeedsUtils.SHOW_THRESHOLDED_DBGIMAGE) > 0) {
+				ImageJFunctions.show(extImg.floatTypeImg, SeedsUtils.getDebugImagesCounter() + ": seeds image obtained from the script");
 			}
 		} catch (Exception e) {
 			throw new RuntimeException("Failed executing seeds script: "+e.getMessage(), e);

@@ -176,20 +176,24 @@ public class BdvPromptsService {
 	}
 
 	private void repeatLastBox(final String actionName) {
-		final int[] box = lastBox; //a local copy, the field may change meanwhile
-		if (!enabled || isDragging() || box == null) return;
+		if (!enabled || isDragging()) return;
 		if (!isAnyGuardOpen(actionName)) return;
 
-		final BdvPromptsEvent event = new BdvPromptsEvent(actionName, box[0], box[1], box[2], box[3],
+		final BdvPromptsEvent event = new BdvPromptsEvent(actionName,
+				lastBox[0], lastBox[1], lastBox[2], lastBox[3],
 				canvasWidth, canvasHeight,
 				viewer.state().getViewerTransform(), viewer.state().getCurrentTimepoint());
 		notifyListeners(actionName, event);
 	}
 
-	/** @return the last box as {x_min, y_min, x_max, y_max} (see {@link #addRepeatAction(String, String...)}), or null if none yet */
+	/**
+	 * Note that a memory to remember the last box is allocated at construction of this object,
+	 * so this method always returns something even when no drag (box) has occured so far.
+	 *
+	 * @return the last box as {x_min, y_min, x_max, y_max} (see {@link #addRepeatAction(String, String...)}).
+	 */
 	public int[] getLastBox() {
-		final int[] box = lastBox;
-		return box == null ? null : box.clone();
+		return lastBox.clone();
 	}
 
 	/** Uninstalls the action from BDV, together with all its listeners. */
@@ -290,9 +294,11 @@ public class BdvPromptsService {
 	}
 
 	// ======================== enabling & settings ========================
+	/** An indicator whether this whole service is enabled to operate. */
 	private volatile boolean enabled = true;
 
-	/** When disabled, the actions remain installed but no drag starts; a drag in progress is cancelled. */
+	/** When disabled, the actions remain installed, but they are not allowed to start,
+	 * and are not started. A drag in progress is canceled. */
 	public void setEnabled(final boolean enabled) {
 		this.enabled = enabled;
 		if (!enabled) cancelDrag();
@@ -348,7 +354,7 @@ public class BdvPromptsService {
 	private volatile int sx, sy, ex, ey; //box corners as the user dragged them (not normalized)
 	private volatile int canvasWidth, canvasHeight;
 	private volatile String programmaticBoxAction = NO_ACTIVE_ACTION; //whose appearance the programmatic box takes
-	private volatile int[] lastBox = null; //normalized {x0,y0,x1,y1}, see addRepeatAction()
+	private final int[] lastBox = new int[4]; //see addRepeatAction() and BoxDraw.end()
 
 	/** @return true while the user is dragging a box */
 	public boolean isDragging() { return activeAction != NO_ACTIVE_ACTION; }
@@ -373,11 +379,13 @@ public class BdvPromptsService {
 	 * Like {@link #showBox(int, int, int, int)}, but the box is drawn with the color and style
 	 * of the given action (see {@link #setBoxColor(String, Color)}, {@link #setBoxStyle(String, LineStyle, float)}).
 	 */
-	public void showBox(final String appearanceOfAction, final int x0, final int y0, final int x1, final int y1) {
+	public void showBox(final String useStyleOfThisAction, final int x0, final int y0, final int x1, final int y1) {
 		if (isDragging()) return;
-		sx = x0; sy = y0; ex = x1; ey = y1;
-		lastBox = new int[] {Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1)};
-		programmaticBoxAction = appearanceOfAction;
+		lastBox[0] = sx = Math.min(x0, x1);
+		lastBox[1] = sy = Math.min(y0, y1);
+		lastBox[2] = ex = Math.max(x0, x1);
+		lastBox[3] = ey = Math.max(y0, y1);
+		programmaticBoxAction = useStyleOfThisAction;
 		isBoxShownProgrammatically = true;
 		requestRepaint();
 	}
@@ -463,7 +471,7 @@ public class BdvPromptsService {
 
 		@Override
 		public void end(final int x, final int y) {
-			if (!action.equals(activeAction)) return;
+			if (!action.equals(activeAction)) return; //TODO these are super expensive operations!!!
 			ex = x; ey = y;
 			activeAction = NO_ACTIVE_ACTION;
 			requestRepaint();
@@ -475,7 +483,10 @@ public class BdvPromptsService {
 			final int y0 = clamp(Math.min(sy, ey), maxY), y1 = clamp(Math.max(sy, ey), maxY);
 			if (x1 - x0 + 1 < minimalBoxSize || y1 - y0 + 1 < minimalBoxSize) return;
 
-			lastBox = new int[] {x0, y0, x1, y1};
+			lastBox[0] = x0;
+			lastBox[1] = y0;
+			lastBox[2] = x1;
+			lastBox[3] = y1;
 			final BdvPromptsEvent event = new BdvPromptsEvent(action, x0, y0, x1, y1,
 					canvasWidth, canvasHeight,
 					viewer.state().getViewerTransform(), viewer.state().getCurrentTimepoint());

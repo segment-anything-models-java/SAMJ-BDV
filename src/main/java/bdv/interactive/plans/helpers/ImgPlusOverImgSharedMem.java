@@ -1,4 +1,4 @@
-package ai.nets.samj.util;
+package bdv.interactive.plans.helpers;
 
 import ij.ImagePlus;
 import ij.process.FloatProcessor;
@@ -6,6 +6,7 @@ import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 
@@ -41,7 +42,7 @@ public class ImgPlusOverImgSharedMem {
 	 */
 	public <T extends RealType<T>> ImgPlusOverImgSharedMem(final RandomAccessibleInterval<T> toBeClonedImg) {
 		this((Interval)toBeClonedImg);
-		Prompts.copyFromTo(toBeClonedImg, this.floatTypeImg);
+		LoopBuilder.setImages(toBeClonedImg, this.floatTypeImg).forEachPixel( (i, o) -> o.setReal(i.getRealDouble()) );
 	}
 
 	/**

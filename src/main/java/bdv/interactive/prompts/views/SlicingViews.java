@@ -2,7 +2,6 @@ package bdv.interactive.prompts.views;
 
 import bdv.viewer.ViewerPanel;
 import net.imglib2.realtransform.AffineTransform3D;
-import java.awt.Dimension;
 
 /**
  * This class is initiated on the current view and offers means to
@@ -16,17 +15,33 @@ import java.awt.Dimension;
  * the original/reference centre point).
  */
 public class SlicingViews {
+	/**
+	 * Creates the object from a live BDV.
+	 */
 	public SlicingViews(final ViewerPanel currentViewerPanel) {
-		resetView(currentViewerPanel);
+		resetView(currentViewerPanel.state().getViewerTransform());
+	}
+
+	/**
+	 * Creates the object from a given view (viewer transform) rather than from a live BDV,
+	 * which is useful when computing views off the BDV's event thread.
+	 */
+	public SlicingViews(final AffineTransform3D globalToScreen) {
+		resetView(globalToScreen);
 	}
 
 	public void resetView(final ViewerPanel currentViewerPanel) {
-		currentViewerPanel.getDisplayComponent().getSize(auxDimension);
-		screenCoord[0] = auxDimension.getWidth() / 2.0;
-		screenCoord[1] = auxDimension.getHeight() / 2.0;
-		screenCoord[2] = 0;
+		resetView(currentViewerPanel.state().getViewerTransform());
+	}
 
-		currentViewerPanel.state().getViewerTransform(globalToScreenT);
+	public void resetView(final AffineTransform3D globalToScreen) {
+		globalToScreenT.set(globalToScreen);
+
+		//NB: the viewing direction (in global coords) is the same everywhere for an affine transform,
+		//    so it's read at the screen origin
+		screenCoord[0] = 0;
+		screenCoord[1] = 0;
+		screenCoord[2] = 0;
 		globalToScreenT.applyInverse(globalCentre, screenCoord);
 
 		screenCoord[2] = 5.0; //sufficiently away from here - to read "more reliable" direction
@@ -49,7 +64,6 @@ public class SlicingViews {
 		lastUsedDelta = 0;
 	}
 
-	private final Dimension auxDimension = new Dimension();
 	private final double[] screenCoord = new double[3];
 	private final double[] globalCentre = new double[3];
 	private final double[] globalCentreShift = new double[3];

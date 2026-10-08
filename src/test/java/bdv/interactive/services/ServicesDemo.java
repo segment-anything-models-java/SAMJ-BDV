@@ -1,12 +1,20 @@
 package bdv.interactive.services;
 
 import ai.nets.samj.bdv.BdvPromptsActions;
+import bdv.interactive.plans.SeedsUtils;
+import bdv.interactive.plans.PlanUtils;
+import bdv.interactive.plans.SeedsPlanner;
+import bdv.interactive.plans.TrackingPlanner;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvHandle;
 import bdv.util.BdvStackSource;
+import bdv.viewer.Interpolation;
+import bdv.viewer.Source;
 import bdv.interactive.services.OriginalViewsService.CapturedView;
 import ij.ImageJ;
 import net.imglib2.Cursor;
+import net.imglib2.RandomAccess;
+import net.imglib2.RealLocalizable;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
@@ -18,7 +26,9 @@ import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
 import java.awt.Color;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Shows how the services are meant to be wired together; mimics the old
@@ -29,6 +39,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *   <li>ctrl+COMMA (BDV preferences, "Keymap" page) lists the actions in the keymap editor, where they can be re-mapped</li>
  *   <li>press D to toggle the guard of the "L" listener (simulating a GUI checkbox)</li>
  *   <li>ctrl I / ctrl J rotate to front / side view, ctrl K rotates back; ctrl N / ctrl M move one slice closer / further</li>
+ *   <li>hold J to drag a box in which seeds are found and prompted one by one; the seeds are pixels
+ *       above the lower end of the display range, so open the brightness dialog (S) and raise its
+ *       minimum to, e.g., 500 first (otherwise everything is foreground, touching the box border)</li>
+ *   <li>hold K to drag a box over a bright cube, which is then followed and prompted slice by slice</li>
  * </ul>
  */
 public class ServicesDemo {
@@ -99,6 +113,40 @@ public class ServicesDemo {
 			}
 		});
 
+		// --- J and K: a planner makes a plan (a list of events), the plan items go to an ordinary listener
+		final Source<UnsignedShortType> spimSource = bdvStackSource.getSources().get(0).getSpimSource();
+		final AtomicBoolean isPlanRunning = new AtomicBoolean(false);
+
+		//the consumer of the plan items, fetching (or re-using) the view image per item
+		final AtomicReference<BdvPromptsEvent> lastEvent = new AtomicReference<>();
+		final AtomicReference<CapturedView<FloatType>> lastEventCapturedView = new AtomicReference<>();
+
+		final BdvPromptsListener planItemConsumer = item -> {
+			final boolean isNewView = !item.hasSameViewAs(lastEvent.get());
+			if (isNewView) lastEventCapturedView.set(originalViewsService.getEventView(spimSource, new FloatType(), item, Interpolation.NLINEAR));
+			lastEvent.set(item);
+			report("plan item", item, lastEventCapturedView.get(), isNewView);
+		};
+
+		final SeedsPlanner.SeedsFinder seedsFinder = SeedsPlanner.contrastThresholdingSeeds(
+				convertedViewsService.getConverterSetup(), SeedsUtils.giveBitFlagForMildDebug());
+		//
+		bdvPromptsService.addListener(BdvPromptsActions.MULTI_PROMPT, () -> !isPlanRunning.get(), e -> {
+			final CapturedView<FloatType> view = originalViewsService.getEventView(spimSource, new FloatType(), e, Interpolation.NLINEAR);
+			final List<BdvPromptsEvent> plan = SeedsPlanner.plan(e, view.getImage(), seedsFinder);
+			System.out.println("J: " + plan.size() + " seed(s) found");
+			runPlan(plan, bdvPromptsService, planItemConsumer, isPlanRunning);
+		});
+
+
+		final TrackingPlanner.LabelPresenceIndicator brightPixels = new BrightPixelsIndicator(img, 500);
+		//
+		bdvPromptsService.addListener(BdvPromptsActions.TRACKING_PROMPT, () -> !isPlanRunning.get(), e -> {
+			final List<BdvPromptsEvent> plan = TrackingPlanner.plan(e, brightPixels, 1.0, 1000);
+			System.out.println("K: object found in " + plan.size() + " slice(s)");
+			runPlan(plan, bdvPromptsService, planItemConsumer, isPlanRunning);
+		});
+
 		// --- 'D' toggles the guard of the "L" module
 		final Behaviours b = new Behaviours(new InputTriggerConfig(), "bdv");
 		b.install(bdv.getTriggerbindings(), "demo");
@@ -106,6 +154,53 @@ public class ServicesDemo {
 			moduleEnabled.set(!moduleEnabled.get());
 			bdv.getViewerPanel().showMessage("'L' module enabled: " + moduleEnabled.get());
 		}, "toggle L module", "D");
+	}
+
+	/** The client's own "executor": off the EDT, so that the BDV shows every step. */
+	static void runPlan(final List<BdvPromptsEvent> plan, final BdvPromptsService service,
+	                    final BdvPromptsListener consumer, final AtomicBoolean isPlanRunning) {
+		if (plan.isEmpty()) return;
+		isPlanRunning.set(true);
+		new Thread(() -> {
+			try {
+				for (BdvPromptsEvent item : plan) {
+					PlanUtils.positionAndShowPromptAccordingToEvent(service, item);
+					consumer.onPromptEntered(item);
+					Thread.sleep(300); //just for the demo, to be able to follow it
+				}
+			} catch (InterruptedException e) {
+				//just stop
+			} finally {
+				service.hideBox();
+				isPlanRunning.set(false);
+			}
+		}, "demo plan runner").start();
+	}
+
+	/**
+	 * Demo stand-in for, e.g., a Labkit labeling: an object is "present" where the image is bright.
+	 * NB: the demo image is shown with the identity source transform, so global = pixel coordinates.
+	 */
+	static class BrightPixelsIndicator implements TrackingPlanner.LabelPresenceIndicator {
+		BrightPixelsIndicator(final Img<UnsignedShortType> img, final int threshold) {
+			this.img = img;
+			this.threshold = threshold;
+		}
+
+		private final Img<UnsignedShortType> img;
+		private final int threshold;
+		private RandomAccess<UnsignedShortType> ra;
+
+		@Override
+		public void prepareForQueryingSession() {
+			ra = Views.extendZero(img).randomAccess();
+		}
+
+		@Override
+		public boolean isPresent(final RealLocalizable globalPosition) {
+			for (int d = 0; d < 3; ++d) ra.setPosition(Math.round(globalPosition.getDoublePosition(d)), d);
+			return ra.get().get() > threshold;
+		}
 	}
 
 	static void report(final String what, final BdvPromptsEvent e,

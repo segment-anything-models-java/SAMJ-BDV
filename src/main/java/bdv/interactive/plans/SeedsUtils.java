@@ -1,4 +1,4 @@
-package ai.nets.samj.util;
+package bdv.interactive.plans;
 
 import bdv.tools.brightness.ConverterSetup;
 import net.imglib2.Cursor;
@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
-public class Prompts {
+public class SeedsUtils {
 	public static final int SHOW_NO_DBGIMAGES = 0;
 	public static final int SHOW_ORIGINAL_DBGIMAGE = 1;
 	public static final int SHOW_SOURCE_DBGIMAGE = 2;
@@ -45,10 +45,10 @@ public class Prompts {
 		return SHOW_DBGIMAGE_COUNTER;
 	}
 
-	public static int giveBitFlagForNoDebug() { return Prompts.SHOW_NO_DBGIMAGES; }
-	public static int giveBitFlagForSrcOnlyDebug() { return Prompts.SHOW_SOURCE_DBGIMAGE; }
-	public static int giveBitFlagForMildDebug() { return Prompts.SHOW_SOURCE_DBGIMAGE | Prompts.SHOW_THRESHOLDED_DBGIMAGE | Prompts.SHOW_COMPONENTS_DBGIMAGE | Prompts.SHOW_PROMPTS_DBGIMAGE; }
-	public static int giveBitFlagForFullDebug() { return 0xffffffff; }
+	public static int giveBitFlagForNoDebug()      { return SeedsUtils.SHOW_NO_DBGIMAGES; }
+	public static int giveBitFlagForSrcOnlyDebug() { return SeedsUtils.SHOW_SOURCE_DBGIMAGE; }
+	public static int giveBitFlagForMildDebug()    { return SeedsUtils.SHOW_SOURCE_DBGIMAGE | SeedsUtils.SHOW_THRESHOLDED_DBGIMAGE | SeedsUtils.SHOW_COMPONENTS_DBGIMAGE | SeedsUtils.SHOW_PROMPTS_DBGIMAGE; }
+	public static int giveBitFlagForFullDebug()    { return 0xffffffff; }
 
 	public static <T extends RealType<T> & NativeType<T>>
 	Img<T> createImgOfSameTypeAndSize(final RandomAccessibleInterval<T> templateImg) {

@@ -5,16 +5,16 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>42.0.0</version>
+		<version>45.1.0</version>
 		<relativePath />
 	</parent>
 
-	<groupId>ai.nets</groupId>
-	<artifactId>samj-BDV</artifactId>
-	<version>0.0.6-SNAPSHOT</version>
+	<groupId>sc.fiji</groupId>
+	<artifactId>bigdataviewer-prompts</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
 
-	<name>SAM network inside BigDataViewer</name>
-	<description>A BigDataVeiwer utilization for interactive segmentation using the SAM network</description>
+	<name>Prompting in BigDataViewer</name>
+	<description>A BigDataVeiwer utilization for 2D (2.5D) prompts and their processing</description>
 	<url>https://github.com/segment-anything-models-java/SAMJ-BDV</url>
 	<inceptionYear>2024</inceptionYear>
 	<organization>
@@ -23,8 +23,8 @@
 	</organization>
 	<licenses>
 		<license>
-			<name>Apache Software License, Version 2.0</name>
-			<url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<name>Simplified BSD License</name>
+			<url>https://opensource.org/licenses/BSD-2-Clause</url>
 			<distribution>repo</distribution>
 		</license>
 	</licenses>
@@ -34,13 +34,19 @@
 			<id>xulman</id>
 			<name>Vladimir Ulman</name>
 			<roles>
+				<role>founder</role>
+				<role>lead</role>
 				<role>developer</role>
+				<role>debugger</role>
+				<role>reviewer</role>
+				<role>support</role>
+				<role>maintainer</role>
 			</roles>
 		</developer>
 	</developers>
 	<contributors>
 		<contributor>
-			<name>none yet</name>
+			<name>Claude.AI</name>
 		</contributor>
 	</contributors>
 
@@ -67,25 +73,13 @@
 	</ciManagement>
 
 	<properties>
-		<package-name>ai.nets.samj</package-name>
-		<license.licenseName>apache_v2</license.licenseName>
-		<license.copyrightOwners>SAMJ developers.</license.copyrightOwners>
-		<license.projectName>Plugin to help image annotation with SAM-based Deep Learning models</license.projectName>
+		<package-name>org.bigdataviewer.prompts</package-name>
+		<license.licenseName>bsd_2</license.licenseName>
+		<license.copyrightOwners>BigDataViewer developers</license.copyrightOwners>
+		<license.projectName>A BigDataVeiwer utilization for 2D (2.5D) prompts and their processing</license.projectName>
 
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
-
-		<!-- FIXME: use release version of samj for reproducible builds. -->
-		<samj.version>0.0.3-SNAPSHOT</samj.version>
-
-		<!-- copied from labkit-ui pom.xml -->
-		<imglib2.version>7.1.0</imglib2.version>
-		<imglib2-realtransform.version>4.0.3</imglib2-realtransform.version>
-		<imglib2-roi.version>0.15.0</imglib2-roi.version>
-		<imglib2-cache.version>1.0.0-beta-18</imglib2-cache.version>
-		<imglib2-algorithm.version>0.15.3</imglib2-algorithm.version>
-		<bigdataviewer-core.version>10.6.0</bigdataviewer-core.version>
-		<bigdataviewer-vistools.version>1.0.0-beta-36</bigdataviewer-vistools.version>
 	</properties>
 
 	<repositories>
@@ -96,36 +90,19 @@
 	</repositories>
 
 	<dependencies>
-		<!-- TODO: should be test-only scope -->
-		<dependency>
-			<groupId>sc.fiji</groupId>
-			<artifactId>simplified-io</artifactId>
-			<version>1.0.3</version>
-		</dependency>
-
 		<dependency>
 			<groupId>sc.fiji</groupId>
 			<artifactId>bigdataviewer-core</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>sc.fiji</groupId>
-			<artifactId>bigdataviewer-vistools</artifactId>
-		</dependency>
 
+		<!-- these two explicitly, as long as fiji.sc isn't working... -->
+		<dependency>
+			<groupId>net.imagej</groupId>
+			<artifactId>imagej</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>net.imglib2</groupId>
 			<artifactId>imglib2-ij</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>sc.fiji</groupId>
-			<artifactId>fiji</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>ai.nets</groupId>
-			<artifactId>samj</artifactId>
-			<version>${samj.version}</version>
 		</dependency>
 	</dependencies>
 </project>

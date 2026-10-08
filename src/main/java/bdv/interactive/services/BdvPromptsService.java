@@ -60,7 +60,7 @@ import java.util.function.BooleanSupplier;
  * in progress at a time.
  * <p>
  * Besides the user-driven box, a box can be displayed programmatically via
- * {@link #showBox(int, int, int, int)} and {@link #hideBox()}, which is handy
+ * {@link #showBox(String, int, int, int, int)} and {@link #hideBox()}, which is handy
  * for "replaying" prompts (e.g. while walking through slices).
  * <p>
  * Listeners are called on the AWT Event Dispatch Thread.
@@ -385,15 +385,9 @@ public class BdvPromptsService {
 	/**
 	 * Displays a box (in screen pixel coordinates) on behalf of the client; this
 	 * has no relation to listeners. The box remains visible until {@link #hideBox()}
-	 * or until the user starts a new drag.
-	 */
-	public void showBox(final int x0, final int y0, final int x1, final int y1) {
-		showBox(NO_ACTIVE_ACTION, x0, y0, x1, y1);
-	}
-
-	/**
-	 * Like {@link #showBox(int, int, int, int)}, but the box is drawn with the color and style
-	 * of the given action (see {@link #setBoxColor(String, Color)}, {@link #setBoxStyle(String, LineStyle, float)}).
+	 * or until the user starts a new drag. The box is drawn with the color and style
+	 * of the given action (see {@link #setBoxColor(String, Color)},
+	 * {@link #setBoxStyle(String, LineStyle, float)}).
 	 */
 	public void showBox(final String usePromptStyleOfThisAction,
 	                    final int x0, final int y0, final int x1, final int y1) {

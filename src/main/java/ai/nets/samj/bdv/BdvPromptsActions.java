@@ -32,9 +32,9 @@ public class BdvPromptsActions {
 
 	/** Adds all the above actions, with their default triggers, to the service. */
 	public static void addAllTo(final BdvPromptsService service) {
-		service.addAction(PROMPT, PROMPT_KEYS);
-		service.addAction(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS);
-		service.addAction(MULTI_PROMPT, MULTI_PROMPT_KEYS);
+		service.addInsertPromptAction(PROMPT, PROMPT_KEYS);
+		service.addInsertPromptAction(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS);
+		service.addInsertPromptAction(MULTI_PROMPT, MULTI_PROMPT_KEYS);
 	}
 
 	@Plugin(type = CommandDescriptionProvider.class)

@@ -6,6 +6,7 @@ import bdv.ui.keymap.KeymapManager;
 import bdv.util.BdvHandle;
 import bdv.viewer.OverlayRenderer;
 import bdv.viewer.ViewerPanel;
+import org.scijava.ui.behaviour.Behaviour;
 import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.InputTrigger;
@@ -38,7 +39,7 @@ import java.util.function.BooleanSupplier;
  * once the dragging is over.
  * <p>
  * The drags are regular, <b>named</b> ui-behaviour {@link DragBehaviour}s, one per
- * <i>action</i> created with {@link #addAction(String, String...)}. Their triggers
+ * <i>action</i> created with {@link #addInsertPromptAction(String, String...)}. Their triggers
  * come from the BDV's keymap ({@link BdvHandle#getKeymapManager()}, context
  * {@value KeyConfigContexts#BIGDATAVIEWER}): the provided default triggers are used
  * only if the keymap doesn't know the action yet, and a user's re-mapping done in the
@@ -50,7 +51,7 @@ import java.util.function.BooleanSupplier;
  * a {@link BooleanSupplier}: when a drag of an action finishes, only the listeners
  * of that action whose guard currently returns true are notified, e.g.
  * <pre>
- *   bdvPromptsService.addAction("samj prompt", "L");
+ *   bdvPromptsService.addInsertPromptAction("samj prompt", "L");
  *   bdvPromptsService.addListener("samj prompt", myButton::isEnabled, e -&gt; doSomething(e));
  * </pre>
  * A drag is not even started (no box is displayed) unless at least one guard
@@ -137,21 +138,14 @@ public class BdvPromptsService {
 
 	// ======================== actions ========================
 	/**
-	 * Creates a new box prompting action, as a named drag behaviour. The actual trigger(s)
-	 * are taken from the keymap if it knows this action; otherwise the provided default
-	 * triggers are used (and recorded into the keymap). Triggers follow the ui-behaviour
-	 * syntax, e.g. "L", "shift L", "ctrl button1". Adding an existing action does nothing.
+	 * Creates a new box prompting action, as a named drag behaviour.
+	 * Triggers follow the ui-behaviour syntax, e.g. "L", "shift L", "ctrl button1".
+	 * Adding an existing action does nothing.
 	 *
 	 * @param actionName unique name of the action, as it appears in the keymap editor
 	 */
-	public synchronized void addAction(final String actionName, final String... defaultTriggers) {
-		if (listeners.containsKey(actionName)) {
-			System.out.println("Silently skipping registration of an action " + actionName
-					+ " with triggers: "+ Arrays.toString(defaultTriggers));
-			return;
-		}
-		listeners.put(actionName, new CopyOnWriteArrayList<>());
-		behaviours.behaviour(new BoxDrag(actionName), actionName, defaultTriggers);
+	public synchronized void addInsertPromptAction(final String actionName, final String... defaultTriggers) {
+		addAction(new BoxDrag(actionName), actionName, defaultTriggers);
 	}
 
 	/**
@@ -184,6 +178,23 @@ public class BdvPromptsService {
 				canvasWidth, canvasHeight,
 				viewer.state().getViewerTransform(), viewer.state().getCurrentTimepoint());
 		notifyListeners(actionName, event);
+	}
+
+	/**
+	 * Installs the action. The actual trigger(s) are taken from the keymap if it knows this
+	 * action; otherwise the provided default triggers are used (and recorded into the keymap).
+	 *
+	 * This is a common code and is operated from public add__Action() methods from this class.
+	 * The callers shall be synchronized methods already.
+	 */
+	private void addAction(final Behaviour daAction, final String actionName, final String... defaultTriggers) {
+		if (listeners.containsKey(actionName)) {
+			System.out.println("Silently skipping registration of an action " + actionName
+					  + " with triggers: "+ Arrays.toString(defaultTriggers));
+			return;
+		}
+		listeners.put(actionName, new CopyOnWriteArrayList<>());
+		behaviours.behaviour(daAction, actionName, defaultTriggers);
 	}
 
 	/**
@@ -245,14 +256,14 @@ public class BdvPromptsService {
 	 * guard returns true at the moment the drag finishes. The same listener can be
 	 * registered for several actions.
 	 *
-	 * @throws IllegalArgumentException if the action has not been {@link #addAction(String, String...) added}
+	 * @throws IllegalArgumentException if the action has not been {@link #addInsertPromptAction(String, String...) added}
 	 */
 	public void addListener(final String actionName,
 	                        final BooleanSupplier guard,
 	                        final BdvPromptsListener listener) {
 		final List<GuardedListener> list = listeners.get(actionName);
 		if (list == null)
-			throw new IllegalArgumentException("Unknown action '" + actionName + "', addAction() it first.");
+			throw new IllegalArgumentException("Unknown action '" + actionName + "', add*Action() it first.");
 		list.add(new GuardedListener(guard, listener));
 	}
 

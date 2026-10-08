@@ -150,28 +150,37 @@ public class BdvPromptsService {
 
 	/**
 	 * Creates a new "repeat the last box" action, as a named click behaviour (keymap-driven,
-	 * just like {@link #addInsertPromptAction(String, String...)}). When triggered, its listeners receive
-	 * a {@link BdvPromptsEvent} with the <i>last box</i> (in screen coordinates) and with
-	 * the <i>current</i> view geometry (viewer transform, timepoint, canvas size).
+	 * just like {@link #addInsertPromptAction(String, String...)}).
+	 *
+	 * The new action first checks if this service is enabled, no dragging is going on,
+	 * and there are enabled listeners for this actionName. It then calls the user-provided
+	 * call back, and then re-uses the last prompt (last box) position, requests to display
+	 * it under the style of the provided action, and its listeners receive a {@link BdvPromptsEvent}
+	 * with the <i>last box</i> (in screen coordinates) and with the <i>current</i> view geometry
+	 * (viewer transform, timepoint, canvas size).
+	 *
 	 * The last box is the last one finished by the user (with any action), or the last one
-	 * displayed with {@link #showBox(int, int, int, int)}, whichever came later.
+	 * displayed with {@link #showBox(String, int, int, int, int)}, whichever came later.
 	 * Nothing happens if there's been no box yet, or no guard of this action is open.
 	 *
 	 * @param actionName unique name of the action, as it appears in the keymap editor
 	 */
-	public synchronized void addRepeatAction(final String actionName, final String... defaultTriggers) {
-		addAction((ClickBehaviour) (x, y) -> repeatLastBox(actionName), actionName, defaultTriggers);
-	}
+	public synchronized void addRepeatAction(final Runnable clientCallBack,
+	                                         final String actionName, final String... defaultTriggers) {
+		addAction((ClickBehaviour) (x, y) -> {
+					if (!enabled || isDragging()) return;
+					if (!isAnyGuardOpen(actionName)) return;
 
-	private void repeatLastBox(final String actionName) {
-		if (!enabled || isDragging()) return;
-		if (!isAnyGuardOpen(actionName)) return;
+					clientCallBack.run();
+					showBox(actionName, lastBox[0], lastBox[1], lastBox[2], lastBox[3]);
 
-		final BdvPromptsEvent event = new BdvPromptsEvent(actionName,
-				lastBox[0], lastBox[1], lastBox[2], lastBox[3],
-				canvasWidth, canvasHeight,
-				viewer.state().getViewerTransform(), viewer.state().getCurrentTimepoint());
-		notifyListeners(actionName, event);
+					final BdvPromptsEvent event = new BdvPromptsEvent(actionName,
+							lastBox[0], lastBox[1], lastBox[2], lastBox[3],
+							canvasWidth, canvasHeight,
+							viewer.state().getViewerTransform(), viewer.state().getCurrentTimepoint());
+					notifyListeners(actionName, event);
+				},
+				actionName, defaultTriggers);
 	}
 
 	/**
@@ -367,7 +376,7 @@ public class BdvPromptsService {
 	 * Note that a memory to remember the last box is allocated at construction of this object,
 	 * so this method always returns something even when no drag (box) has occured so far.
 	 *
-	 * @return the last box as {x_min, y_min, x_max, y_max} (see {@link #addRepeatAction(String, String...)}).
+	 * @return the last box as {x_min, y_min, x_max, y_max}.
 	 */
 	public int[] getLastBox() {
 		return lastBox.clone();

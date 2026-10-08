@@ -22,6 +22,9 @@ import java.awt.Graphics2D;
 import java.awt.Stroke;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseMotionListener;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -103,6 +106,7 @@ public class BdvPromptsService {
 		canvasHeight = viewer.getDisplay().getHeight();
 		viewer.getDisplay().overlays().add(overlay);
 		viewer.getDisplayComponent().addKeyListener(pressedKeysMonitor);
+		viewer.getDisplayComponent().addMouseMotionListener(mouseMovedMonitor);
 	}
 
 	private final BdvHandle bdv;
@@ -133,6 +137,7 @@ public class BdvPromptsService {
 		listeners.clear();
 		viewer.getDisplay().overlays().remove(overlay);
 		viewer.getDisplayComponent().removeKeyListener(pressedKeysMonitor);
+		viewer.getDisplayComponent().removeMouseMotionListener(mouseMovedMonitor);
 		requestRepaint();
 	}
 
@@ -168,7 +173,7 @@ public class BdvPromptsService {
 	public synchronized void addRepeatAction(final Runnable clientCallBack,
 	                                         final String actionName, final String... defaultTriggers) {
 		addAction((ClickBehaviour) (x, y) -> {
-					if (!enabled || isDragging()) return;
+					if (!enabled || isDragging() || isProgrammaticEnabled()) return;
 					if (!isAnyGuardOpen(actionName)) return;
 
 					clientCallBack.run();
@@ -365,6 +370,8 @@ public class BdvPromptsService {
 	/** @return true while the user is dragging a box */
 	public boolean isDragging() { return userDrawingAction != NO_ACTIVE_ACTION; }
 
+	public boolean isProgrammaticEnabled() { return programmaticDrawingAction != NO_ACTIVE_ACTION; }
+
 	/** Aborts the drag in progress (if any) without notifying anybody. */
 	public void cancelDrag() {
 		if (userDrawingAction == NO_ACTIVE_ACTION) return;
@@ -391,7 +398,7 @@ public class BdvPromptsService {
 	 */
 	public void showBox(final String usePromptStyleOfThisAction,
 	                    final int x0, final int y0, final int x1, final int y1) {
-		if (isDragging()) return;
+		if (isDragging() || isProgrammaticEnabled()) return;
 		lastBox[0] = sx = Math.min(x0, x1);
 		lastBox[1] = sy = Math.min(y0, y1);
 		lastBox[2] = ex = Math.max(x0, x1);
@@ -450,6 +457,11 @@ public class BdvPromptsService {
 		public void keyReleased(final KeyEvent e) { pressed.remove(e.getKeyCode()); }
 		boolean isAnyKeyPressed() { return !pressed.isEmpty(); }
 	}
+
+	private final MouseMotionListener mouseMovedMonitor = new MouseMotionAdapter() {
+		@Override
+		public void mouseMoved(final MouseEvent e) { programmaticDrawingAction = NO_ACTIVE_ACTION; }
+	};
 
 	private class BoxDrag implements DragBehaviour {
 		BoxDrag(final String actionName) {

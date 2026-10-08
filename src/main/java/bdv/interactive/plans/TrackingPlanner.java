@@ -1,6 +1,6 @@
 package bdv.interactive.plans;
 
-import bdv.interactive.prompts.views.SlicingViews;
+import bdv.interactive.views.SlicingViews;
 import bdv.interactive.services.BdvPromptsEvent;
 import net.imglib2.RealLocalizable;
 import net.imglib2.RealPoint;

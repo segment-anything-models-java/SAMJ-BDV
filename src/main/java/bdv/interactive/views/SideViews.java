@@ -1,4 +1,4 @@
-package bdv.interactive.prompts.views;
+package bdv.interactive.views;
 
 import bdv.viewer.ViewerPanel;
 import bdv.viewer.animate.AbstractTransformAnimator;

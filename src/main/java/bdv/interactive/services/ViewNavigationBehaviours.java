@@ -2,8 +2,8 @@ package bdv.interactive.services;
 
 import bdv.KeyConfigContexts;
 import bdv.KeyConfigScopes;
-import bdv.interactive.prompts.views.SideViews;
-import bdv.interactive.prompts.views.SlicingViews;
+import bdv.interactive.views.SideViews;
+import bdv.interactive.views.SlicingViews;
 import bdv.ui.keymap.Keymap;
 import bdv.ui.keymap.KeymapManager;
 import bdv.util.BdvHandle;

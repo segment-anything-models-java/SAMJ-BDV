@@ -1,5 +1,6 @@
-package ai.nets.samj.util;
+package bdv.interactive.plans.helpers;
 
+import bdv.interactive.plans.SeedsUtils;
 import bdv.interactive.prompts.BdvPrompts;
 import bdv.tools.brightness.ConverterSetup;
 //import net.imagej.legacy.LegacyService;
@@ -48,7 +49,7 @@ public class MultiPromptsWithScript <T extends RealType<T> & NativeType<T>> impl
 	                                                        int bitFieldForRequestedDebugImages) {
 		final ImgPlusOverImgSharedMem extImg = ImgPlusOverImgSharedMem.cloneThis(inputImageToEstablishSeedsHere);
 
-		if ((bitFieldForRequestedDebugImages & Prompts.SHOW_ORIGINAL_DBGIMAGE) > 0) {
+		if ((bitFieldForRequestedDebugImages & SeedsUtils.SHOW_ORIGINAL_DBGIMAGE) > 0) {
 			ImageJFunctions.show(inputImageToEstablishSeedsHere, Prompts.getDebugImagesCounter() + ": source original image");
 		}
 		if ((bitFieldForRequestedDebugImages & Prompts.SHOW_SOURCE_DBGIMAGE) > 0) {

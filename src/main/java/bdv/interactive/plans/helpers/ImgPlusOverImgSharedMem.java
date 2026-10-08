@@ -1,5 +1,6 @@
-package ai.nets.samj.util;
+package bdv.interactive.plans.helpers;
 
+import bdv.interactive.plans.Prompts;
 import ij.ImagePlus;
 import ij.process.FloatProcessor;
 import net.imglib2.Interval;

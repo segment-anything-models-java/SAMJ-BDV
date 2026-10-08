@@ -25,13 +25,23 @@ public final class BdvPromptsEvent {
 	                final int minX, final int minY, final int maxX, final int maxY,
 	                final int canvasWidth, final int canvasHeight,
 	                final AffineTransform3D globalToScreen, final int timepoint) {
+		// "author" of the event
 		this.actionName = actionName;
+
+		// which prompt did the author created
 		this.minX = minX;
 		this.minY = minY;
 		this.maxX = maxX;
 		this.maxY = maxY;
+
+		// what we were looking at expressed as the configuration, not as
+		// the content itself (this would need to be fetched, e.g., from viewServices)
+		//
+		// the window size
 		this.canvasWidth = canvasWidth;
 		this.canvasHeight = canvasHeight;
+		//
+		// the spatial and temporal "view configuration"
 		this.globalToScreen = globalToScreen.copy();
 		this.timepoint = timepoint;
 	}

@@ -24,6 +24,9 @@ public class BdvPromptsActions {
 	public static final String PROMPT = "rectangle prompt on original view";
 	public static final String[] PROMPT_KEYS = new String[] { "L" };
 
+	public static final String REPEAT_PROMPT = "repeat the same prompt on original view";
+	public static final String[] REPEAT_PROMPT_KEYS = new String[] { "ctrl L" };
+
 	public static final String PROMPT_CONTRAST = "rectangle prompt on contrast-adjusted view";
 	public static final String[] PROMPT_CONTRAST_KEYS = new String[] { "shift L" };
 
@@ -32,9 +35,10 @@ public class BdvPromptsActions {
 
 	/** Adds all the above actions, with their default triggers, to the service. */
 	public static void addAllTo(final BdvPromptsService service) {
-		service.addAction(PROMPT, PROMPT_KEYS);
-		service.addAction(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS);
-		service.addAction(MULTI_PROMPT, MULTI_PROMPT_KEYS);
+		service.addInsertPromptAction(PROMPT, PROMPT_KEYS);
+		service.addInsertPromptAction(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS);
+		service.addInsertPromptAction(MULTI_PROMPT, MULTI_PROMPT_KEYS);
+		service.addRepeatAction(() -> {}, REPEAT_PROMPT, REPEAT_PROMPT_KEYS);
 	}
 
 	@Plugin(type = CommandDescriptionProvider.class)

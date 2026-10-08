@@ -197,16 +197,6 @@ public class BdvPromptsService {
 		behaviours.behaviour(daAction, actionName, defaultTriggers);
 	}
 
-	/**
-	 * Note that a memory to remember the last box is allocated at construction of this object,
-	 * so this method always returns something even when no drag (box) has occured so far.
-	 *
-	 * @return the last box as {x_min, y_min, x_max, y_max} (see {@link #addRepeatAction(String, String...)}).
-	 */
-	public int[] getLastBox() {
-		return lastBox.clone();
-	}
-
 	/** Uninstalls the action from BDV, together with all its listeners. */
 	public synchronized void removeAction(final String actionName) {
 		if (listeners.remove(actionName) == null) {
@@ -375,6 +365,16 @@ public class BdvPromptsService {
 		if (activeAction == NO_ACTIVE_ACTION) return;
 		activeAction = NO_ACTIVE_ACTION;
 		requestRepaint();
+	}
+
+	/**
+	 * Note that a memory to remember the last box is allocated at construction of this object,
+	 * so this method always returns something even when no drag (box) has occured so far.
+	 *
+	 * @return the last box as {x_min, y_min, x_max, y_max} (see {@link #addRepeatAction(String, String...)}).
+	 */
+	public int[] getLastBox() {
+		return lastBox.clone();
 	}
 
 	/**

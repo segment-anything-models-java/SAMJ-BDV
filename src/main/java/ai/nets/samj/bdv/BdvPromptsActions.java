@@ -33,11 +33,15 @@ public class BdvPromptsActions {
 	public static final String MULTI_PROMPT = "rectangle multi-prompt on original view";
 	public static final String[] MULTI_PROMPT_KEYS = new String[] { "J" };
 
+	public static final String TRACKING_PROMPT = "rectangle prompt tracked through slices";
+	public static final String[] TRACKING_PROMPT_KEYS = new String[] { "K" };
+
 	/** Adds all the above actions, with their default triggers, to the service. */
 	public static void addAllTo(final BdvPromptsService service) {
 		service.addInsertPromptAction(PROMPT, PROMPT_KEYS);
 		service.addInsertPromptAction(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS);
 		service.addInsertPromptAction(MULTI_PROMPT, MULTI_PROMPT_KEYS);
+		service.addInsertPromptAction(TRACKING_PROMPT, TRACKING_PROMPT_KEYS);
 		service.addRepeatAction(() -> {}, REPEAT_PROMPT, REPEAT_PROMPT_KEYS);
 	}
 
@@ -51,10 +55,14 @@ public class BdvPromptsActions {
 		public void getCommandDescriptions(final CommandDescriptions descriptions) {
 			descriptions.add(PROMPT, PROMPT_KEYS,
 					  "To create a box on original data, hold the key, keep holding it and move the mouse, release the key eventually.");
+			descriptions.add(REPEAT_PROMPT, REPEAT_PROMPT_KEYS,
+					  "Repeat the last created box on original data.");
 			descriptions.add(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS,
 					  "To create a box on contrast-adjusted data, hold the key, keep holding it and move the mouse, release the key eventually.");
 			descriptions.add(MULTI_PROMPT, MULTI_PROMPT_KEYS,
 					  "Drag a box in which seeds are detected and processed iteratively as separate prompts.");
+			descriptions.add(TRACKING_PROMPT, TRACKING_PROMPT_KEYS,
+					  "Drag a box around an object, which is then followed and prompted slice by slice for as long as it is found.");
 		}
 	}
 }

@@ -364,7 +364,7 @@ public class BdvPromptsService {
 	private volatile String programmaticDrawingAction = NO_ACTIVE_ACTION; //whose appearance the programmatic box takes
 
 	private volatile int sx, sy, ex, ey; //box corners as the user dragged them (not normalized)
-	private final int[] lastBox = new int[4]; //see addRepeatAction() and BoxDraw.end()
+	private final int[] lastBox = new int[] {0,0, 20,20}; //assuming now window is smaller than 20x20... uff
 	private volatile int canvasWidth, canvasHeight;
 
 	/** @return true while the user is dragging a box */
@@ -398,7 +398,7 @@ public class BdvPromptsService {
 	 */
 	public void showBox(final String usePromptStyleOfThisAction,
 	                    final int x0, final int y0, final int x1, final int y1) {
-		if (isDragging() || isProgrammaticEnabled()) return;
+		if (isDragging()) return;
 		lastBox[0] = sx = Math.min(x0, x1);
 		lastBox[1] = sy = Math.min(y0, y1);
 		lastBox[2] = ex = Math.max(x0, x1);
@@ -485,7 +485,7 @@ public class BdvPromptsService {
 
 		@Override
 		public void drag(final int x, final int y) {
-			if (!action.equals(userDrawingAction)) return;
+			if (!action.equals(userDrawingAction)) return; //NB: notice the assignment in the init() -> the check is fast
 			ex = x; ey = y;
 			requestRepaint();
 			if (startedWithKeysHeld && !pressedKeysMonitor.isAnyKeyPressed()) end(x, y);
@@ -493,7 +493,7 @@ public class BdvPromptsService {
 
 		@Override
 		public void end(final int x, final int y) {
-			if (!action.equals(userDrawingAction)) return; //TODO these are super expensive operations!!!
+			if (!action.equals(userDrawingAction)) return;
 			ex = x; ey = y;
 			userDrawingAction = NO_ACTIVE_ACTION;
 			requestRepaint();

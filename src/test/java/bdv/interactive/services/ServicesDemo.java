@@ -1,7 +1,8 @@
 package bdv.interactive.services;
 
-import ai.nets.samj.bdv.BdvPromptsActions;
+import bdv.interactive.behaviours.BdvPromptsBehaviours;
 import bdv.interactive.plans.SeedsUtils;
+import bdv.interactive.plans.PlanReviewer;
 import bdv.interactive.plans.PlanUtils;
 import bdv.interactive.plans.SeedsPlanner;
 import bdv.interactive.plans.TrackingPlanner;
@@ -25,6 +26,7 @@ import org.scijava.ui.behaviour.ClickBehaviour;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
 import org.scijava.ui.behaviour.util.Behaviours;
 
+import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -43,6 +45,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *       above the lower end of the display range, so open the brightness dialog (S) and raise its
  *       minimum to, e.g., 500 first (otherwise everything is foreground, touching the box border)</li>
  *   <li>hold K to drag a box over a bright cube, which is then followed and prompted slice by slice</li>
+ *   <li>both J and K first open a dialog to review the plan; "Proceed" executes it, "Cancel" drops it</li>
  * </ul>
  */
 public class ServicesDemo {
@@ -65,20 +68,16 @@ public class ServicesDemo {
 		final OriginalViewsService originalViewsService = new OriginalViewsService(bdv);
 		final ConvertedViewsService convertedViewsService = new ConvertedViewsService(bdv, bdvStackSource.getSources().get(0));
 
-		// --- extra 3D navigation: ctrl I/J/K side views, ctrl N/M slicing (also keymap-driven)
-		new ViewNavigationBehaviours(bdv).addAllActions();
-
 		// --- named actions; triggers come from BDV's keymap (defaults if unknown there)
-		BdvPromptsActions.addAllTo(bdvPromptsService);
-		bdvPromptsService.setBoxColor(BdvPromptsActions.PROMPT_CONTRAST, Color.MAGENTA);
-		bdvPromptsService.setBoxStyle(BdvPromptsActions.PROMPT, BdvPromptsService.LineStyle.DASHED, 2.0f);
-		bdvPromptsService.setBoxStyle(BdvPromptsActions.REPEAT_PROMPT, BdvPromptsService.LineStyle.DASHED, 2.0f);
+		BdvPromptsBehaviours.addPromptActionsTo(bdvPromptsService);
+		// --- extra 3D navigation: ctrl I/J/K side views, ctrl N/M slicing
+		BdvPromptsBehaviours.addNavigationActionsTo(bdvPromptsService);
 
 		// --- a "module" that works on original pixels, and caches its view image
 		final AtomicBoolean moduleEnabled = new AtomicBoolean(true);
 		//NB: -1 is never a valid counter value, so the very first prompt always captures a view
 		final long[] myChangeCounters = new long[] {-1, -1};
-		bdvPromptsService.addListener(BdvPromptsActions.PROMPT, moduleEnabled::get, e -> {
+		bdvPromptsService.addListener(BdvPromptsBehaviours.PROMPT, moduleEnabled::get, e -> {
 			final boolean isNewView = originalViewsService.hasChangedSince(myChangeCounters[0]);
 			if (isNewView) {
 				myChangeCounters[0] = originalViewsService.getChangeCounter();
@@ -90,7 +89,8 @@ public class ServicesDemo {
 				System.out.println("No new original view");
 			}
 		});
-		bdvPromptsService.addListener(BdvPromptsActions.REPEAT_PROMPT, moduleEnabled::get, e -> {
+
+		final BdvPromptsListener repeatEventHandler = e -> {
 			final boolean isNewView = originalViewsService.hasChangedSince(myChangeCounters[0]);
 			if (isNewView) {
 				myChangeCounters[0] = originalViewsService.getChangeCounter();
@@ -98,10 +98,13 @@ public class ServicesDemo {
 			} else {
 				System.out.println("REPEAT: No new original view");
 			}
-		});
+		};
+		bdvPromptsService.addListener(BdvPromptsBehaviours.REPEAT_PROMPT_HERE, moduleEnabled::get, repeatEventHandler);
+		bdvPromptsService.addListener(BdvPromptsBehaviours.REPEAT_PROMPT_NEARER_SLICE, moduleEnabled::get, repeatEventHandler);
+		bdvPromptsService.addListener(BdvPromptsBehaviours.REPEAT_PROMPT_FURTHER_SLICE, moduleEnabled::get, repeatEventHandler);
 
 		// --- a "module" that works on contrast-adjusted pixels
-		bdvPromptsService.addListener(BdvPromptsActions.PROMPT_CONTRAST, e -> {
+		bdvPromptsService.addListener(BdvPromptsBehaviours.PROMPT_CONTRAST, e -> {
 			final boolean isNewView = convertedViewsService.hasChangedSince(myChangeCounters[1]);
 			if (isNewView) {
 				myChangeCounters[1] = convertedViewsService.getChangeCounter();
@@ -131,20 +134,20 @@ public class ServicesDemo {
 		final SeedsPlanner.SeedsFinder seedsFinder = SeedsPlanner.contrastThresholdingSeeds(
 				convertedViewsService.getConverterSetup(), SeedsUtils.giveBitFlagForMildDebug());
 		//
-		bdvPromptsService.addListener(BdvPromptsActions.MULTI_PROMPT, () -> !isPlanRunning.get(), e -> {
+		bdvPromptsService.addListener(BdvPromptsBehaviours.MULTI_PROMPT, () -> !isPlanRunning.get(), e -> {
 			final CapturedView<FloatType> view = originalViewsService.getEventView(spimSource, new FloatType(), e, Interpolation.NLINEAR);
 			final List<BdvPromptsEvent> plan = SeedsPlanner.plan(e, view.getImage(), seedsFinder);
 			System.out.println("J: " + plan.size() + " seed(s) found");
-			runPlan(plan, bdvPromptsService, planItemConsumer, isPlanRunning);
+			reviewThenRun(plan, "J: prompts at the found seeds", bdvPromptsService, planItemConsumer, isPlanRunning);
 		});
 
 
 		final TrackingPlanner.LabelPresenceIndicator brightPixels = new BrightPixelsIndicator(img, 500);
 		//
-		bdvPromptsService.addListener(BdvPromptsActions.TRACKING_PROMPT, () -> !isPlanRunning.get(), e -> {
+		bdvPromptsService.addListener(BdvPromptsBehaviours.TRACKING_PROMPT, () -> !isPlanRunning.get(), e -> {
 			final List<BdvPromptsEvent> plan = TrackingPlanner.plan(e, brightPixels, 1.0, 1000);
 			System.out.println("K: object found in " + plan.size() + " slice(s)");
-			runPlan(plan, bdvPromptsService, planItemConsumer, isPlanRunning);
+			reviewThenRun(plan, "K: prompts following the object", bdvPromptsService, planItemConsumer, isPlanRunning);
 		});
 
 		// --- 'D' toggles the guard of the "L" module
@@ -154,6 +157,22 @@ public class ServicesDemo {
 			moduleEnabled.set(!moduleEnabled.get());
 			bdv.getViewerPanel().showMessage("'L' module enabled: " + moduleEnabled.get());
 		}, "toggle L module", "D");
+	}
+
+	/**
+	 * The plan is first shown in the {@link PlanReviewer}, and executed only if the user chooses "Proceed".
+	 * NB: the dialog is opened only after the current event (the end of the user's drag) has been
+	 * fully processed, and the guard 'isPlanRunning' is raised meanwhile, so no other plan starts.
+	 */
+	static void reviewThenRun(final List<BdvPromptsEvent> plan, final String title,
+	                          final BdvPromptsService service, final BdvPromptsListener consumer,
+	                          final AtomicBoolean isPlanRunning) {
+		if (plan.isEmpty()) return;
+		isPlanRunning.set(true);
+		SwingUtilities.invokeLater(() -> {
+			if (PlanReviewer.review(plan, service, title)) runPlan(plan, service, consumer, isPlanRunning);
+			else isPlanRunning.set(false);
+		});
 	}
 
 	/** The client's own "executor": off the EDT, so that the BDV shows every step. */

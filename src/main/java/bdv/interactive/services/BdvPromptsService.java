@@ -170,8 +170,8 @@ public class BdvPromptsService {
 	 *
 	 * @param actionName unique name of the action, as it appears in the keymap editor
 	 */
-	public synchronized void addRepeatAction(final Runnable clientCallBack,
-	                                         final String actionName, final String... defaultTriggers) {
+	public synchronized void addRepeatPromptAction(final Runnable clientCallBack,
+	                                               final String actionName, final String... defaultTriggers) {
 		addAction((ClickBehaviour) (x, y) -> {
 					if (!enabled || isDragging() || isProgrammaticEnabled()) return;
 					if (!isAnyGuardOpen(actionName)) return;
@@ -189,11 +189,25 @@ public class BdvPromptsService {
 	}
 
 	/**
-	 * Installs the action. The actual trigger(s) are taken from the keymap if it knows this
-	 * action; otherwise the provided default triggers are used (and recorded into the keymap).
+	 * Installs any behaviour as a named, keymap-driven action of this service. The actual trigger(s)
+	 * are taken from the keymap if it knows this action; otherwise the provided default triggers are
+	 * used (and recorded into the keymap). Adding an existing action does nothing.
+	 * <p>
+	 * Unlike {@link #addInsertPromptAction(String, String...)} and {@link #addRepeatPromptAction(Runnable, String, String...)},
+	 * the behaviour is installed as it is: it is not subject to {@link #setEnabled(boolean)} nor to any
+	 * guards, and no listeners are notified. Useful for actions that accompany the prompting, such as
+	 * the view navigation, so that all of them share the same keymap handling and can be removed
+	 * with {@link #removeAction(String)}.
 	 *
+	 * @param actionName unique name of the action, as it appears in the keymap editor
+	 */
+	public synchronized void addViewAction(final Behaviour viewAction, final String actionName, final String... defaultTriggers) {
+		addAction(viewAction, actionName, defaultTriggers);
+	}
+
+	/**
 	 * This is a common code and is operated from public add__Action() methods from this class.
-	 * The callers shall be synchronized methods already.
+-	 * The callers shall be synchronized methods already.
 	 */
 	private void addAction(final Behaviour daAction, final String actionName, final String... defaultTriggers) {
 		if (listeners.containsKey(actionName)) {
@@ -321,8 +335,9 @@ public class BdvPromptsService {
 	public int getMinimalBoxSize() { return minimalBoxSize; }
 
 	// ======================== appearance ========================
+	public static final float DEFAULT_LINE_THICKNESS = 2.0f;
 	private volatile Color defaultColor = Color.GREEN;
-	private volatile Stroke defaultStroke = createStroke(2.0f, LineStyle.SOLID);
+	private volatile Stroke defaultStroke = createStroke(DEFAULT_LINE_THICKNESS, LineStyle.SOLID);
 	private final Map<String, Color> colorPerAction = new ConcurrentHashMap<>();
 	private final Map<String, Stroke> strokePerAction = new ConcurrentHashMap<>();
 

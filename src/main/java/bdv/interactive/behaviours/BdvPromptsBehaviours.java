@@ -78,7 +78,7 @@ public final class BdvPromptsBehaviours {
 		service.addInsertPromptAction(PROMPT, PROMPT_KEYS);
 		service.addInsertPromptAction(PROMPT_CONTRAST, PROMPT_CONTRAST_KEYS);
 		service.addInsertPromptAction(MULTI_PROMPT, MULTI_PROMPT_KEYS);
-		service.addRepeatAction(() -> {}, REPEAT_PROMPT_HERE, REPEAT_PROMPT_HERE_KEYS);
+		service.addRepeatPromptAction(() -> {}, REPEAT_PROMPT_HERE, REPEAT_PROMPT_HERE_KEYS);
 		service.setBoxStyle(PROMPT_CONTRAST, BdvPromptsService.LineStyle.DASHED, BdvPromptsService.DEFAULT_LINE_THICKNESS);
 		service.setBoxColor(MULTI_PROMPT, Color.YELLOW);
 
@@ -94,11 +94,11 @@ public final class BdvPromptsBehaviours {
 		final ViewerPanel viewer = service.getBdvHandle().getViewerPanel();
 		final SlicingViews sv = new SlicingViews(viewer);
 
-		service.addRepeatAction(() -> {
+		service.addRepeatPromptAction(() -> {
 				sv.resetView(viewer);
 				viewer.state().setViewerTransform(sv.sameViewShiftedBy(-slicingStep));
 			}, REPEAT_PROMPT_NEARER_SLICE, REPEAT_PROMPT_NEARER_SLICE_KEYS);
-		service.addRepeatAction(() -> {
+		service.addRepeatPromptAction(() -> {
 				sv.resetView(viewer);
 				viewer.state().setViewerTransform(sv.sameViewShiftedBy(+slicingStep));
 			}, REPEAT_PROMPT_FURTHER_SLICE, REPEAT_PROMPT_FURTHER_SLICE_KEYS);
@@ -158,24 +158,24 @@ public final class BdvPromptsBehaviours {
 		sideViews.animationDurationMillis = Math.max(0, rotationMillis);
 		final SlicingViews slicingViews = new SlicingViews(viewer);
 
-		service.addAction((ClickBehaviour) (x, y) -> {
+		service.addViewAction((ClickBehaviour) (x, y) -> {
 			sideViews.resetView(viewer);
 			sideViews.animateViewerToFrontView(viewer);
 		}, FRONT_VIEW, FRONT_VIEW_KEYS);
-		service.addAction((ClickBehaviour) (x, y) -> {
+		service.addViewAction((ClickBehaviour) (x, y) -> {
 			sideViews.resetView(viewer);
 			sideViews.animateViewerToSideView(viewer);
 		}, SIDE_VIEW, SIDE_VIEW_KEYS);
-		service.addAction((ClickBehaviour) (x, y) -> {
+		service.addViewAction((ClickBehaviour) (x, y) -> {
 			//NB: no reset here, we're returning to what was the current view at the last reset
 			sideViews.animateViewerToTopView(viewer);
 		}, REFERENCE_VIEW, REFERENCE_VIEW_KEYS);
 
-		service.addAction((ClickBehaviour) (x, y) -> {
+		service.addViewAction((ClickBehaviour) (x, y) -> {
 			slicingViews.resetView(viewer);
 			viewer.state().setViewerTransform(slicingViews.sameViewShiftedBy(-slicingStep));
 		}, SLICE_NEARER, SLICE_NEARER_KEYS);
-		service.addAction((ClickBehaviour) (x, y) -> {
+		service.addViewAction((ClickBehaviour) (x, y) -> {
 			slicingViews.resetView(viewer);
 			viewer.state().setViewerTransform(slicingViews.sameViewShiftedBy(+slicingStep));
 		}, SLICE_FURTHER, SLICE_FURTHER_KEYS);

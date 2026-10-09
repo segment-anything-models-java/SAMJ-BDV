@@ -335,8 +335,9 @@ public class BdvPromptsService {
 	public int getMinimalBoxSize() { return minimalBoxSize; }
 
 	// ======================== appearance ========================
+	public static final float DEFAULT_LINE_THICKNESS = 2.0f;
 	private volatile Color defaultColor = Color.GREEN;
-	private volatile Stroke defaultStroke = createStroke(2.0f, LineStyle.SOLID);
+	private volatile Stroke defaultStroke = createStroke(DEFAULT_LINE_THICKNESS, LineStyle.SOLID);
 	private final Map<String, Color> colorPerAction = new ConcurrentHashMap<>();
 	private final Map<String, Stroke> strokePerAction = new ConcurrentHashMap<>();
 

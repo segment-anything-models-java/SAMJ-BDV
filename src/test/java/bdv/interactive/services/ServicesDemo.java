@@ -11,7 +11,7 @@ import bdv.util.BdvHandle;
 import bdv.util.BdvStackSource;
 import bdv.viewer.Interpolation;
 import bdv.viewer.Source;
-import bdv.interactive.services.OriginalViewsService.CapturedView;
+import bdv.interactive.services.BdvPromptsViewService.CapturedView;
 import ij.ImageJ;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccess;

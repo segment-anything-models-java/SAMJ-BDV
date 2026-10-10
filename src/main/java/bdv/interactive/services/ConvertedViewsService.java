@@ -1,15 +1,20 @@
 package bdv.interactive.services;
 
-import bdv.tools.brightness.ConverterSetup;
 import bdv.util.BdvHandle;
-import bdv.util.MipmapTransforms;
 import bdv.viewer.Interpolation;
 import bdv.viewer.Source;
 import bdv.viewer.SourceAndConverter;
 import bdv.viewer.ViewerState;
+import bdv.viewer.ViewerStateChange;
+import bdv.viewer.ViewerStateChangeListener;
+import bdv.tools.brightness.ConverterSetup;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 
 /**
  * Like the {@link OriginalViewsService}, but bound to one particular source, and
@@ -28,7 +33,7 @@ import net.imglib2.type.numeric.RealType;
  * The change counter is shared with the views monitoring, so
  * {@link #hasChangedSince(long)} reports either kind of change.
  */
-public class ConvertedViewsService extends OriginalViewsService {
+public class ConvertedViewsService extends BdvPromptsViewService implements AutoCloseable {
 
 	/** The {@link ConverterSetup} is looked up from the BDV's {@link BdvHandle#getConverterSetups()}. */
 	public ConvertedViewsService(final BdvHandle bdv, final SourceAndConverter<? extends RealType<?>> source) {
@@ -44,6 +49,9 @@ public class ConvertedViewsService extends OriginalViewsService {
 		this.lastMin = converterSetup.getDisplayRangeMin();
 		this.lastMax = converterSetup.getDisplayRangeMax();
 		setLastRange();
+
+		this.viewer.state().changeListeners().add(stateListener);
+		this.viewer.getDisplayComponent().addComponentListener(resizeListener);
 		converterSetup.setupChangeListeners().add(setupListener);
 	}
 
@@ -64,10 +72,33 @@ public class ConvertedViewsService extends OriginalViewsService {
 	@Override
 	public void close() {
 		converterSetup.setupChangeListeners().remove(setupListener);
-		super.close();
+		viewer.getDisplayComponent().removeComponentListener(resizeListener);
+		viewer.state().changeListeners().remove(stateListener);
 	}
 
 	// ======================== change monitoring ========================
+	private final ViewerStateChangeListener stateListener = this::viewerStateChanged;
+
+	protected void viewerStateChanged(final ViewerStateChange change) {
+		//unlike in ConvertedViewsService, this method needs not be synchronized
+		switch (change) {
+			case VIEWER_TRANSFORM_CHANGED:
+			case CURRENT_TIMEPOINT_CHANGED:
+				notifyChange();
+				break;
+			default:
+				//other changes (visibility, display mode, current source, ...)
+				//do not change the pixels of any particular source on the screen
+		}
+	}
+
+	private final ComponentListener resizeListener = new ComponentAdapter() {
+		@Override
+		public void componentResized(final ComponentEvent e) {
+			notifyChange();
+		}
+	};
+
 	private final ConverterSetup.SetupChangeListener setupListener = this::setupParametersChanged;
 	private double lastMin;
 	private double lastMax;
